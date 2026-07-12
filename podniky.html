@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Naše podniky</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .venue-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; padding:1.5rem; max-width:900px; margin:0 auto; }
+    .venue-card {
+      background:var(--white); border:1.5px solid var(--sand-dark); border-radius:var(--radius-sm);
+      padding:28px 16px; text-align:center; cursor:pointer; transition:box-shadow .15s, transform .15s;
+    }
+    .venue-card:hover { box-shadow:0 8px 20px rgba(0,0,0,0.08); transform:translateY(-2px); border-color:var(--water); }
+    .venue-card.vc-locked { opacity:.55; }
+    .venue-card.vc-locked:hover { transform:none; box-shadow:none; border-color:var(--sand-dark); }
+    .venue-card .vc-house { width:64px; height:56px; margin:0 auto 12px; }
+    .venue-card .vc-house svg { width:100%; height:100%; }
+    .venue-card .vc-house svg path { fill:none; stroke:#000; stroke-width:9; stroke-linecap:round; stroke-linejoin:round; }
+    .venue-card .vc-label { font-weight:600; font-size:15px; color:#000; }
+    .venue-card .vc-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+    .venue-back { padding:0 1.5rem; max-width:900px; margin:1rem auto 0; }
+    .dash-wrap { max-width:900px; margin:1.5rem auto 0; padding:0 1.5rem; }
+    .dash-title { font-size:13px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px; }
+    .dash-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+    .dash-card { background:var(--white); border:1.5px solid var(--sand-dark); border-radius:var(--radius-sm); padding:16px; }
+    .dash-card .dc-name { font-weight:600; font-size:14px; margin-bottom:10px; }
+    .dash-card .dc-row { display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); padding:2px 0; }
+    .dash-card .dc-zisk { font-size:19px; font-weight:700; margin-top:6px; }
+  </style>
+</head>
+<body>
+
+<div id="app" style="display:none">
+  <div class="topbar" style="background:#000;">
+    <div class="topbar-brand">Hlavní panel</div>
+    <div class="topbar-right">
+      <div class="topbar-avatar" id="t-init">?</div>
+      <span class="topbar-name" id="t-name"></span>
+      <button class="logout-btn" onclick="doLogout()">Odhlásit</button>
+    </div>
+  </div>
+
+  <div class="dash-wrap" id="dash-wrap" style="display:none;">
+    <div class="dash-title" id="dash-title">Přehled – tenhle měsíc</div>
+    <div class="dash-grid" id="dash-grid"></div>
+  </div>
+
+  <div class="venue-back" id="back-wrap" style="display:none;">
+    <button class="btn btn-sm btn-secondary" onclick="showBusinesses()">← Zpět na podniky</button>
+  </div>
+  <div class="venue-grid" id="venue-grid"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js?v=3"></script>
+<script src="js/auth.js?v=3"></script>
+<script>
+var currentUser = null;
+var myVenues = [];
+
+loadAll().then(function(){
+  var u = authGetCurrent();
+  if (!u) { window.location.href='index.html'; return; }
+  currentUser = u;
+  myVenues = getAccessibleVenues(u);
+
+  var p = (u.jmeno||'').split(' ');
+  document.getElementById('t-init').textContent = p.map(function(x){return x[0];}).join('').toUpperCase();
+  document.getElementById('t-name').textContent = p[0];
+
+  if (u.role==='admin' || u.role==='spravce') renderDash();
+
+  showBusinesses();
+  document.getElementById('app').style.display='block';
+});
+
+function renderDash(){
+  var month = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
+  var monthNames=['','leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
+  document.getElementById('dash-title').textContent = 'Přehled – '+monthNames[month]+' 2026';
+
+  var biz = myBusinesses();
+  if (!biz.length) return;
+  var html = biz.map(function(b){
+    var venuesInBiz = myVenues.filter(function(v){return v.business_id===b.id;});
+    var agg = venuesInBiz.reduce(function(acc,v){
+      var z = getZiskVenueMonth(v.id, 2026, month);
+      acc.trzby+=z.trzby; acc.naklady+=z.naklady; acc.vyplaty+=z.vyplaty; acc.zisk+=z.zisk;
+      return acc;
+    }, {trzby:0,naklady:0,vyplaty:0,zisk:0});
+    return '<div class="dash-card">'+
+      '<div class="dc-name">'+b.ikona+' '+b.nazev+'</div>'+
+      '<div class="dc-row"><span>Tržby</span><span>'+agg.trzby.toLocaleString('cs-CZ')+' Kč</span></div>'+
+      '<div class="dc-row"><span>Náklady</span><span>-'+agg.naklady.toLocaleString('cs-CZ')+' Kč</span></div>'+
+      '<div class="dc-row"><span>Mzdy</span><span>-'+agg.vyplaty.toLocaleString('cs-CZ')+' Kč</span></div>'+
+      '<div class="dc-zisk" style="color:'+(agg.zisk>=0?'var(--green)':'var(--red)')+';">'+agg.zisk.toLocaleString('cs-CZ')+' Kč čistého</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('dash-grid').innerHTML = html;
+  document.getElementById('dash-wrap').style.display = 'block';
+}
+
+function myBusinesses() {
+  var ids = {};
+  myVenues.forEach(function(v){ ids[v.business_id]=true; });
+  return BUSINESSES.filter(function(b){ return ids[b.id]; });
+}
+
+function houseSvg() {
+  return '<svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">'+
+    '<path d="M10 90 L100 15 L190 90 M35 65 V165 H165 V65"/>'+
+  '</svg>';
+}
+
+// DŮLEŽITÉ: appka vždycky ukazuje VŠECHNY podniky/provozovny (i ty, kam
+// člověk zatím nemá přístup) - to je schválně, ať appka pořád funguje podle
+// "otevřu appku a vidím všechny podniky". Vstoupit ale jde jen tam, kam má
+// člověk opravdu přiřazení - jinde se ukáže hláška, ne tichý zákaz.
+function showBusinesses() {
+  document.getElementById('back-wrap').style.display='none';
+  var html = BUSINESSES.map(function(b){
+    var venuesInBiz = VENUES.filter(function(v){return v.business_id===b.id;});
+    var accessibleInBiz = myVenues.filter(function(v){return v.business_id===b.id;});
+    var single = accessibleInBiz.length===1 ? accessibleInBiz[0] : null;
+    var action;
+    if (single) action = 'location.href=\''+targetUrl(single)+'\'';
+    else if (accessibleInBiz.length > 1) action = 'showVenues('+b.id+')';
+    else action = 'alert(\'Zatím nemáš přístup do '+b.nazev.replace(/'/g,"\\'")+'. Ozvi se adminovi.\')';
+    return '<div class="venue-card'+(accessibleInBiz.length?'':' vc-locked')+'" onclick="'+action+'">' +
+      '<div class="vc-house">'+houseSvg()+'</div>' +
+      '<div class="vc-label">'+b.nazev+'</div>' +
+      (accessibleInBiz.length===0 ? '<div class="vc-sub">🔒 nemáš přístup</div>' : (venuesInBiz.length>1 ? '<div class="vc-sub">'+accessibleInBiz.length+'/'+venuesInBiz.length+' provozovny</div>' : '')) +
+      '</div>';
+  }).join('');
+  document.getElementById('venue-grid').innerHTML = html;
+}
+
+function showVenues(businessId) {
+  var b = getBusinessById(businessId);
+  var venuesInBiz = myVenues.filter(function(v){return v.business_id===businessId;});
+  document.getElementById('back-wrap').style.display='block';
+  document.getElementById('venue-grid').innerHTML = venuesInBiz.map(function(v){
+    return '<div class="venue-card" onclick="location.href=\''+targetUrl(v)+'\'">' +
+      '<div class="vc-house">'+houseSvg()+'</div>' +
+      '<div class="vc-label">'+v.nazev.replace(b.nazev+' - ','').replace(b.nazev+' ','')+'</div>' +
+      '</div>';
+  }).join('');
+}
+
+// Podle role: brigádník jde do svojí appky, admin/správce do správy dané provozovny.
+function targetUrl(v) {
+  if (currentUser.role === 'admin' || currentUser.role === 'spravce') return venueAdminUrl(v);
+  return venueAppUrl(v);
+}
+
+function doLogout() { authLogout(); window.location.href='index.html'; }
+</script>
+</body>
+</html>
