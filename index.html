@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Přihlášení</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-logo">🏠 Naše podniky</div>
+  <div class="login-sub">Portál brigádníků</div>
+
+  <div class="login-card">
+    <h2>Přihlášení</h2>
+
+    <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+      <button type="button" class="btn btn-sm btn-primary" id="lt-pin" style="flex:1;justify-content:center;" onclick="setLoginTab('pin')">PIN</button>
+      <button type="button" class="btn btn-sm btn-secondary" id="lt-email" style="flex:1;justify-content:center;" onclick="setLoginTab('email')">E-mail</button>
+    </div>
+
+    <!-- PIN přihlášení (beze změny - stávající brigádníci na Kosatce) -->
+    <div id="panel-pin">
+      <p>Zadej své jméno a PIN od vedoucího</p>
+      <div class="form-group">
+        <label class="form-label" for="login-name">Jméno a příjmení</label>
+        <input class="form-input" type="text" id="login-name" placeholder="Jana Nováková" autocomplete="name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">PIN (4 číslice)</label>
+        <div class="pin-dots">
+          <div class="pin-dot" id="dot0"></div>
+          <div class="pin-dot" id="dot1"></div>
+          <div class="pin-dot" id="dot2"></div>
+          <div class="pin-dot" id="dot3"></div>
+        </div>
+        <div class="pin-pad" id="pin-pad"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="doLogin()">
+        Přihlásit se
+      </button>
+      <div class="login-error" id="login-error">Špatné jméno nebo PIN. Zkus to znovu.</div>
+    </div>
+
+    <!-- E-mailové přihlášení (nové podniky + kdokoliv, kdo si e-mail nastavil) -->
+    <div id="panel-email" style="display:none;">
+      <p>Přihlas se e-mailem a heslem</p>
+      <div class="form-group">
+        <label class="form-label" for="login-email">E-mail</label>
+        <input class="form-input" type="email" id="login-email" placeholder="jana@email.cz" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-password">Heslo</label>
+        <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="doEmailLogin()">
+        Přihlásit se
+      </button>
+      <div class="login-error" id="email-login-error">Špatný e-mail nebo heslo.</div>
+      <p style="margin-top:1rem;font-size:13px;text-align:center;">Nemáš ještě účet? <a href="registrace.html">Zaregistruj se</a></p>
+    </div>
+
+    <div class="login-error" id="stuck-error" style="display:none;">
+      Tenhle účet zatím nemá přiřazenou žádnou provozovnu. Ozvi se adminovi, ať ti ji přiřadí.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js?v=3"></script>
+<script src="js/auth.js?v=3"></script>
+<script>
+  let pinCtrl;
+
+  function setLoginTab(tab) {
+    document.getElementById('panel-pin').style.display = tab==='pin' ? 'block' : 'none';
+    document.getElementById('panel-email').style.display = tab==='email' ? 'block' : 'none';
+    document.getElementById('lt-pin').className = 'btn btn-sm '+(tab==='pin'?'btn-primary':'btn-secondary');
+    document.getElementById('lt-email').className = 'btn btn-sm '+(tab==='email'?'btn-primary':'btn-secondary');
+  }
+
+  function goToDestination(worker) {
+    const dest = resolveLoginDestination(worker);
+    if (safeRedirect(dest)) return;
+    // Není kam jít (žádná provozovna přiřazená) - zůstaneme tady a řekneme to,
+    // NIKDY nepřesměrovávat zpátky na tuhle stránku (to by byla nekonečná smyčka).
+    document.getElementById('stuck-error').style.display = 'block';
+  }
+
+  function doLogin() {
+    const name = document.getElementById('login-name').value.trim();
+    const pin = pinCtrl ? pinCtrl.get() : '';
+    const err = document.getElementById('login-error');
+    err.style.display = 'none';
+
+    const worker = authLogin(name, pin);
+    if (!worker) {
+      err.style.display = 'block';
+      if (pinCtrl) pinCtrl.clear();
+      return;
+    }
+    goToDestination(worker);
+  }
+
+  async function doEmailLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const err = document.getElementById('email-login-error');
+    err.style.display = 'none';
+    if (!email || !password) { err.style.display='block'; err.textContent='Vyplň e-mail i heslo.'; return; }
+    const res = await authEmailLogin(email, password);
+    if (!res.ok) { err.style.display='block'; err.textContent=res.error; return; }
+    goToDestination(res.worker);
+  }
+
+  loadAll().then(function() {
+    // Pokud už je přihlášen, přesměruj (ale nikdy ne sama na sebe - viz safeRedirect)
+    const existing = authGetCurrent();
+    if (existing) {
+      goToDestination(existing);
+    }
+
+    pinCtrl = buildPinPad('pin-pad', 'pin-buf', 'dot', null);
+
+    document.getElementById('login-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+    document.getElementById('login-password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doEmailLogin();
+    });
+  });
+</script>
+</body>
+</html>
