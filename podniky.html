@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Naše podniky</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .venue-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; padding:1.5rem; max-width:900px; margin:0 auto; }
+    .venue-card {
+      background:var(--white); border:1.5px solid var(--sand-dark); border-radius:var(--radius-sm);
+      padding:28px 16px; text-align:center; cursor:pointer; transition:box-shadow .15s, transform .15s;
+    }
+    .venue-card:hover { box-shadow:0 8px 20px rgba(0,0,0,0.08); transform:translateY(-2px); border-color:var(--water); }
+    .venue-card.vc-locked { opacity:.55; }
+    .venue-card.vc-locked:hover { transform:none; box-shadow:none; border-color:var(--sand-dark); }
+    .venue-card .vc-house { width:64px; height:56px; margin:0 auto 12px; }
+    .venue-card .vc-house svg { width:100%; height:100%; }
+    .venue-card .vc-house svg path { fill:none; stroke:#000; stroke-width:9; stroke-linecap:round; stroke-linejoin:round; }
+    .venue-card .vc-label { font-weight:600; font-size:15px; color:#000; }
+    .venue-card .vc-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+    .venue-back { padding:0 1.5rem; max-width:900px; margin:1rem auto 0; }
+    .dash-wrap { max-width:900px; margin:1.5rem auto 0; padding:0 1.5rem; }
+    .dash-title { font-size:13px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px; }
+    .dash-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+    .dash-card { background:var(--white); border:1.5px solid var(--sand-dark); border-radius:var(--radius-sm); padding:16px; }
+    .dash-card .dc-name { font-weight:600; font-size:14px; margin-bottom:10px; }
+    .dash-card .dc-row { display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); padding:2px 0; }
+    .dash-card .dc-zisk { font-size:19px; font-weight:700; margin-top:6px; }
+  </style>
+</head>
+<body>
+
+<div id="app" style="display:none">
+  <div class="topbar" style="background:#000;">
+    <div class="topbar-brand">Hlavní panel</div>
+    <div class="topbar-right">
+      <button class="btn btn-sm btn-secondary" onclick="location.reload()" style="margin-right:8px;">🔄 Obnovit data</button>
+      <div class="topbar-avatar" id="t-init">?</div>
+      <span class="topbar-name" id="t-name"></span>
+      <button class="logout-btn" onclick="doLogout()">Odhlásit</button>
+    </div>
+  </div>
+
+  <div class="dash-wrap" id="dash-wrap" style="display:none;">
+    <div class="dash-title" id="dash-title">Přehled – tenhle měsíc</div>
+    <div class="dash-grid" id="dash-grid"></div>
+  </div>
+
+  <div class="dash-wrap" id="admin-wrap" style="display:none;">
+    <div class="dash-title">🏢 Naše podniky</div>
+    <div id="podniky-list" style="max-width:900px;margin-bottom:1.5rem;"></div>
+
+    <div class="dash-title" id="spravci-title" style="display:none;">🔑 Správci provozoven</div>
+    <div id="spravci-list" style="max-width:900px;margin-bottom:1.5rem;"></div>
+
+    <div class="dash-title">🆕 Čekající registrace</div>
+    <div id="registrace-list" style="max-width:900px;"></div>
+
+    <div class="dash-title" style="margin-top:1.5rem;">👥 Všichni brigádníci</div>
+    <div class="venue-back" style="padding:0;margin:0 0 1rem;">
+      <table class="schedule-table" style="width:100%;background:var(--white);">
+        <thead><tr><th>Jméno</th><th>E-mail</th><th>Domovská provozovna</th><th>Další provozovny</th><th>Dostupnost</th></tr></thead>
+        <tbody id="all-workers-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="podniky-spravci-wrap" style="display:none;">
+      <div class="dash-title" style="margin-top:1.5rem;">🏢 Podniky a jejich provozovny</div>
+      <div id="podniky-list" style="max-width:900px;margin-bottom:1.5rem;"></div>
+
+      <div class="dash-title">🔑 Správci provozoven</div>
+      <p style="font-size:12px;color:var(--text-muted);max-width:900px;margin:-4px 0 10px;">Přiřaď správcům, které konkrétní provozovny mají spravovat.</p>
+      <div id="spravci-list" style="max-width:900px;margin-bottom:1.5rem;"></div>
+    </div>
+
+    <div class="dash-title">➕ Nový brigádník</div>
+    <div class="venue-back" style="padding:0;margin:0 0 1.5rem;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:var(--radius-sm);padding:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-group"><label class="form-label">Jméno a příjmení</label><input class="form-input" type="text" id="hp-nwb-jmeno" placeholder="Jana Nováková"/></div>
+        <div class="form-group"><label class="form-label">PIN (4 číslice)</label><input class="form-input" type="text" id="hp-nwb-pin" maxlength="4" placeholder="1234"/></div>
+        <div class="form-group"><label class="form-label">Provozovna</label><select class="form-select" id="hp-nwb-venue"></select></div>
+      </div>
+      <button class="btn btn-primary" onclick="hpPridatBrigadnika()">Založit</button>
+      <div class="form-error" id="hp-nwb-err" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="venue-back" id="back-wrap" style="display:none;">
+    <button class="btn btn-sm btn-secondary" onclick="showBusinesses()">← Zpět na podniky</button>
+  </div>
+  <div class="venue-grid" id="venue-grid"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js?v=3"></script>
+<script src="js/auth.js?v=3"></script>
+<script>
+var currentUser = null;
+var myVenues = [];
+
+loadAll().then(function(){
+  var u = authGetCurrent();
+  if (!u) { window.location.href='index.html'; return; }
+  currentUser = u;
+  myVenues = getAccessibleVenues(u);
+
+  var p = (u.jmeno||'').split(' ');
+  document.getElementById('t-init').textContent = p.map(function(x){return x[0];}).join('').toUpperCase();
+  document.getElementById('t-name').textContent = p[0];
+
+  if (u.role==='admin' || u.role==='spravce') { renderDash(); renderHlavniAdmin(); }
+
+  showBusinesses();
+  document.getElementById('app').style.display='block';
+});
+
+function renderHlavniAdmin(){
+  document.getElementById('admin-wrap').style.display = 'block';
+  renderRegistrace();
+  renderAllWorkersTable();
+  document.getElementById('hp-nwb-venue').innerHTML = myVenues.map(function(v){
+    return '<option value="'+v.id+'">'+v.ikona+' '+v.nazev+'</option>';
+  }).join('') || '<option value="">– žádná provozovna –</option>';
+
+  if (currentUser.role === 'admin') {
+    document.getElementById('podniky-spravci-wrap').style.display = 'block';
+    renderPodnikyList();
+    renderSpravciList();
+  }
+}
+
+function renderPodnikyList(){
+  var html = BUSINESSES.map(function(b){
+    var venuesInBiz = VENUES.filter(function(v){return v.business_id===b.id;});
+    return '<div style="margin-bottom:16px;">'+
+      '<div style="font-weight:600;color:var(--water-dark);margin-bottom:6px;">'+b.ikona+' '+b.nazev+'</div>'+
+      venuesInBiz.map(function(v){
+        var cnt = getWorkersForVenue(v.id).length;
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border:1px solid var(--sand-dark);border-radius:8px;margin-bottom:6px;background:var(--white);">'+
+          '<span>'+v.ikona+' '+v.nazev+' <span style="font-size:11px;color:var(--text-muted);">('+cnt+' brigádníků)</span></span>'+
+          '<a class="btn btn-sm btn-secondary" href="'+venueAdminUrl(v)+'">Spravovat →</a>'+
+          '</div>';
+      }).join('')+
+      '</div>';
+  }).join('');
+  document.getElementById('podniky-list').innerHTML = html;
+}
+
+function renderSpravciList(){
+  var spravci = WORKERS.filter(function(w){return w.role==='admin' || w.role==='spravce';});
+  var el = document.getElementById('spravci-list');
+  if (!spravci.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👥</div>Žádní admini/správci.</div>'; return; }
+  el.innerHTML = spravci.map(function(w){
+    if (w.role==='admin') {
+      return '<div style="padding:8px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;"><strong>'+w.jmeno+'</strong> <span class="badge badge-warning">super-admin – vidí vše</span></div>';
+    }
+    var mine = ADMIN_VENUES.filter(function(av){return av.worker_id===w.id;}).map(function(av){return av.venue_id;});
+    var checks = VENUES.map(function(v){
+      return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-right:10px;">'+
+        '<input type="checkbox" data-venue="'+v.id+'" '+(mine.indexOf(v.id)!==-1?'checked':'')+'/> '+v.ikona+' '+v.nazev+'</label>';
+    }).join('');
+    return '<div style="padding:10px 0;border-bottom:0.5px solid var(--sand-dark);">'+
+      '<div style="font-weight:500;font-size:13px;margin-bottom:6px;">'+w.jmeno+'</div>'+
+      '<div id="spravce-checks-'+w.id+'">'+checks+'</div>'+
+      '<button class="btn btn-sm btn-secondary" style="margin-top:6px;" onclick="saveSpravceVenues('+w.id+')">💾 Uložit</button>'+
+      '</div>';
+  }).join('');
+}
+async function saveSpravceVenues(workerId){
+  var boxes = document.querySelectorAll('#spravce-checks-'+workerId+' input[type=checkbox]:checked');
+  var venueIds = Array.prototype.map.call(boxes, function(b){return parseInt(b.getAttribute('data-venue'));});
+  var res = await setAdminVenues(workerId, venueIds);
+  if (!res.ok) { alert('Nepovedlo se to uložit, zkus to znovu.'); return; }
+  alert('Uloženo.');
+}
+
+function renderRegistrace(){
+  var pending = getPendingWorkers().filter(function(w){
+    return currentUser.role==='admin' || (w.chce_venue_id && myVenues.some(function(v){return v.id===w.chce_venue_id;}));
+  });
+  var el = document.getElementById('registrace-list');
+  if (!pending.length) { el.innerHTML = '<div class="empty-state"><div class="icon">✅</div>Žádné čekající registrace.</div>'; return; }
+  el.innerHTML = pending.map(function(w){
+    var venueOpts = VENUES.map(function(v){return '<option value="'+v.id+'"'+(w.chce_venue_id===v.id?' selected':'')+'>'+v.ikona+' '+v.nazev+'</option>';}).join('');
+    var chtel = w.chce_venue_id ? getVenueById(w.chce_venue_id) : null;
+    return '<div class="dash-card" style="margin-bottom:10px;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'+
+        '<div><strong>'+w.jmeno+'</strong><br><span style="font-size:12px;color:var(--text-muted);">'+w.email+'</span>'+
+        (chtel ? '<br><span style="font-size:12px;color:var(--water-dark);">Chce: '+chtel.ikona+' '+chtel.nazev+'</span>' : '')+'</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'+
+          '<select class="form-select" id="reg-venue-'+w.id+'" style="max-width:200px;">'+venueOpts+'</select>'+
+          '<select class="form-select" id="reg-role-'+w.id+'" style="max-width:140px;"><option value="user">Brigádník</option><option value="spravce">Správce</option></select>'+
+          '<button class="btn btn-primary btn-sm" onclick="doApprove('+w.id+')">✓ Schválit</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+async function doApprove(workerId){
+  var venueId = parseInt(document.getElementById('reg-venue-'+workerId).value);
+  var role = document.getElementById('reg-role-'+workerId).value;
+  var res = await approveWorker(workerId, venueId, role);
+  if (!res.ok) { alert('Nepovedlo se to schválit, zkus to znovu.'); return; }
+  renderRegistrace();
+  renderAllWorkersTable();
+}
+
+function renderAllWorkersTable(){
+  var allowedVenueIds = myVenues.map(function(v){return v.id;});
+  var workers = WORKERS.filter(function(w){
+    if (w.role!=='user') return false;
+    if (currentUser.role==='admin') return true;
+    var secondary = WORKER_VENUES.filter(function(wv){return wv.worker_id===w.id;}).map(function(wv){return wv.venue_id;});
+    return allowedVenueIds.indexOf(w.venue_id)!==-1 || secondary.some(function(id){return allowedVenueIds.indexOf(id)!==-1;});
+  });
+  var el = document.getElementById('all-workers-tbody');
+  if (!workers.length) { el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím nikdo.</td></tr>'; return; }
+  el.innerHTML = workers.map(function(w){
+    var home = getVenueById(w.venue_id);
+    var secondary = WORKER_VENUES.filter(function(wv){return wv.worker_id===w.id;}).map(function(wv){return getVenueById(wv.venue_id);}).filter(Boolean);
+    var dostSet = new Set(w.dostupnost||[]);
+    WORKER_DOSTUPNOST.filter(function(d){return d.worker_id===w.id;}).forEach(function(d){ (d.dny||[]).forEach(function(x){ dostSet.add(x); }); });
+    var dost = dostSet.size;
+    return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+(w.email||'–')+'</td>'+
+      '<td>'+(home?home.ikona+' '+home.nazev:'<span style="color:var(--text-muted);">– bez přiřazení –</span>')+'</td>'+
+      '<td>'+(secondary.length?secondary.map(function(v){return v.ikona+' '+v.nazev;}).join(', '):'<span style="color:var(--text-muted);">–</span>')+'</td>'+
+      '<td>'+(dost?dost+' dní':'<span style="color:var(--text-muted);">–</span>')+'</td></tr>';
+  }).join('');
+}
+async function hpPridatBrigadnika(){
+  var jmeno = document.getElementById('hp-nwb-jmeno').value;
+  var pin = document.getElementById('hp-nwb-pin').value;
+  var venueId = parseInt(document.getElementById('hp-nwb-venue').value);
+  var err = document.getElementById('hp-nwb-err');
+  err.style.display = 'none';
+  if (!venueId) { err.style.display='block'; err.textContent='Vyber provozovnu.'; return; }
+  var res = await createWorkerDirect(jmeno, pin, venueId);
+  if (!res.ok) { err.style.display='block'; err.textContent = res.error && res.error.message ? res.error.message : (typeof res.error==='string'?res.error:'Nepovedlo se to založit.'); return; }
+  document.getElementById('hp-nwb-jmeno').value = '';
+  document.getElementById('hp-nwb-pin').value = '';
+  renderAllWorkersTable();
+}
+
+function renderDash(){
+  var month = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
+  var monthNames=['','leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
+  document.getElementById('dash-title').textContent = 'Přehled – '+monthNames[month]+' 2026';
+
+  var biz = myBusinesses();
+  if (!biz.length) return;
+  var html = biz.map(function(b){
+    var venuesInBiz = myVenues.filter(function(v){return v.business_id===b.id;});
+    var agg = venuesInBiz.reduce(function(acc,v){
+      var z = getZiskVenueMonth(v.id, 2026, month);
+      acc.trzby+=z.trzby; acc.naklady+=z.naklady; acc.vyplaty+=z.vyplaty; acc.zisk+=z.zisk;
+      return acc;
+    }, {trzby:0,naklady:0,vyplaty:0,zisk:0});
+    return '<div class="dash-card">'+
+      '<div class="dc-name">'+b.ikona+' '+b.nazev+'</div>'+
+      '<div class="dc-row"><span>Tržby</span><span>'+agg.trzby.toLocaleString('cs-CZ')+' Kč</span></div>'+
+      '<div class="dc-row"><span>Náklady</span><span>-'+agg.naklady.toLocaleString('cs-CZ')+' Kč</span></div>'+
+      '<div class="dc-row"><span>Mzdy</span><span>-'+agg.vyplaty.toLocaleString('cs-CZ')+' Kč</span></div>'+
+      '<div class="dc-zisk" style="color:'+(agg.zisk>=0?'var(--green)':'var(--red)')+';">'+agg.zisk.toLocaleString('cs-CZ')+' Kč čistého</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('dash-grid').innerHTML = html;
+  document.getElementById('dash-wrap').style.display = 'block';
+}
+
+function myBusinesses() {
+  var ids = {};
+  myVenues.forEach(function(v){ ids[v.business_id]=true; });
+  return BUSINESSES.filter(function(b){ return ids[b.id]; });
+}
+
+function houseSvg() {
+  return '<svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">'+
+    '<path d="M10 90 L100 15 L190 90 M35 65 V165 H165 V65"/>'+
+  '</svg>';
+}
+
+// DŮLEŽITÉ: appka vždycky ukazuje VŠECHNY podniky/provozovny (i ty, kam
+// člověk zatím nemá přístup) - to je schválně, ať appka pořád funguje podle
+// "otevřu appku a vidím všechny podniky". Vstoupit ale jde jen tam, kam má
+// člověk opravdu přiřazení - jinde se ukáže hláška, ne tichý zákaz.
+function showBusinesses() {
+  document.getElementById('back-wrap').style.display='none';
+  var html = BUSINESSES.map(function(b){
+    var venuesInBiz = VENUES.filter(function(v){return v.business_id===b.id;});
+    var accessibleInBiz = myVenues.filter(function(v){return v.business_id===b.id;});
+    var single = accessibleInBiz.length===1 ? accessibleInBiz[0] : null;
+    var action;
+    if (single) action = 'location.href=\''+targetUrl(single)+'\'';
+    else if (accessibleInBiz.length > 1) action = 'showVenues('+b.id+')';
+    else action = 'alert(\'Zatím nemáš přístup do '+b.nazev.replace(/'/g,"\\'")+'. Ozvi se adminovi.\')';
+    return '<div class="venue-card'+(accessibleInBiz.length?'':' vc-locked')+'" onclick="'+action+'">' +
+      '<div class="vc-house">'+houseSvg()+'</div>' +
+      '<div class="vc-label">'+b.nazev+'</div>' +
+      (accessibleInBiz.length===0 ? '<div class="vc-sub">🔒 nemáš přístup</div>' : (venuesInBiz.length>1 ? '<div class="vc-sub">'+accessibleInBiz.length+'/'+venuesInBiz.length+' provozovny</div>' : '')) +
+      '</div>';
+  }).join('');
+  document.getElementById('venue-grid').innerHTML = html;
+}
+
+function showVenues(businessId) {
+  var b = getBusinessById(businessId);
+  var venuesInBiz = myVenues.filter(function(v){return v.business_id===businessId;});
+  document.getElementById('back-wrap').style.display='block';
+  document.getElementById('venue-grid').innerHTML = venuesInBiz.map(function(v){
+    return '<div class="venue-card" onclick="location.href=\''+targetUrl(v)+'\'">' +
+      '<div class="vc-house">'+houseSvg()+'</div>' +
+      '<div class="vc-label">'+v.nazev.replace(b.nazev+' - ','').replace(b.nazev+' ','')+'</div>' +
+      '</div>';
+  }).join('');
+}
+
+// Podle role: brigádník jde do svojí appky, admin/správce do správy dané provozovny.
+function targetUrl(v) {
+  if (currentUser.role === 'admin' || currentUser.role === 'spravce') return venueAdminUrl(v);
+  return venueAppUrl(v);
+}
+
+function doLogout() { authLogout(); window.location.href='index.html'; }
+</script>
+</body>
+</html>
