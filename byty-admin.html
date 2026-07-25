@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Správa nájmů</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<div id="app" style="display:none">
+
+  <div class="topbar">
+    <div class="topbar-brand" id="tb-brand">🏢 Nájmy</div>
+    <div class="topbar-right">
+      <span class="badge badge-warning" id="admin-name">Admin</span>
+      <button class="btn btn-sm btn-secondary" onclick="location.reload()" style="margin-right:8px;">🔄 Obnovit data</button>
+      <button class="btn btn-sm btn-secondary" onclick="location.href='podniky.html'" style="margin-right:8px;">🏠 Podniky</button>
+      <button class="logout-btn" onclick="logout()">Odhlásit</button>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('byty',this)">🏠 Byty a nájemné</button>
+    <button class="nav-tab"        onclick="showTab('pokladna',this)">💵 Pokladní kniha</button>
+    <button class="nav-tab"        onclick="showTab('opakovane',this)">🔁 Automatické platby</button>
+  </div>
+
+  <!-- BYTY -->
+  <div class="page active" id="tab-byty">
+    <div class="card">
+      <div class="card-title">📅 Měsíc</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <input type="month" class="form-input" id="byt-mesic" style="max-width:180px;"/>
+        <span style="font-size:12px;color:var(--text-muted);">Platby a dluh se počítají za tenhle měsíc.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏠 Byty / jednotky</div>
+      <div class="schedule-wrap">
+        <table class="schedule-table" style="width:100%">
+          <thead><tr><th>Jednotka</th><th>Nájemník</th><th>Měsíčně má platit</th><th>Zaplaceno tenhle měsíc</th><th>Dluh</th><th>Poznámka</th><th></th></tr></thead>
+          <tbody id="byty-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;font-weight:600;font-size:13px;" id="byty-souhrn"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">➕ Přidat jednotku</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
+        <div class="form-group" style="margin:0;"><label class="form-label">Název</label><input class="form-input" id="nb-nazev" placeholder="Byt 21"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Nájemník</label><input class="form-input" id="nb-najemnik" placeholder="jméno"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Měsíčně (Kč)</label><input type="number" class="form-input" id="nb-castka" placeholder="12000"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Poznámka</label><input class="form-input" id="nb-poznamka" placeholder="volitelné"/></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="pridatByt()">Přidat</button>
+    </div>
+  </div>
+
+  <!-- POKLADNA -->
+  <div class="page" id="tab-pokladna">
+    <div class="card">
+      <div class="card-title">💵 Aktuální hotovost v pokladně</div>
+      <div style="font-size:28px;font-weight:700;" id="pokladna-zustatek">0 Kč</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Součet všech příjmů mínus výdaje zapsané níže.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">➕ Nový zápis</div>
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:end;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Typ</label>
+          <select class="form-select" id="pk-typ">
+            <option value="prijem">⬆️ Příjem (vybrané nájemné...)</option>
+            <option value="vydaj">⬇️ Výdaj</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Za co / od koho</label><input class="form-input" id="pk-popis" placeholder="např. nájem Zborovská - Byt 4, nebo oprava kotle"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Částka (Kč)</label><input type="number" class="form-input" id="pk-castka" placeholder="Kč"/></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="ulozitPokladnaZapis()">💾 Uložit</button>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">Tip: pokud jde o platbu konkrétního nájemníka, zapiš ji rovnou i do záložky "Byty a nájemné" u dané jednotky - v pokladně se to eviduje jako hotovost, u bytu jako splátka dluhu (jsou to dvě různé věci).</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Historie zápisů</div>
+      <div id="pokladna-list"></div>
+    </div>
+  </div>
+
+  <!-- OPAKOVANÉ PLATBY -->
+  <div class="page" id="tab-opakovane">
+    <div class="card">
+      <div class="card-title">🔁 Automatické platby (elektřina, voda, ...)</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Appka je sama každý měsíc (od zadaného dne) zapíše do nákladů provozovny, ať na ně nezapomeneš.</p>
+      <div id="opakovane-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">➕ Přidat automatickou platbu</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;">
+        <div class="form-group" style="margin:0;"><label class="form-label">Co to je</label><input class="form-input" id="op-popis" placeholder="např. Elektřina ČEZ"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Částka (Kč)</label><input type="number" class="form-input" id="op-castka" placeholder="Kč"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Den v měsíci</label><input type="number" min="1" max="28" class="form-input" id="op-den" value="1"/></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="pridatOpakovanou()">Přidat</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js?v=3"></script>
+<script src="js/auth.js?v=3"></script>
+<script>
+var venue = null;
+var currentAdmin = null;
+
+loadAll().then(function(){
+  var user = authRequire('admin');
+  if (!user) return;
+  currentAdmin = user;
+
+  var params = new URLSearchParams(window.location.search);
+  var slug = params.get('v');
+  venue = getVenueBySlug(slug);
+  if (!venue || venue.rezim!=='byty') { window.location.href='podniky.html'; return; }
+
+  var accessible = getAccessibleVenues(user);
+  if (!accessible.some(function(v){return v.id===venue.id;})) { window.location.href='podniky.html'; return; }
+
+  document.getElementById('tb-brand').textContent = venue.ikona+' '+venue.nazev;
+  document.getElementById('admin-name').textContent = user.jmeno.split(' ')[0];
+  document.getElementById('byt-mesic').value = currentMonthStr();
+
+  renderByty();
+  renderPokladna();
+  renderOpakovane();
+
+  document.getElementById('app').style.display='block';
+});
+
+function logout(){ authLogout(); window.location.href='index.html'; }
+
+function showTab(id,btn){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('tab-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+// ── BYTY ──
+document.addEventListener('change', function(e){ if (e.target && e.target.id==='byt-mesic') renderByty(); });
+
+function renderByty(){
+  var mesic = document.getElementById('byt-mesic').value || currentMonthStr();
+  var byty = getBytyForVenue(venue.id);
+  var el = document.getElementById('byty-tbody');
+  if (!byty.length) { el.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím žádné jednotky.</td></tr>'; document.getElementById('byty-souhrn').textContent=''; return; }
+
+  var soucetPredpis=0, soucetZaplaceno=0;
+  el.innerHTML = byty.map(function(b){
+    var zaplaceno = getBytZaplacenoMesic(b.id, mesic);
+    var dluh = getBytDluhMesic(b.id, mesic);
+    soucetPredpis += (b.mesicni_castka||0);
+    soucetZaplaceno += zaplaceno;
+    return '<tr><td style="font-weight:500;">'+b.nazev+'</td>'+
+      '<td><input class="form-input" style="padding:4px 8px;font-size:12px;" value="'+(b.najemnik||'')+'" onchange="upravitByt('+b.id+',\'najemnik\',this.value)"/></td>'+
+      '<td><input type="number" class="form-input" style="padding:4px 8px;font-size:12px;max-width:100px;" value="'+(b.mesicni_castka||0)+'" onchange="upravitByt('+b.id+',\'mesicni_castka\',parseFloat(this.value)||0)"/></td>'+
+      '<td>'+zaplaceno.toLocaleString('cs-CZ')+' Kč <button class="btn btn-sm btn-secondary" onclick="zapsatPlatbu('+b.id+')">+ zapsat</button></td>'+
+      '<td style="font-weight:600;color:'+(dluh>0?'var(--red)':'var(--green)')+';">'+(dluh>0?('−'+dluh.toLocaleString('cs-CZ')):(dluh<0?('+'+Math.abs(dluh).toLocaleString('cs-CZ')):'0'))+' Kč</td>'+
+      '<td style="font-size:12px;color:var(--text-muted);">'+(b.poznamka||'–')+'</td>'+
+      '<td><button class="btn btn-sm btn-danger" onclick="smazatByt('+b.id+')">🗑️</button></td></tr>';
+  }).join('');
+  var celkDluh = soucetPredpis - soucetZaplaceno;
+  document.getElementById('byty-souhrn').textContent = 'Předpis celkem: '+soucetPredpis.toLocaleString('cs-CZ')+' Kč · Zaplaceno: '+soucetZaplaceno.toLocaleString('cs-CZ')+' Kč · '+(celkDluh>0?('Dluží se celkem: '+celkDluh.toLocaleString('cs-CZ')+' Kč'):'Vše zaplaceno');
+}
+
+async function upravitByt(id, pole, hodnota){
+  await updateByt(id, (function(){ var o={}; o[pole]=hodnota; return o; })());
+  renderByty();
+}
+async function zapsatPlatbu(bytId){
+  var mesic = document.getElementById('byt-mesic').value || currentMonthStr();
+  var castkaStr = prompt('Kolik přišlo za tenhle měsíc ('+mesic+')?', '');
+  var castka = parseFloat(castkaStr);
+  if (!castka || castka<=0) return;
+  await addBytPlatba(bytId, mesic, castka, '');
+  renderByty();
+}
+async function smazatByt(id){
+  if (!confirm('Zrušit tuhle jednotku? (Historie plateb zůstane zachovaná.)')) return;
+  await deleteByt(id);
+  renderByty();
+}
+async function pridatByt(){
+  var nazev = document.getElementById('nb-nazev').value.trim();
+  var najemnik = document.getElementById('nb-najemnik').value.trim();
+  var castka = parseFloat(document.getElementById('nb-castka').value)||0;
+  var poznamka = document.getElementById('nb-poznamka').value.trim();
+  if (!nazev) { alert('Vyplň název jednotky.'); return; }
+  await addByt(venue.id, nazev, najemnik, castka, poznamka);
+  document.getElementById('nb-nazev').value=''; document.getElementById('nb-najemnik').value='';
+  document.getElementById('nb-castka').value=''; document.getElementById('nb-poznamka').value='';
+  renderByty();
+}
+
+// ── POKLADNÍ KNIHA ──
+function renderPokladna(){
+  var zustatek = getPokladnaZustatek(venue.id);
+  var elZ = document.getElementById('pokladna-zustatek');
+  elZ.textContent = zustatek.toLocaleString('cs-CZ')+' Kč';
+  elZ.style.color = zustatek < 0 ? 'var(--red)' : 'var(--water-dark)';
+
+  var rows = getPokladnaForVenue(venue.id);
+  var el = document.getElementById('pokladna-list');
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">💵</div>Zatím žádné zápisy.</div>'; return; }
+  el.innerHTML = rows.map(function(p){
+    var w = getWorkerById(p.worker_id);
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
+      '<span>'+(p.typ==='prijem'?'⬆️':'⬇️')+' '+p.popis+'<br><span style="color:var(--text-muted);font-size:11px;">'+formatDate(p.datum)+(w?' · '+w.jmeno.split(' ')[0]:'')+'</span></span>'+
+      '<span style="display:flex;align-items:center;gap:8px;"><strong style="color:'+(p.typ==='prijem'?'var(--green)':'var(--red)')+';">'+(p.typ==='prijem'?'+':'−')+p.castka.toLocaleString('cs-CZ')+' Kč</strong>'+
+      '<button class="btn btn-sm btn-danger" onclick="smazatPokladnaZapis('+p.id+')">🗑️</button></span></div>';
+  }).join('');
+}
+async function ulozitPokladnaZapis(){
+  var typ = document.getElementById('pk-typ').value;
+  var popis = document.getElementById('pk-popis').value.trim();
+  var castka = parseFloat(document.getElementById('pk-castka').value);
+  if (!popis || !castka || castka<=0) { alert('Vyplň popis a částku.'); return; }
+  await addPokladnaZapis(venue.id, typ, castka, popis, currentAdmin.id);
+  document.getElementById('pk-popis').value=''; document.getElementById('pk-castka').value='';
+  renderPokladna();
+}
+async function smazatPokladnaZapis(id){
+  if (!confirm('Smazat tenhle zápis z pokladní knihy?')) return;
+  await deletePokladnaZapisAdmin(id);
+  renderPokladna();
+}
+
+// ── AUTOMATICKÉ PLATBY ──
+function renderOpakovane(){
+  var rows = getOpakovaneForVenue(venue.id);
+  var el = document.getElementById('opakovane-list');
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">🔁</div>Zatím žádné automatické platby.</div>'; return; }
+  el.innerHTML = rows.map(function(n){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
+      '<span>'+n.popis+'<br><span style="color:var(--text-muted);font-size:11px;">každý měsíc '+n.den_v_mesici+'. den</span></span>'+
+      '<span style="display:flex;align-items:center;gap:8px;"><strong>'+n.castka.toLocaleString('cs-CZ')+' Kč</strong>'+
+      '<button class="btn btn-sm btn-danger" onclick="smazatOpakovanou('+n.id+')">🗑️</button></span></div>';
+  }).join('');
+}
+async function pridatOpakovanou(){
+  var popis = document.getElementById('op-popis').value.trim();
+  var castka = parseFloat(document.getElementById('op-castka').value);
+  var den = parseInt(document.getElementById('op-den').value)||1;
+  if (!popis || !castka) { alert('Vyplň popis a částku.'); return; }
+  await addOpakovanyNaklad(venue.id, popis, castka, den);
+  document.getElementById('op-popis').value=''; document.getElementById('op-castka').value='';
+  renderOpakovane();
+}
+async function smazatOpakovanou(id){
+  if (!confirm('Zrušit tuhle automatickou platbu?')) return;
+  await deleteOpakovanyNaklad(id);
+  renderOpakovane();
+}
+</script>
+</body>
+</html>

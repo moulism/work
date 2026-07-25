@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Kosatka – Správa provozovny</title>
   <link rel="stylesheet" href="css/style.css"/>
 </head>
@@ -12,11 +12,10 @@
   <div class="topbar">
     <div class="topbar-brand">⛵ Kosatka – Správa provozovny</div>
     <div class="topbar-clock" id="live-clock"></div>
-    <a class="btn btn-sm btn-secondary" href="podniky.html" style="margin-right:8px;" id="btn-vsechny-podniky">🏠 Všechny podniky</a>
-    <button class="btn btn-sm btn-secondary" id="btn-refresh" onclick="manualRefresh()" style="margin-right:8px;">🔄 Obnovit data</button>
     <div class="topbar-right">
       <span class="badge badge-warning" id="admin-name">Admin</span>
-      <button class="btn btn-sm btn-secondary" onclick="location.href='podniky.html'" style="margin-right:8px;">🏠 Podniky</button>
+      <button class="btn btn-sm btn-secondary" id="btn-refresh" onclick="manualRefresh()">🔄 Obnovit data</button>
+      <button class="btn btn-sm btn-secondary" onclick="location.href='podniky.html'">🏠 Podniky</button>
       <button class="logout-btn" onclick="logout()">Odhlásit</button>
     </div>
   </div>
@@ -962,7 +961,7 @@ async function confirmVyplatit(){
   err.style.display='none';
   var btn=document.getElementById('vypl-confirm-btn');
   btn.disabled=true; btn.textContent='Ukládám...';
-  var res=await addVyplata(vyplatitWorkerId, castka, document.getElementById('vypl-poznamka').value.trim(), dny);
+  var res=await addVyplata(vyplatitWorkerId, castka, document.getElementById('vypl-poznamka').value.trim(), dny, (authGetCurrent()||{}).id);
   btn.disabled=false; btn.textContent='Zapsat';
   if(!res.ok){ err.style.display='block'; err.textContent='Nepovedlo se to uložit, zkus to znovu.'; return; }
   renderVyplaty();
@@ -1541,16 +1540,23 @@ function renderUcty(){
   if(!items.length){el.innerHTML=summary+'<p style="color:var(--text-muted);font-size:13px;padding:.5rem 0;">'+(w?w.jmeno:'?')+' nemá žádné položky na účtu.</p>';return;}
   var celkem=items.reduce(function(s,p){return s+p.castka;},0);
   el.innerHTML=summary+'<p style="font-size:13px;font-weight:600;margin-bottom:.5rem;">Celkový dluh na účtu: '+celkem.toLocaleString('cs-CZ')+' Kč</p>'+
-  '<p style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;">Položky na účtu jde jen přidávat nebo (jako admin) opravit – nikdy nejdou smazat.</p>'+
+  '<p style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;">Brigádníkovi položky mažeš tím, že ho vyplatíš (pak mu zmizí z jeho účtu automaticky). Jednotlivé položky smíš mazat/opravovat jen ty jako admin - brigádník sám nikdy.</p>'+
   '<table class="schedule-table" style="width:100%"><thead><tr><th>Stanoviště</th><th>Položka</th><th>Cena</th><th>Datum</th><th></th></tr></thead><tbody>'+
   items.map(function(p){
     var st=getStanoviste(p.mistoId);
     var opraveno = p.upraveno ? '<br><span style="font-size:10px;color:var(--orange);">✏️ opraveno (původně: '+p.puvodniPopis+', '+p.puvodniCastka+' Kč)</span>' : '';
     return '<tr><td><span class="misto-pill" style="background:'+(st?st.color:'#eee')+';color:'+(st?st.text:'#333')+'">'+(st?st.label:p.mistoId)+'</span></td>'+
       '<td>'+p.popis+opraveno+'</td><td>'+p.castka+' Kč</td><td style="color:var(--text-muted);font-size:12px">'+formatDate(p.datum)+'</td>'+
-      '<td><button class="btn btn-sm btn-secondary" onclick="openUcetEdit('+p.id+')">✏️</button></td></tr>';
+      '<td style="white-space:nowrap;"><button class="btn btn-sm btn-secondary" onclick="openUcetEdit('+p.id+')">✏️</button> '+
+      '<button class="btn btn-sm btn-danger" onclick="smazatUcetPolozkuLegacyAdmin('+p.id+')">🗑️</button></td></tr>';
   }).join('')+
   '</tbody></table>';
+}
+
+async function smazatUcetPolozkuLegacyAdmin(id){
+  if (!confirm('Trvale skrýt tuhle položku z účtu brigádníka?')) return;
+  await deleteUcetPolozkaAdmin(id, (authGetCurrent()||{}).id);
+  renderUcty();
 }
 
 var ucetEditId=null;

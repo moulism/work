@@ -24,12 +24,18 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { height: -webkit-fill-available; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--sand);
   color: var(--text);
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   font-size: 14px;
+  /* Telefony se spodní gesture lištou (iOS Safari/Android Chrome) jinak
+     překrývají poslední řádky obsahu a tlačítka jsou pod ní neklikatelná. */
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* ── TOPBAR ── */
@@ -37,6 +43,7 @@ body {
   background: var(--water-dark);
   color: #fff;
   padding: 0.85rem 1.25rem;
+  padding-top: calc(0.85rem + env(safe-area-inset-top, 0));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -462,6 +469,7 @@ textarea.form-input {
     flex-wrap: wrap;
     gap: 8px;
     padding: 0.6rem 0.75rem;
+    padding-top: calc(0.6rem + env(safe-area-inset-top, 0));
   }
   .topbar-brand { font-size: 15px; }
   .topbar-right {
@@ -490,4 +498,28 @@ textarea.form-input {
 
   table.schedule-table { font-size: 12px; }
   table.schedule-table th, table.schedule-table td { padding: 6px 8px; }
+
+  /* Tabulky jsou širší než obrazovka a jedou na horizontální scroll (.schedule-wrap) -
+     bez vodítka to na mobilu vypadá jako "uříznutý" obsah. Přilepený první sloupec
+     (obvykle jméno/datum) + jemný stín napravo dá najevo, že se dá scrollovat dál. */
+  .schedule-wrap { position: relative; }
+  .schedule-wrap::after {
+    content: '';
+    position: absolute; top: 0; right: 0; bottom: 0; width: 14px;
+    background: linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,0.06));
+    pointer-events: none;
+  }
+  .schedule-table th:first-child, .schedule-table td:first-child {
+    position: sticky; left: 0; z-index: 1;
+    background: var(--white);
+    box-shadow: 2px 0 4px rgba(0,0,0,0.04);
+  }
+  .schedule-table tr:hover td:first-child { background: #f9f7f4; }
+
+  /* Tlačítka v tabulkách/seznamech musí být na dotyk pohodlná (min. 44px doporučuje Apple/Google) */
+  .schedule-table .btn, .btn-sm { min-height: 32px; }
+  .schedule-table td .btn { margin: 2px 0; }
+
+  /* Nechat poslední kartu na stránce "dýchat" nad domácím indikátorem/spodní lištou prohlížeče */
+  .page { padding: 1rem; padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0)); }
 }

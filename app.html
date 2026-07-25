@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Kosatka – Portál</title>
   <link rel="stylesheet" href="css/style.css"/>
 </head>
@@ -13,11 +13,11 @@
   <div class="topbar">
     <div class="topbar-brand">⛵ Kosatka</div>
     <div class="topbar-clock" id="live-clock"></div>
-    <button class="btn btn-sm btn-secondary" id="btn-refresh" onclick="manualRefresh()" style="margin-right:8px;">🔄 Obnovit data</button>
     <div class="topbar-right">
       <div class="topbar-avatar" id="t-init">?</div>
       <span class="topbar-name" id="t-name"></span>
-      <button class="btn btn-sm btn-secondary" onclick="location.href='podniky.html'" style="margin-right:8px;">🏠 Podniky</button>
+      <button class="btn btn-sm btn-secondary" id="btn-refresh" onclick="manualRefresh()">🔄 Obnovit data</button>
+      <button class="btn btn-sm btn-secondary" onclick="location.href='podniky.html'">🏠 Podniky</button>
       <button class="logout-btn" onclick="doLogout()">Odhlásit</button>
     </div>
   </div>

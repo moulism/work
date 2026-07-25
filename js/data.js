@@ -82,13 +82,24 @@ var WORKERS = [
 const SCHEDULE_DEFAULT = [{"id":1,"workerId":7,"datum":"2026-06-26","mistoId":"vycep"},{"id":2,"workerId":2,"datum":"2026-06-26","mistoId":"kuchynA"},{"id":3,"workerId":14,"datum":"2026-06-26","mistoId":"kuchynB"},{"id":4,"workerId":10,"datum":"2026-06-26","mistoId":"kramek"},{"id":5,"workerId":4,"datum":"2026-06-26","mistoId":"slapada"},{"id":6,"workerId":11,"datum":"2026-06-26","mistoId":"obcerstv"},{"id":7,"workerId":15,"datum":"2026-06-26","mistoId":"zmrzlina"},{"id":8,"workerId":7,"datum":"2026-06-27","mistoId":"vycep"},{"id":9,"workerId":2,"datum":"2026-06-27","mistoId":"kuchynA"},{"id":10,"workerId":14,"datum":"2026-06-27","mistoId":"kuchynB"},{"id":11,"workerId":10,"datum":"2026-06-27","mistoId":"kramek"},{"id":12,"workerId":4,"datum":"2026-06-27","mistoId":"slapada"},{"id":13,"workerId":11,"datum":"2026-06-27","mistoId":"obcerstv"},{"id":14,"workerId":15,"datum":"2026-06-27","mistoId":"zmrzlina"},{"id":15,"workerId":7,"datum":"2026-06-28","mistoId":"vycep"},{"id":16,"workerId":2,"datum":"2026-06-28","mistoId":"kuchynA"},{"id":17,"workerId":14,"datum":"2026-06-28","mistoId":"kuchynB"},{"id":18,"workerId":10,"datum":"2026-06-28","mistoId":"kramek"},{"id":19,"workerId":4,"datum":"2026-06-28","mistoId":"slapada"},{"id":20,"workerId":11,"datum":"2026-06-28","mistoId":"obcerstv"},{"id":21,"workerId":15,"datum":"2026-06-28","mistoId":"zmrzlina"},{"id":22,"workerId":7,"datum":"2026-06-29","mistoId":"vycep"},{"id":23,"workerId":2,"datum":"2026-06-29","mistoId":"kuchynA"},{"id":24,"workerId":14,"datum":"2026-06-29","mistoId":"kuchynB"},{"id":25,"workerId":10,"datum":"2026-06-29","mistoId":"kramek"},{"id":26,"workerId":4,"datum":"2026-06-29","mistoId":"slapada"},{"id":27,"workerId":11,"datum":"2026-06-29","mistoId":"obcerstv"},{"id":28,"workerId":15,"datum":"2026-06-29","mistoId":"zmrzlina"},{"id":29,"workerId":7,"datum":"2026-06-30","mistoId":"vycep"},{"id":30,"workerId":2,"datum":"2026-06-30","mistoId":"kuchynA"},{"id":31,"workerId":14,"datum":"2026-06-30","mistoId":"kuchynB"},{"id":32,"workerId":10,"datum":"2026-06-30","mistoId":"kramek"},{"id":33,"workerId":4,"datum":"2026-06-30","mistoId":"slapada"},{"id":34,"workerId":11,"datum":"2026-06-30","mistoId":"obcerstv"},{"id":35,"workerId":15,"datum":"2026-06-30","mistoId":"zmrzlina"},{"id":36,"workerId":7,"datum":"2026-07-01","mistoId":"vycep"},{"id":37,"workerId":2,"datum":"2026-07-01","mistoId":"kuchynA"},{"id":38,"workerId":14,"datum":"2026-07-01","mistoId":"kuchynB"},{"id":39,"workerId":3,"datum":"2026-07-01","mistoId":"recepce"},{"id":41,"workerId":4,"datum":"2026-07-01","mistoId":"slapada"},{"id":42,"workerId":11,"datum":"2026-07-01","mistoId":"obcerstv"},{"id":43,"workerId":10,"datum":"2026-07-01","mistoId":"zmrzlina"},{"id":44,"workerId":7,"datum":"2026-07-02","mistoId":"vycep"},{"id":45,"workerId":2,"datum":"2026-07-02","mistoId":"kuchynA"},{"id":46,"workerId":14,"datum":"2026-07-02","mistoId":"kuchynB"},{"id":47,"workerId":3,"datum":"2026-07-02","mistoId":"recepce"},{"id":49,"workerId":4,"datum":"2026-07-02","mistoId":"slapada"},{"id":50,"workerId":11,"datum":"2026-07-02","mistoId":"obcerstv"},{"id":51,"workerId":10,"datum":"2026-07-02","mistoId":"zmrzlina"},{"id":52,"workerId":7,"datum":"2026-07-03","mistoId":"vycep"},{"id":53,"workerId":2,"datum":"2026-07-03","mistoId":"kuchynA"},{"id":54,"workerId":14,"datum":"2026-07-03","mistoId":"kuchynB"},{"id":55,"workerId":3,"datum":"2026-07-03","mistoId":"recepce"},{"id":57,"workerId":4,"datum":"2026-07-03","mistoId":"slapada"},{"id":58,"workerId":11,"datum":"2026-07-03","mistoId":"obcerstv"},{"id":59,"workerId":10,"datum":"2026-07-03","mistoId":"zmrzlina"},{"id":60,"workerId":7,"datum":"2026-07-04","mistoId":"vycep"},{"id":61,"workerId":2,"datum":"2026-07-04","mistoId":"kuchynA"},{"id":62,"workerId":14,"datum":"2026-07-04","mistoId":"kuchynB"},{"id":63,"workerId":3,"datum":"2026-07-04","mistoId":"recepce"},{"id":65,"workerId":4,"datum":"2026-07-04","mistoId":"slapada"},{"id":66,"workerId":11,"datum":"2026-07-04","mistoId":"obcerstv"},{"id":67,"workerId":10,"datum":"2026-07-04","mistoId":"zmrzlina"},{"id":68,"workerId":7,"datum":"2026-07-05","mistoId":"vycep"},{"id":69,"workerId":2,"datum":"2026-07-05","mistoId":"kuchynA"},{"id":70,"workerId":14,"datum":"2026-07-05","mistoId":"kuchynB"},{"id":71,"workerId":3,"datum":"2026-07-05","mistoId":"recepce"},{"id":73,"workerId":4,"datum":"2026-07-05","mistoId":"slapada"},{"id":74,"workerId":11,"datum":"2026-07-05","mistoId":"obcerstv"},{"id":75,"workerId":10,"datum":"2026-07-05","mistoId":"zmrzlina"},{"id":76,"workerId":9,"datum":"2026-07-06","mistoId":"vycep"},{"id":77,"workerId":2,"datum":"2026-07-06","mistoId":"kuchynA"},{"id":78,"workerId":14,"datum":"2026-07-06","mistoId":"kuchynB"},{"id":79,"workerId":3,"datum":"2026-07-06","mistoId":"recepce"},{"id":80,"workerId":16,"datum":"2026-07-06","mistoId":"kramek"},{"id":81,"workerId":4,"datum":"2026-07-06","mistoId":"slapada"},{"id":82,"workerId":6,"datum":"2026-07-06","mistoId":"obcerstv"},{"id":83,"workerId":5,"datum":"2026-07-06","mistoId":"zmrzlina"},{"id":84,"workerId":9,"datum":"2026-07-07","mistoId":"vycep"},{"id":85,"workerId":2,"datum":"2026-07-07","mistoId":"kuchynA"},{"id":86,"workerId":14,"datum":"2026-07-07","mistoId":"kuchynB"},{"id":87,"workerId":3,"datum":"2026-07-07","mistoId":"recepce"},{"id":88,"workerId":16,"datum":"2026-07-07","mistoId":"kramek"},{"id":89,"workerId":4,"datum":"2026-07-07","mistoId":"slapada"},{"id":90,"workerId":6,"datum":"2026-07-07","mistoId":"obcerstv"},{"id":91,"workerId":5,"datum":"2026-07-07","mistoId":"zmrzlina"},{"id":92,"workerId":9,"datum":"2026-07-08","mistoId":"vycep"},{"id":93,"workerId":2,"datum":"2026-07-08","mistoId":"kuchynA"},{"id":94,"workerId":14,"datum":"2026-07-08","mistoId":"kuchynB"},{"id":95,"workerId":3,"datum":"2026-07-08","mistoId":"recepce"},{"id":96,"workerId":16,"datum":"2026-07-08","mistoId":"kramek"},{"id":97,"workerId":4,"datum":"2026-07-08","mistoId":"slapada"},{"id":98,"workerId":6,"datum":"2026-07-08","mistoId":"obcerstv"},{"id":99,"workerId":5,"datum":"2026-07-08","mistoId":"zmrzlina"},{"id":100,"workerId":9,"datum":"2026-07-09","mistoId":"vycep"},{"id":101,"workerId":2,"datum":"2026-07-09","mistoId":"kuchynA"},{"id":102,"workerId":14,"datum":"2026-07-09","mistoId":"kuchynB"},{"id":103,"workerId":3,"datum":"2026-07-09","mistoId":"recepce"},{"id":104,"workerId":16,"datum":"2026-07-09","mistoId":"kramek"},{"id":105,"workerId":4,"datum":"2026-07-09","mistoId":"slapada"},{"id":106,"workerId":6,"datum":"2026-07-09","mistoId":"obcerstv"},{"id":107,"workerId":5,"datum":"2026-07-09","mistoId":"zmrzlina"},{"id":108,"workerId":9,"datum":"2026-07-10","mistoId":"vycep"},{"id":109,"workerId":2,"datum":"2026-07-10","mistoId":"kuchynA"},{"id":110,"workerId":14,"datum":"2026-07-10","mistoId":"kuchynB"},{"id":111,"workerId":3,"datum":"2026-07-10","mistoId":"recepce"},{"id":112,"workerId":16,"datum":"2026-07-10","mistoId":"kramek"},{"id":113,"workerId":4,"datum":"2026-07-10","mistoId":"slapada"},{"id":114,"workerId":6,"datum":"2026-07-10","mistoId":"obcerstv"},{"id":115,"workerId":5,"datum":"2026-07-10","mistoId":"zmrzlina"},{"id":116,"workerId":9,"datum":"2026-07-11","mistoId":"vycep"},{"id":117,"workerId":2,"datum":"2026-07-11","mistoId":"kuchynA"},{"id":118,"workerId":17,"datum":"2026-07-11","mistoId":"kuchynB"},{"id":119,"workerId":3,"datum":"2026-07-11","mistoId":"recepce"},{"id":120,"workerId":16,"datum":"2026-07-11","mistoId":"kramek"},{"id":121,"workerId":4,"datum":"2026-07-11","mistoId":"slapada"},{"id":122,"workerId":6,"datum":"2026-07-11","mistoId":"obcerstv"},{"id":123,"workerId":5,"datum":"2026-07-11","mistoId":"zmrzlina"},{"id":124,"workerId":9,"datum":"2026-07-12","mistoId":"vycep"},{"id":125,"workerId":2,"datum":"2026-07-12","mistoId":"kuchynA"},{"id":126,"workerId":17,"datum":"2026-07-12","mistoId":"kuchynB"},{"id":127,"workerId":3,"datum":"2026-07-12","mistoId":"recepce"},{"id":128,"workerId":16,"datum":"2026-07-12","mistoId":"kramek"},{"id":129,"workerId":4,"datum":"2026-07-12","mistoId":"slapada"},{"id":130,"workerId":6,"datum":"2026-07-12","mistoId":"obcerstv"},{"id":131,"workerId":5,"datum":"2026-07-12","mistoId":"zmrzlina"},{"id":132,"workerId":7,"datum":"2026-07-13","mistoId":"vycep"},{"id":133,"workerId":2,"datum":"2026-07-13","mistoId":"kuchynA"},{"id":134,"workerId":17,"datum":"2026-07-13","mistoId":"kuchynB"},{"id":135,"workerId":3,"datum":"2026-07-13","mistoId":"recepce"},{"id":136,"workerId":15,"datum":"2026-07-13","mistoId":"kramek"},{"id":137,"workerId":4,"datum":"2026-07-13","mistoId":"slapada"},{"id":138,"workerId":11,"datum":"2026-07-13","mistoId":"obcerstv"},{"id":139,"workerId":5,"datum":"2026-07-13","mistoId":"zmrzlina"},{"id":140,"workerId":7,"datum":"2026-07-14","mistoId":"vycep"},{"id":141,"workerId":2,"datum":"2026-07-14","mistoId":"kuchynA"},{"id":142,"workerId":17,"datum":"2026-07-14","mistoId":"kuchynB"},{"id":143,"workerId":3,"datum":"2026-07-14","mistoId":"recepce"},{"id":144,"workerId":15,"datum":"2026-07-14","mistoId":"kramek"},{"id":145,"workerId":4,"datum":"2026-07-14","mistoId":"slapada"},{"id":146,"workerId":11,"datum":"2026-07-14","mistoId":"obcerstv"},{"id":147,"workerId":5,"datum":"2026-07-14","mistoId":"zmrzlina"},{"id":148,"workerId":7,"datum":"2026-07-15","mistoId":"vycep"},{"id":149,"workerId":2,"datum":"2026-07-15","mistoId":"kuchynA"},{"id":150,"workerId":17,"datum":"2026-07-15","mistoId":"kuchynB"},{"id":151,"workerId":3,"datum":"2026-07-15","mistoId":"recepce"},{"id":152,"workerId":15,"datum":"2026-07-15","mistoId":"kramek"},{"id":153,"workerId":4,"datum":"2026-07-15","mistoId":"slapada"},{"id":154,"workerId":11,"datum":"2026-07-15","mistoId":"obcerstv"},{"id":155,"workerId":5,"datum":"2026-07-15","mistoId":"zmrzlina"},{"id":156,"workerId":7,"datum":"2026-07-16","mistoId":"vycep"},{"id":157,"workerId":2,"datum":"2026-07-16","mistoId":"kuchynA"},{"id":158,"workerId":17,"datum":"2026-07-16","mistoId":"kuchynB"},{"id":159,"workerId":3,"datum":"2026-07-16","mistoId":"recepce"},{"id":160,"workerId":15,"datum":"2026-07-16","mistoId":"kramek"},{"id":161,"workerId":4,"datum":"2026-07-16","mistoId":"slapada"},{"id":162,"workerId":11,"datum":"2026-07-16","mistoId":"obcerstv"},{"id":163,"workerId":5,"datum":"2026-07-16","mistoId":"zmrzlina"},{"id":164,"workerId":7,"datum":"2026-07-17","mistoId":"vycep"},{"id":165,"workerId":2,"datum":"2026-07-17","mistoId":"kuchynA"},{"id":166,"workerId":9,"datum":"2026-07-17","mistoId":"kuchynB"},{"id":167,"workerId":3,"datum":"2026-07-17","mistoId":"recepce"},{"id":168,"workerId":15,"datum":"2026-07-17","mistoId":"kramek"},{"id":169,"workerId":4,"datum":"2026-07-17","mistoId":"slapada"},{"id":170,"workerId":11,"datum":"2026-07-17","mistoId":"obcerstv"},{"id":171,"workerId":5,"datum":"2026-07-17","mistoId":"zmrzlina"},{"id":172,"workerId":7,"datum":"2026-07-18","mistoId":"vycep"},{"id":173,"workerId":2,"datum":"2026-07-18","mistoId":"kuchynA"},{"id":174,"workerId":9,"datum":"2026-07-18","mistoId":"kuchynB"},{"id":175,"workerId":3,"datum":"2026-07-18","mistoId":"recepce"},{"id":176,"workerId":15,"datum":"2026-07-18","mistoId":"kramek"},{"id":177,"workerId":4,"datum":"2026-07-18","mistoId":"slapada"},{"id":178,"workerId":11,"datum":"2026-07-18","mistoId":"obcerstv"},{"id":179,"workerId":5,"datum":"2026-07-18","mistoId":"zmrzlina"},{"id":180,"workerId":7,"datum":"2026-07-19","mistoId":"vycep"},{"id":181,"workerId":2,"datum":"2026-07-19","mistoId":"kuchynA"},{"id":182,"workerId":9,"datum":"2026-07-19","mistoId":"kuchynB"},{"id":183,"workerId":3,"datum":"2026-07-19","mistoId":"recepce"},{"id":184,"workerId":15,"datum":"2026-07-19","mistoId":"kramek"},{"id":185,"workerId":4,"datum":"2026-07-19","mistoId":"slapada"},{"id":186,"workerId":11,"datum":"2026-07-19","mistoId":"obcerstv"},{"id":187,"workerId":5,"datum":"2026-07-19","mistoId":"zmrzlina"},{"id":188,"workerId":9,"datum":"2026-07-20","mistoId":"vycep"},{"id":189,"workerId":2,"datum":"2026-07-20","mistoId":"kuchynA"},{"id":190,"workerId":17,"datum":"2026-07-20","mistoId":"kuchynB"},{"id":191,"workerId":3,"datum":"2026-07-20","mistoId":"recepce"},{"id":193,"workerId":4,"datum":"2026-07-20","mistoId":"slapada"},{"id":194,"workerId":6,"datum":"2026-07-20","mistoId":"obcerstv"},{"id":195,"workerId":8,"datum":"2026-07-20","mistoId":"zmrzlina"},{"id":196,"workerId":9,"datum":"2026-07-21","mistoId":"vycep"},{"id":197,"workerId":2,"datum":"2026-07-21","mistoId":"kuchynA"},{"id":198,"workerId":17,"datum":"2026-07-21","mistoId":"kuchynB"},{"id":199,"workerId":3,"datum":"2026-07-21","mistoId":"recepce"},{"id":201,"workerId":12,"datum":"2026-07-21","mistoId":"slapada"},{"id":202,"workerId":6,"datum":"2026-07-21","mistoId":"obcerstv"},{"id":203,"workerId":8,"datum":"2026-07-21","mistoId":"zmrzlina"},{"id":204,"workerId":9,"datum":"2026-07-22","mistoId":"vycep"},{"id":205,"workerId":2,"datum":"2026-07-22","mistoId":"kuchynA"},{"id":206,"workerId":17,"datum":"2026-07-22","mistoId":"kuchynB"},{"id":207,"workerId":3,"datum":"2026-07-22","mistoId":"recepce"},{"id":209,"workerId":12,"datum":"2026-07-22","mistoId":"slapada"},{"id":210,"workerId":6,"datum":"2026-07-22","mistoId":"obcerstv"},{"id":211,"workerId":8,"datum":"2026-07-22","mistoId":"zmrzlina"},{"id":212,"workerId":9,"datum":"2026-07-23","mistoId":"vycep"},{"id":213,"workerId":2,"datum":"2026-07-23","mistoId":"kuchynA"},{"id":214,"workerId":17,"datum":"2026-07-23","mistoId":"kuchynB"},{"id":215,"workerId":3,"datum":"2026-07-23","mistoId":"recepce"},{"id":216,"workerId":12,"datum":"2026-07-23","mistoId":"kramek"},{"id":217,"workerId":4,"datum":"2026-07-23","mistoId":"slapada"},{"id":218,"workerId":6,"datum":"2026-07-23","mistoId":"obcerstv"},{"id":219,"workerId":8,"datum":"2026-07-23","mistoId":"zmrzlina"},{"id":220,"workerId":9,"datum":"2026-07-24","mistoId":"vycep"},{"id":221,"workerId":2,"datum":"2026-07-24","mistoId":"kuchynA"},{"id":222,"workerId":17,"datum":"2026-07-24","mistoId":"kuchynB"},{"id":223,"workerId":3,"datum":"2026-07-24","mistoId":"recepce"},{"id":224,"workerId":12,"datum":"2026-07-24","mistoId":"kramek"},{"id":225,"workerId":4,"datum":"2026-07-24","mistoId":"slapada"},{"id":226,"workerId":6,"datum":"2026-07-24","mistoId":"obcerstv"},{"id":227,"workerId":8,"datum":"2026-07-24","mistoId":"zmrzlina"},{"id":228,"workerId":9,"datum":"2026-07-25","mistoId":"vycep"},{"id":229,"workerId":2,"datum":"2026-07-25","mistoId":"kuchynA"},{"id":230,"workerId":17,"datum":"2026-07-25","mistoId":"kuchynB"},{"id":231,"workerId":3,"datum":"2026-07-25","mistoId":"recepce"},{"id":232,"workerId":12,"datum":"2026-07-25","mistoId":"kramek"},{"id":233,"workerId":4,"datum":"2026-07-25","mistoId":"slapada"},{"id":234,"workerId":6,"datum":"2026-07-25","mistoId":"obcerstv"},{"id":235,"workerId":8,"datum":"2026-07-25","mistoId":"zmrzlina"},{"id":236,"workerId":9,"datum":"2026-07-26","mistoId":"vycep"},{"id":237,"workerId":2,"datum":"2026-07-26","mistoId":"kuchynA"},{"id":238,"workerId":17,"datum":"2026-07-26","mistoId":"kuchynB"},{"id":239,"workerId":3,"datum":"2026-07-26","mistoId":"recepce"},{"id":240,"workerId":12,"datum":"2026-07-26","mistoId":"kramek"},{"id":241,"workerId":4,"datum":"2026-07-26","mistoId":"slapada"},{"id":242,"workerId":6,"datum":"2026-07-26","mistoId":"obcerstv"},{"id":243,"workerId":8,"datum":"2026-07-26","mistoId":"zmrzlina"},{"id":244,"workerId":7,"datum":"2026-07-27","mistoId":"vycep"},{"id":245,"workerId":2,"datum":"2026-07-27","mistoId":"kuchynA"},{"id":246,"workerId":13,"datum":"2026-07-27","mistoId":"kuchynB"},{"id":247,"workerId":3,"datum":"2026-07-27","mistoId":"recepce"},{"id":248,"workerId":10,"datum":"2026-07-27","mistoId":"kramek"},{"id":249,"workerId":12,"datum":"2026-07-27","mistoId":"slapada"},{"id":250,"workerId":11,"datum":"2026-07-27","mistoId":"obcerstv"},{"id":251,"workerId":8,"datum":"2026-07-27","mistoId":"zmrzlina"},{"id":252,"workerId":7,"datum":"2026-07-28","mistoId":"vycep"},{"id":253,"workerId":2,"datum":"2026-07-28","mistoId":"kuchynA"},{"id":254,"workerId":13,"datum":"2026-07-28","mistoId":"kuchynB"},{"id":255,"workerId":3,"datum":"2026-07-28","mistoId":"recepce"},{"id":256,"workerId":10,"datum":"2026-07-28","mistoId":"kramek"},{"id":257,"workerId":12,"datum":"2026-07-28","mistoId":"slapada"},{"id":258,"workerId":11,"datum":"2026-07-28","mistoId":"obcerstv"},{"id":259,"workerId":8,"datum":"2026-07-28","mistoId":"zmrzlina"},{"id":260,"workerId":7,"datum":"2026-07-29","mistoId":"vycep"},{"id":261,"workerId":2,"datum":"2026-07-29","mistoId":"kuchynA"},{"id":262,"workerId":13,"datum":"2026-07-29","mistoId":"kuchynB"},{"id":263,"workerId":3,"datum":"2026-07-29","mistoId":"recepce"},{"id":264,"workerId":10,"datum":"2026-07-29","mistoId":"kramek"},{"id":265,"workerId":12,"datum":"2026-07-29","mistoId":"slapada"},{"id":266,"workerId":11,"datum":"2026-07-29","mistoId":"obcerstv"},{"id":267,"workerId":8,"datum":"2026-07-29","mistoId":"zmrzlina"},{"id":268,"workerId":7,"datum":"2026-07-30","mistoId":"vycep"},{"id":269,"workerId":2,"datum":"2026-07-30","mistoId":"kuchynA"},{"id":270,"workerId":13,"datum":"2026-07-30","mistoId":"kuchynB"},{"id":271,"workerId":3,"datum":"2026-07-30","mistoId":"recepce"},{"id":272,"workerId":10,"datum":"2026-07-30","mistoId":"kramek"},{"id":273,"workerId":12,"datum":"2026-07-30","mistoId":"slapada"},{"id":274,"workerId":11,"datum":"2026-07-30","mistoId":"obcerstv"},{"id":275,"workerId":8,"datum":"2026-07-30","mistoId":"zmrzlina"},{"id":276,"workerId":7,"datum":"2026-07-31","mistoId":"vycep"},{"id":277,"workerId":2,"datum":"2026-07-31","mistoId":"kuchynA"},{"id":278,"workerId":13,"datum":"2026-07-31","mistoId":"kuchynB"},{"id":279,"workerId":3,"datum":"2026-07-31","mistoId":"recepce"},{"id":280,"workerId":10,"datum":"2026-07-31","mistoId":"kramek"},{"id":281,"workerId":12,"datum":"2026-07-31","mistoId":"slapada"},{"id":282,"workerId":11,"datum":"2026-07-31","mistoId":"obcerstv"},{"id":283,"workerId":8,"datum":"2026-07-31","mistoId":"zmrzlina"},{"id":284,"workerId":7,"datum":"2026-08-01","mistoId":"vycep"},{"id":285,"workerId":2,"datum":"2026-08-01","mistoId":"kuchynA"},{"id":286,"workerId":13,"datum":"2026-08-01","mistoId":"kuchynB"},{"id":287,"workerId":3,"datum":"2026-08-01","mistoId":"recepce"},{"id":288,"workerId":10,"datum":"2026-08-01","mistoId":"kramek"},{"id":289,"workerId":12,"datum":"2026-08-01","mistoId":"slapada"},{"id":290,"workerId":6,"datum":"2026-08-01","mistoId":"obcerstv"},{"id":291,"workerId":8,"datum":"2026-08-01","mistoId":"zmrzlina"},{"id":292,"workerId":7,"datum":"2026-08-02","mistoId":"vycep"},{"id":293,"workerId":2,"datum":"2026-08-02","mistoId":"kuchynA"},{"id":294,"workerId":13,"datum":"2026-08-02","mistoId":"kuchynB"},{"id":295,"workerId":3,"datum":"2026-08-02","mistoId":"recepce"},{"id":296,"workerId":19,"datum":"2026-08-02","mistoId":"kramek"},{"id":297,"workerId":12,"datum":"2026-08-02","mistoId":"slapada"},{"id":298,"workerId":6,"datum":"2026-08-02","mistoId":"obcerstv"},{"id":299,"workerId":8,"datum":"2026-08-02","mistoId":"zmrzlina"},{"id":300,"workerId":9,"datum":"2026-08-03","mistoId":"vycep"},{"id":301,"workerId":2,"datum":"2026-08-03","mistoId":"kuchynA"},{"id":302,"workerId":14,"datum":"2026-08-03","mistoId":"kuchynB"},{"id":303,"workerId":3,"datum":"2026-08-03","mistoId":"recepce"},{"id":304,"workerId":19,"datum":"2026-08-03","mistoId":"kramek"},{"id":305,"workerId":12,"datum":"2026-08-03","mistoId":"slapada"},{"id":306,"workerId":6,"datum":"2026-08-03","mistoId":"obcerstv"},{"id":307,"workerId":8,"datum":"2026-08-03","mistoId":"zmrzlina"},{"id":308,"workerId":9,"datum":"2026-08-04","mistoId":"vycep"},{"id":309,"workerId":2,"datum":"2026-08-04","mistoId":"kuchynA"},{"id":310,"workerId":14,"datum":"2026-08-04","mistoId":"kuchynB"},{"id":311,"workerId":3,"datum":"2026-08-04","mistoId":"recepce"},{"id":312,"workerId":19,"datum":"2026-08-04","mistoId":"kramek"},{"id":313,"workerId":12,"datum":"2026-08-04","mistoId":"slapada"},{"id":314,"workerId":6,"datum":"2026-08-04","mistoId":"obcerstv"},{"id":315,"workerId":8,"datum":"2026-08-04","mistoId":"zmrzlina"},{"id":316,"workerId":9,"datum":"2026-08-05","mistoId":"vycep"},{"id":317,"workerId":2,"datum":"2026-08-05","mistoId":"kuchynA"},{"id":318,"workerId":14,"datum":"2026-08-05","mistoId":"kuchynB"},{"id":319,"workerId":3,"datum":"2026-08-05","mistoId":"recepce"},{"id":320,"workerId":19,"datum":"2026-08-05","mistoId":"kramek"},{"id":321,"workerId":12,"datum":"2026-08-05","mistoId":"slapada"},{"id":322,"workerId":6,"datum":"2026-08-05","mistoId":"obcerstv"},{"id":323,"workerId":8,"datum":"2026-08-05","mistoId":"zmrzlina"},{"id":324,"workerId":9,"datum":"2026-08-06","mistoId":"vycep"},{"id":325,"workerId":2,"datum":"2026-08-06","mistoId":"kuchynA"},{"id":326,"workerId":14,"datum":"2026-08-06","mistoId":"kuchynB"},{"id":327,"workerId":3,"datum":"2026-08-06","mistoId":"recepce"},{"id":328,"workerId":19,"datum":"2026-08-06","mistoId":"kramek"},{"id":329,"workerId":12,"datum":"2026-08-06","mistoId":"slapada"},{"id":330,"workerId":6,"datum":"2026-08-06","mistoId":"obcerstv"},{"id":331,"workerId":8,"datum":"2026-08-06","mistoId":"zmrzlina"},{"id":332,"workerId":9,"datum":"2026-08-07","mistoId":"vycep"},{"id":333,"workerId":2,"datum":"2026-08-07","mistoId":"kuchynA"},{"id":334,"workerId":14,"datum":"2026-08-07","mistoId":"kuchynB"},{"id":335,"workerId":3,"datum":"2026-08-07","mistoId":"recepce"},{"id":336,"workerId":19,"datum":"2026-08-07","mistoId":"kramek"},{"id":337,"workerId":12,"datum":"2026-08-07","mistoId":"slapada"},{"id":338,"workerId":6,"datum":"2026-08-07","mistoId":"obcerstv"},{"id":339,"workerId":8,"datum":"2026-08-07","mistoId":"zmrzlina"},{"id":340,"workerId":9,"datum":"2026-08-08","mistoId":"vycep"},{"id":341,"workerId":2,"datum":"2026-08-08","mistoId":"kuchynA"},{"id":342,"workerId":14,"datum":"2026-08-08","mistoId":"kuchynB"},{"id":343,"workerId":3,"datum":"2026-08-08","mistoId":"recepce"},{"id":344,"workerId":19,"datum":"2026-08-08","mistoId":"kramek"},{"id":345,"workerId":12,"datum":"2026-08-08","mistoId":"slapada"},{"id":346,"workerId":6,"datum":"2026-08-08","mistoId":"obcerstv"},{"id":347,"workerId":8,"datum":"2026-08-08","mistoId":"zmrzlina"},{"id":348,"workerId":9,"datum":"2026-08-09","mistoId":"vycep"},{"id":349,"workerId":2,"datum":"2026-08-09","mistoId":"kuchynA"},{"id":350,"workerId":14,"datum":"2026-08-09","mistoId":"kuchynB"},{"id":351,"workerId":3,"datum":"2026-08-09","mistoId":"recepce"},{"id":352,"workerId":19,"datum":"2026-08-09","mistoId":"kramek"},{"id":353,"workerId":12,"datum":"2026-08-09","mistoId":"slapada"},{"id":354,"workerId":6,"datum":"2026-08-09","mistoId":"obcerstv"},{"id":355,"workerId":8,"datum":"2026-08-09","mistoId":"zmrzlina"},{"id":356,"workerId":7,"datum":"2026-08-10","mistoId":"vycep"},{"id":357,"workerId":2,"datum":"2026-08-10","mistoId":"kuchynA"},{"id":358,"workerId":16,"datum":"2026-08-10","mistoId":"kuchynB"},{"id":359,"workerId":3,"datum":"2026-08-10","mistoId":"recepce"},{"id":360,"workerId":10,"datum":"2026-08-10","mistoId":"kramek"},{"id":361,"workerId":4,"datum":"2026-08-10","mistoId":"slapada"},{"id":362,"workerId":11,"datum":"2026-08-10","mistoId":"obcerstv"},{"id":363,"workerId":8,"datum":"2026-08-10","mistoId":"zmrzlina"},{"id":364,"workerId":7,"datum":"2026-08-11","mistoId":"vycep"},{"id":365,"workerId":2,"datum":"2026-08-11","mistoId":"kuchynA"},{"id":366,"workerId":16,"datum":"2026-08-11","mistoId":"kuchynB"},{"id":367,"workerId":3,"datum":"2026-08-11","mistoId":"recepce"},{"id":368,"workerId":10,"datum":"2026-08-11","mistoId":"kramek"},{"id":369,"workerId":4,"datum":"2026-08-11","mistoId":"slapada"},{"id":370,"workerId":11,"datum":"2026-08-11","mistoId":"obcerstv"},{"id":371,"workerId":8,"datum":"2026-08-11","mistoId":"zmrzlina"},{"id":372,"workerId":7,"datum":"2026-08-12","mistoId":"vycep"},{"id":373,"workerId":2,"datum":"2026-08-12","mistoId":"kuchynA"},{"id":374,"workerId":16,"datum":"2026-08-12","mistoId":"kuchynB"},{"id":375,"workerId":3,"datum":"2026-08-12","mistoId":"recepce"},{"id":376,"workerId":19,"datum":"2026-08-12","mistoId":"kramek"},{"id":377,"workerId":4,"datum":"2026-08-12","mistoId":"slapada"},{"id":378,"workerId":11,"datum":"2026-08-12","mistoId":"obcerstv"},{"id":379,"workerId":8,"datum":"2026-08-12","mistoId":"zmrzlina"},{"id":380,"workerId":2,"datum":"2026-08-13","mistoId":"kuchynA"},{"id":381,"workerId":16,"datum":"2026-08-13","mistoId":"kuchynB"},{"id":382,"workerId":3,"datum":"2026-08-13","mistoId":"recepce"},{"id":383,"workerId":19,"datum":"2026-08-13","mistoId":"kramek"},{"id":384,"workerId":4,"datum":"2026-08-13","mistoId":"slapada"},{"id":385,"workerId":11,"datum":"2026-08-13","mistoId":"obcerstv"},{"id":386,"workerId":8,"datum":"2026-08-13","mistoId":"zmrzlina"},{"id":387,"workerId":2,"datum":"2026-08-14","mistoId":"kuchynA"},{"id":388,"workerId":16,"datum":"2026-08-14","mistoId":"kuchynB"},{"id":389,"workerId":3,"datum":"2026-08-14","mistoId":"recepce"},{"id":390,"workerId":19,"datum":"2026-08-14","mistoId":"kramek"},{"id":391,"workerId":4,"datum":"2026-08-14","mistoId":"slapada"},{"id":392,"workerId":11,"datum":"2026-08-14","mistoId":"obcerstv"},{"id":393,"workerId":8,"datum":"2026-08-14","mistoId":"zmrzlina"},{"id":394,"workerId":2,"datum":"2026-08-15","mistoId":"kuchynA"},{"id":395,"workerId":16,"datum":"2026-08-15","mistoId":"kuchynB"},{"id":396,"workerId":3,"datum":"2026-08-15","mistoId":"recepce"},{"id":397,"workerId":19,"datum":"2026-08-15","mistoId":"kramek"},{"id":398,"workerId":4,"datum":"2026-08-15","mistoId":"slapada"},{"id":399,"workerId":11,"datum":"2026-08-15","mistoId":"obcerstv"},{"id":400,"workerId":8,"datum":"2026-08-15","mistoId":"zmrzlina"},{"id":401,"workerId":2,"datum":"2026-08-16","mistoId":"kuchynA"},{"id":402,"workerId":16,"datum":"2026-08-16","mistoId":"kuchynB"},{"id":403,"workerId":3,"datum":"2026-08-16","mistoId":"recepce"},{"id":404,"workerId":19,"datum":"2026-08-16","mistoId":"kramek"},{"id":405,"workerId":4,"datum":"2026-08-16","mistoId":"slapada"},{"id":406,"workerId":11,"datum":"2026-08-16","mistoId":"obcerstv"},{"id":407,"workerId":8,"datum":"2026-08-16","mistoId":"zmrzlina"},{"id":408,"workerId":9,"datum":"2026-08-17","mistoId":"vycep"},{"id":409,"workerId":2,"datum":"2026-08-17","mistoId":"kuchynA"},{"id":410,"workerId":16,"datum":"2026-08-17","mistoId":"kuchynB"},{"id":411,"workerId":3,"datum":"2026-08-17","mistoId":"recepce"},{"id":412,"workerId":19,"datum":"2026-08-17","mistoId":"kramek"},{"id":413,"workerId":4,"datum":"2026-08-17","mistoId":"slapada"},{"id":414,"workerId":6,"datum":"2026-08-17","mistoId":"obcerstv"},{"id":415,"workerId":8,"datum":"2026-08-17","mistoId":"zmrzlina"},{"id":416,"workerId":9,"datum":"2026-08-18","mistoId":"vycep"},{"id":417,"workerId":2,"datum":"2026-08-18","mistoId":"kuchynA"},{"id":418,"workerId":16,"datum":"2026-08-18","mistoId":"kuchynB"},{"id":419,"workerId":3,"datum":"2026-08-18","mistoId":"recepce"},{"id":420,"workerId":10,"datum":"2026-08-18","mistoId":"kramek"},{"id":421,"workerId":4,"datum":"2026-08-18","mistoId":"slapada"},{"id":422,"workerId":6,"datum":"2026-08-18","mistoId":"obcerstv"},{"id":423,"workerId":8,"datum":"2026-08-18","mistoId":"zmrzlina"},{"id":424,"workerId":9,"datum":"2026-08-19","mistoId":"vycep"},{"id":425,"workerId":2,"datum":"2026-08-19","mistoId":"kuchynA"},{"id":426,"workerId":16,"datum":"2026-08-19","mistoId":"kuchynB"},{"id":427,"workerId":3,"datum":"2026-08-19","mistoId":"recepce"},{"id":428,"workerId":10,"datum":"2026-08-19","mistoId":"kramek"},{"id":429,"workerId":4,"datum":"2026-08-19","mistoId":"slapada"},{"id":430,"workerId":6,"datum":"2026-08-19","mistoId":"obcerstv"},{"id":431,"workerId":8,"datum":"2026-08-19","mistoId":"zmrzlina"},{"id":432,"workerId":9,"datum":"2026-08-20","mistoId":"vycep"},{"id":433,"workerId":2,"datum":"2026-08-20","mistoId":"kuchynA"},{"id":434,"workerId":16,"datum":"2026-08-20","mistoId":"kuchynB"},{"id":435,"workerId":3,"datum":"2026-08-20","mistoId":"recepce"},{"id":436,"workerId":19,"datum":"2026-08-20","mistoId":"kramek"},{"id":437,"workerId":4,"datum":"2026-08-20","mistoId":"slapada"},{"id":438,"workerId":6,"datum":"2026-08-20","mistoId":"obcerstv"},{"id":439,"workerId":8,"datum":"2026-08-20","mistoId":"zmrzlina"},{"id":440,"workerId":9,"datum":"2026-08-21","mistoId":"vycep"},{"id":441,"workerId":2,"datum":"2026-08-21","mistoId":"kuchynA"},{"id":442,"workerId":16,"datum":"2026-08-21","mistoId":"kuchynB"},{"id":443,"workerId":3,"datum":"2026-08-21","mistoId":"recepce"},{"id":444,"workerId":19,"datum":"2026-08-21","mistoId":"kramek"},{"id":445,"workerId":4,"datum":"2026-08-21","mistoId":"slapada"},{"id":446,"workerId":6,"datum":"2026-08-21","mistoId":"obcerstv"},{"id":447,"workerId":8,"datum":"2026-08-21","mistoId":"zmrzlina"},{"id":448,"workerId":9,"datum":"2026-08-22","mistoId":"vycep"},{"id":449,"workerId":2,"datum":"2026-08-22","mistoId":"kuchynA"},{"id":450,"workerId":16,"datum":"2026-08-22","mistoId":"kuchynB"},{"id":451,"workerId":3,"datum":"2026-08-22","mistoId":"recepce"},{"id":452,"workerId":19,"datum":"2026-08-22","mistoId":"kramek"},{"id":453,"workerId":4,"datum":"2026-08-22","mistoId":"slapada"},{"id":454,"workerId":6,"datum":"2026-08-22","mistoId":"obcerstv"},{"id":455,"workerId":8,"datum":"2026-08-22","mistoId":"zmrzlina"},{"id":456,"workerId":9,"datum":"2026-08-23","mistoId":"vycep"},{"id":457,"workerId":2,"datum":"2026-08-23","mistoId":"kuchynA"},{"id":458,"workerId":16,"datum":"2026-08-23","mistoId":"kuchynB"},{"id":459,"workerId":3,"datum":"2026-08-23","mistoId":"recepce"},{"id":460,"workerId":19,"datum":"2026-08-23","mistoId":"kramek"},{"id":461,"workerId":4,"datum":"2026-08-23","mistoId":"slapada"},{"id":462,"workerId":6,"datum":"2026-08-23","mistoId":"obcerstv"},{"id":463,"workerId":8,"datum":"2026-08-23","mistoId":"zmrzlina"},{"id":464,"workerId":2,"datum":"2026-08-24","mistoId":"kuchynA"},{"id":465,"workerId":16,"datum":"2026-08-24","mistoId":"kuchynB"},{"id":466,"workerId":3,"datum":"2026-08-24","mistoId":"recepce"},{"id":467,"workerId":19,"datum":"2026-08-24","mistoId":"kramek"},{"id":468,"workerId":4,"datum":"2026-08-24","mistoId":"slapada"},{"id":469,"workerId":11,"datum":"2026-08-24","mistoId":"obcerstv"},{"id":470,"workerId":8,"datum":"2026-08-24","mistoId":"zmrzlina"},{"id":471,"workerId":2,"datum":"2026-08-25","mistoId":"kuchynA"},{"id":472,"workerId":16,"datum":"2026-08-25","mistoId":"kuchynB"},{"id":473,"workerId":3,"datum":"2026-08-25","mistoId":"recepce"},{"id":474,"workerId":19,"datum":"2026-08-25","mistoId":"kramek"},{"id":475,"workerId":4,"datum":"2026-08-25","mistoId":"slapada"},{"id":476,"workerId":11,"datum":"2026-08-25","mistoId":"obcerstv"},{"id":477,"workerId":8,"datum":"2026-08-25","mistoId":"zmrzlina"},{"id":478,"workerId":2,"datum":"2026-08-26","mistoId":"kuchynA"},{"id":479,"workerId":16,"datum":"2026-08-26","mistoId":"kuchynB"},{"id":480,"workerId":3,"datum":"2026-08-26","mistoId":"recepce"},{"id":481,"workerId":10,"datum":"2026-08-26","mistoId":"kramek"},{"id":482,"workerId":4,"datum":"2026-08-26","mistoId":"slapada"},{"id":483,"workerId":11,"datum":"2026-08-26","mistoId":"obcerstv"},{"id":484,"workerId":8,"datum":"2026-08-26","mistoId":"zmrzlina"},{"id":485,"workerId":7,"datum":"2026-08-27","mistoId":"vycep"},{"id":486,"workerId":2,"datum":"2026-08-27","mistoId":"kuchynA"},{"id":487,"workerId":16,"datum":"2026-08-27","mistoId":"kuchynB"},{"id":488,"workerId":3,"datum":"2026-08-27","mistoId":"recepce"},{"id":489,"workerId":10,"datum":"2026-08-27","mistoId":"kramek"},{"id":490,"workerId":4,"datum":"2026-08-27","mistoId":"slapada"},{"id":491,"workerId":11,"datum":"2026-08-27","mistoId":"obcerstv"},{"id":492,"workerId":8,"datum":"2026-08-27","mistoId":"zmrzlina"},{"id":493,"workerId":7,"datum":"2026-08-28","mistoId":"vycep"},{"id":494,"workerId":2,"datum":"2026-08-28","mistoId":"kuchynA"},{"id":495,"workerId":16,"datum":"2026-08-28","mistoId":"kuchynB"},{"id":496,"workerId":3,"datum":"2026-08-28","mistoId":"recepce"},{"id":497,"workerId":19,"datum":"2026-08-28","mistoId":"kramek"},{"id":498,"workerId":4,"datum":"2026-08-28","mistoId":"slapada"},{"id":499,"workerId":11,"datum":"2026-08-28","mistoId":"obcerstv"},{"id":500,"workerId":8,"datum":"2026-08-28","mistoId":"zmrzlina"},{"id":501,"workerId":7,"datum":"2026-08-29","mistoId":"vycep"},{"id":502,"workerId":2,"datum":"2026-08-29","mistoId":"kuchynA"},{"id":503,"workerId":16,"datum":"2026-08-29","mistoId":"kuchynB"},{"id":504,"workerId":3,"datum":"2026-08-29","mistoId":"recepce"},{"id":505,"workerId":19,"datum":"2026-08-29","mistoId":"kramek"},{"id":506,"workerId":4,"datum":"2026-08-29","mistoId":"slapada"},{"id":507,"workerId":11,"datum":"2026-08-29","mistoId":"obcerstv"},{"id":508,"workerId":8,"datum":"2026-08-29","mistoId":"zmrzlina"},{"id":509,"workerId":7,"datum":"2026-08-30","mistoId":"vycep"},{"id":510,"workerId":2,"datum":"2026-08-30","mistoId":"kuchynA"},{"id":511,"workerId":16,"datum":"2026-08-30","mistoId":"kuchynB"},{"id":512,"workerId":3,"datum":"2026-08-30","mistoId":"recepce"},{"id":513,"workerId":19,"datum":"2026-08-30","mistoId":"kramek"},{"id":514,"workerId":4,"datum":"2026-08-30","mistoId":"slapada"},{"id":515,"workerId":11,"datum":"2026-08-30","mistoId":"obcerstv"},{"id":516,"workerId":8,"datum":"2026-08-30","mistoId":"zmrzlina"}];
 
 // Runtime data
-var LOAD_OK = { schedule:false, ucty:false, uklid_log:false, penalizace:false, pracovni_dny:false, workers:false, trzby:false, naklady:false, businesses:false, venues:false, admin_venues:false, stanoviste:false, worker_venues:false, worker_dostupnost:false };
+var LOAD_OK = { schedule:false, ucty:false, uklid_log:false, penalizace:false, pracovni_dny:false, workers:false, trzby:false, naklady:false, businesses:false, venues:false, admin_venues:false, stanoviste:false, worker_venues:false, worker_dostupnost:false, byty:false, byty_platby:false, pokladna:false, naklady_opakovane:false };
 var SCHEDULE = [];
 var UCTY_POLOZKY = [];
 var UKLID_LOG = [];
 var PENALIZACE = [];
 var PRACOVNI_DNY = []; // {id, workerId, datum, prichod, odchod, obed, vecere}
 var NAKLADY = []; // {id, venue_id, workerId, datum, popis, castka} - Makro, pivo, zásoby...
+
+// ===================== BYTY / POKLADNA / OPAKOVANÉ NÁKLADY =====================
+var BYTY = [];             // {id, venue_id, nazev, najemnik, mesicni_castka, poznamka, aktivni}
+var BYTY_PLATBY = [];      // {id, byt_id, mesic:'YYYY-MM', datum, castka, poznamka}
+var POKLADNA = [];         // {id, venue_id, datum, typ:'prijem'|'vydaj', castka, popis, worker_id}
+var NAKLADY_OPAKOVANE = [];// {id, venue_id, popis, castka, den_v_mesici, aktivni}
+
+function currentMonthStr() {
+  var d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
 
 // ===================== SUPABASE SAVE/LOAD =====================
 
@@ -584,11 +595,12 @@ function getVyplatyForWorker(workerId) {
 }
 
 // Uloží novou výplatu - "dny" je pole konkrétních dat, které tato výplata pokrývá
-async function addVyplata(workerId, castka, poznamka, dny) {
+async function addVyplata(workerId, castka, poznamka, dny, adminId) {
   var v = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamka||'', dny:dny||[] };
   var res = await dbUpsert('vyplaty', [v]);
   if (!res.ok) return { ok:false, error:res.error };
   VYPLATY.push(v);
+  await clearUctyForWorkerLegacy(workerId, adminId); // po výplatě zmizí brigádníkovi účty (audit zůstává, jen smazano=true)
   return { ok:true, row:v };
 }
 
@@ -985,7 +997,14 @@ async function loadVenues() {
     });
     LOAD_OK.stanoviste = true;
   } catch(e) { STANOVISTE_ZAKLAD = {}; LOAD_OK.stanoviste = false; console.error('Načtení "stanoviste" selhalo:', e); }
+
+  try { var rby = await db.from('byty').select('*').order('id'); if (rby.error) throw rby.error; BYTY = rby.data || []; LOAD_OK.byty = true; } catch(e) { BYTY = []; LOAD_OK.byty = false; console.error('Načtení "byty" selhalo:', e); }
+  try { var rbp = await db.from('byty_platby').select('*'); if (rbp.error) throw rbp.error; BYTY_PLATBY = rbp.data || []; LOAD_OK.byty_platby = true; } catch(e) { BYTY_PLATBY = []; LOAD_OK.byty_platby = false; console.error('Načtení "byty_platby" selhalo:', e); }
+  try { var rpk = await db.from('pokladna').select('*'); if (rpk.error) throw rpk.error; POKLADNA = rpk.data || []; LOAD_OK.pokladna = true; } catch(e) { POKLADNA = []; LOAD_OK.pokladna = false; console.error('Načtení "pokladna" selhalo:', e); }
+  try { var rno = await db.from('naklady_opakovane').select('*'); if (rno.error) throw rno.error; NAKLADY_OPAKOVANE = rno.data || []; LOAD_OK.naklady_opakovane = true; } catch(e) { NAKLADY_OPAKOVANE = []; LOAD_OK.naklady_opakovane = false; console.error('Načtení "naklady_opakovane" selhalo:', e); }
+
   showLoadErrorBannerIfNeeded();
+  await ensureOpakovaneNaklady();
 }
 
 // ── Venue-scoped funkce pro nové "zaklad" podniky (Republika 24, Anděl) ──
@@ -1086,11 +1105,12 @@ function getVyplacenoVenue(venueId, workerId) {
   var total=0; VYPLATY.forEach(function(v){ if(v.venue_id===venueId && v.workerId===workerId) total+=v.castka; });
   return total;
 }
-async function addVyplataVenue(venueId, workerId, castka, poznamka, dny) {
+async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId) {
   var row = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamka||'', dny:dny||[], venue_id:venueId };
   VYPLATY.push(row);
   var res = await saveVyplaty();
   if (!res.ok) { VYPLATY = VYPLATY.filter(function(v){return v.id!==row.id;}); return res; }
+  await clearUctyForWorkerVenue(venueId, workerId, adminId); // po výplatě zmizí brigádníkovi účty (audit zůstává, jen smazano=true)
   return { ok:true, row:row };
 }
 
@@ -1299,9 +1319,181 @@ function safeRedirect(url) {
 
 function venueAppUrl(venue) {
   if (venue.rezim === 'kosatka') return 'app.html';
+  if (venue.rezim === 'byty') return 'byty-admin.html?v=' + venue.slug;
   return 'podnik.html?v=' + venue.slug;
 }
 function venueAdminUrl(venue) {
   if (venue.rezim === 'kosatka') return 'admin.html';
+  if (venue.rezim === 'byty') return 'byty-admin.html?v=' + venue.slug;
   return 'podnik-admin.html?v=' + venue.slug;
+}
+
+// ===================== ÚČTY - hromadné smazání po výplatě + admin mazání =====================
+// Položky na účtu se nikdy fyzicky nemažou (audit), ale po výplatě je chceme
+// brigádníkovi "zmizet z účtu" - proto soft-delete (smazano=true) přesně těch
+// položek, které do dané výplaty vešly (aby to sedělo i zpětně v historii).
+// Kosatka (app.html/admin.html) je starší a její položky na účtu nemají venue_id -
+// proto zvlášť varianta bez filtru na provozovnu.
+async function clearUctyForWorkerLegacy(workerId, adminId) {
+  var polozky = UCTY_POLOZKY.filter(function(p){ return p.workerId===workerId && !p.venue_id && !p.smazano; });
+  if (!polozky.length) return { ok:true };
+  var now = new Date().toISOString();
+  polozky.forEach(function(p){ p.smazano=true; p.smazano_at=now; p.smazano_by=adminId||null; });
+  var res = await dbUpsert('ucty', polozky);
+  if (!res.ok) { polozky.forEach(function(p){ p.smazano=false; p.smazano_at=null; p.smazano_by=null; }); }
+  return res;
+}
+async function clearUctyForWorkerVenue(venueId, workerId, adminId) {
+  var polozky = UCTY_POLOZKY.filter(function(p){ return p.workerId===workerId && p.venue_id===venueId && !p.smazano; });
+  if (!polozky.length) return { ok:true };
+  var now = new Date().toISOString();
+  polozky.forEach(function(p){ p.smazano=true; p.smazano_at=now; p.smazano_by=adminId||null; });
+  var res = await dbUpsert('ucty', polozky);
+  if (!res.ok) { polozky.forEach(function(p){ p.smazano=false; p.smazano_at=null; p.smazano_by=null; }); }
+  return res;
+}
+
+// Smazání JEDNÉ položky z účtu - výhradně pro admina/správce (volající stránka
+// si musí sama ohlídat, že tlačítko vidí jen admin - stejně jako u ostatních
+// admin-only akcí v appce).
+async function deleteUcetPolozkaAdmin(id, adminId) {
+  var p = UCTY_POLOZKY.find(function(x){return x.id===id;});
+  if (!p) return { ok:false, error:'Položka nenalezena' };
+  var puvodni = { smazano:p.smazano, smazano_at:p.smazano_at, smazano_by:p.smazano_by };
+  p.smazano = true; p.smazano_at = new Date().toISOString(); p.smazano_by = adminId||null;
+  var res = await dbUpsert('ucty', [p]);
+  if (!res.ok) Object.assign(p, puvodni);
+  return res;
+}
+
+// ===================== BYTY / NÁJMY =====================
+function getBytyForVenue(venueId) {
+  return BYTY.filter(function(b){ return b.venue_id===venueId && b.aktivni!==false; })
+    .sort(function(a,b){ return a.nazev.localeCompare(b.nazev,'cs',{numeric:true}); });
+}
+async function addByt(venueId, nazev, najemnik, mesicniCastka, poznamka) {
+  var row = { id:getNextId(BYTY), venue_id:venueId, nazev:nazev, najemnik:najemnik||'', mesicni_castka:mesicniCastka||0, poznamka:poznamka||'', aktivni:true };
+  var res = await dbUpsert('byty', [row]);
+  if (!res.ok) return res;
+  BYTY.push(row);
+  return { ok:true, row:row };
+}
+async function updateByt(id, fields) {
+  var b = BYTY.find(function(x){return x.id===id;});
+  if (!b) return { ok:false, error:'Byt nenalezen' };
+  var puvodni = Object.assign({}, b);
+  Object.assign(b, fields);
+  var res = await dbUpsert('byty', [b]);
+  if (!res.ok) Object.assign(b, puvodni);
+  return res;
+}
+async function deleteByt(id) {
+  var b = BYTY.find(function(x){return x.id===id;});
+  if (!b) return { ok:false };
+  b.aktivni = false;
+  var res = await dbUpsert('byty', [b]);
+  if (!res.ok) b.aktivni = true;
+  return res;
+}
+function getBytyPlatbyForMonth(bytId, mesic) {
+  return BYTY_PLATBY.filter(function(p){ return p.byt_id===bytId && p.mesic===mesic; });
+}
+function getBytZaplacenoMesic(bytId, mesic) {
+  return getBytyPlatbyForMonth(bytId, mesic).reduce(function(s,p){ return s+p.castka; }, 0);
+}
+// Dluh za daný měsíc = předpis mínus zatím přijaté platby za ten měsíc (může vyjít i záporně = přeplatek).
+function getBytDluhMesic(bytId, mesic) {
+  var b = BYTY.find(function(x){return x.id===bytId;});
+  if (!b) return 0;
+  return (b.mesicni_castka||0) - getBytZaplacenoMesic(bytId, mesic);
+}
+async function addBytPlatba(bytId, mesic, castka, poznamka) {
+  var row = { id:getNextId(BYTY_PLATBY), byt_id:bytId, mesic:mesic, datum:todayStr(), castka:castka, poznamka:poznamka||'' };
+  var res = await dbUpsert('byty_platby', [row]);
+  if (!res.ok) return res;
+  BYTY_PLATBY.push(row);
+  return { ok:true, row:row };
+}
+async function deleteBytPlatba(id) {
+  try {
+    var res = await db.from('byty_platby').delete().eq('id', id);
+    if (res && res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  BYTY_PLATBY = BYTY_PLATBY.filter(function(p){ return p.id!==id; });
+  return { ok:true };
+}
+function getBytyPlatbyForVenue(venueId) {
+  var ids = getBytyForVenue(venueId).map(function(b){return b.id;});
+  return BYTY_PLATBY.filter(function(p){ return ids.indexOf(p.byt_id)!==-1; }).sort(function(a,b){return b.datum.localeCompare(a.datum);});
+}
+
+// ===================== POKLADNÍ KNIHA =====================
+function getPokladnaForVenue(venueId) {
+  return POKLADNA.filter(function(p){ return p.venue_id===venueId; }).sort(function(a,b){ return b.datum.localeCompare(a.datum) || b.id-a.id; });
+}
+function getPokladnaZustatek(venueId) {
+  return POKLADNA.filter(function(p){ return p.venue_id===venueId; })
+    .reduce(function(s,p){ return s + (p.typ==='prijem' ? p.castka : -p.castka); }, 0);
+}
+// Součet zůstatků přes VŠECHNY provozovny, které vidí daný uživatel (pro přehled na hlavním panelu).
+function getPokladnaZustatekCelkem(venueIds) {
+  return POKLADNA.filter(function(p){ return venueIds.indexOf(p.venue_id)!==-1; })
+    .reduce(function(s,p){ return s + (p.typ==='prijem' ? p.castka : -p.castka); }, 0);
+}
+async function addPokladnaZapis(venueId, typ, castka, popis, workerId) {
+  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:todayStr(), typ:typ, castka:Math.abs(castka), popis:popis, worker_id:workerId||null };
+  var res = await dbUpsert('pokladna', [row]);
+  if (!res.ok) return res;
+  POKLADNA.push(row);
+  return { ok:true, row:row };
+}
+// Smazání zápisu v pokladní knize - výhradně admin (viz poznámka u deleteUcetPolozkaAdmin).
+async function deletePokladnaZapisAdmin(id) {
+  try {
+    var res = await db.from('pokladna').delete().eq('id', id);
+    if (res && res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  POKLADNA = POKLADNA.filter(function(p){ return p.id!==id; });
+  return { ok:true };
+}
+
+// ===================== AUTOMATICKÉ (OPAKOVANÉ) PLATBY =====================
+function getOpakovaneForVenue(venueId) {
+  return NAKLADY_OPAKOVANE.filter(function(n){ return n.venue_id===venueId && n.aktivni!==false; });
+}
+async function addOpakovanyNaklad(venueId, popis, castka, denVMesici) {
+  var row = { id:getNextId(NAKLADY_OPAKOVANE), venue_id:venueId, popis:popis, castka:castka, den_v_mesici:denVMesici||1, aktivni:true };
+  var res = await dbUpsert('naklady_opakovane', [row]);
+  if (!res.ok) return res;
+  NAKLADY_OPAKOVANE.push(row);
+  return { ok:true, row:row };
+}
+async function deleteOpakovanyNaklad(id) {
+  var n = NAKLADY_OPAKOVANE.find(function(x){return x.id===id;});
+  if (!n) return { ok:true };
+  n.aktivni = false;
+  var res = await dbUpsert('naklady_opakovane', [n]);
+  if (!res.ok) n.aktivni = true;
+  return res;
+}
+// Zavolá se při každém načtení appky: pro každou aktivní opakovanou platbu
+// zkontroluje, jestli už letos-tenhle-měsíc nebyla zapsaná do nákladů - pokud
+// ne a zároveň už nastal den v měsíci, kdy se má zapsat, přidá ji do "naklady"
+// automaticky (aby na elektřinu/vodu nikdo nezapomněl).
+async function ensureOpakovaneNaklady() {
+  if (!NAKLADY_OPAKOVANE.length) return;
+  var mesic = currentMonthStr();
+  var dnesDen = new Date().getDate();
+  var toInsert = [];
+  NAKLADY_OPAKOVANE.forEach(function(n){
+    if (n.aktivni===false) return;
+    if (dnesDen < (n.den_v_mesici||1)) return;
+    var jiz = NAKLADY.some(function(x){ return x.opakovany_id===n.id && x.mesic===mesic; });
+    if (jiz) return;
+    var row = { id:getNextId(NAKLADY.concat(toInsert)), venue_id:n.venue_id, workerId:null, datum:todayStr(), popis:'🔁 '+n.popis, castka:n.castka, opakovany_id:n.id, mesic:mesic };
+    toInsert.push(row);
+  });
+  if (!toInsert.length) return;
+  var res = await dbUpsert('naklady', toInsert);
+  if (res.ok) NAKLADY = NAKLADY.concat(toInsert);
 }

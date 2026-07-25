@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Správa provozovny</title>
   <link rel="stylesheet" href="css/style.css"/>
 </head>
@@ -26,6 +26,7 @@
     <button class="nav-tab"        onclick="showTab('trzby',this)">💵 Tržby</button>
     <button class="nav-tab"        onclick="showTab('penalizace',this)">⚠️ Penalizace</button>
     <button class="nav-tab"        onclick="showTab('objednavky',this)">📦 Objednávky</button>
+    <button class="nav-tab"        onclick="showTab('sklad',this)">🗄️ Sklad</button>
     <button class="nav-tab"        onclick="showTab('brigadnici',this)">👥 Brigádníci</button>
     <button class="nav-tab"        onclick="showTab('dochazka',this)">⏱️ Docházka</button>
     <button class="nav-tab"        onclick="showTab('dostupnost',this)">🗓️ Dostupnost</button>
@@ -160,6 +161,32 @@
     </div>
   </div>
 
+  <!-- SKLAD -->
+  <div class="page" id="tab-sklad">
+    <div class="card">
+      <div class="card-title">🗄️ Produkty na skladě</div>
+      <div class="form-group"><label class="form-label">Hledat produkt</label><input class="form-input" type="text" id="sklad-search" oninput="renderSkladAdmin()" placeholder="hledej produkt..."/></div>
+      <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="sklad-table"></table></div>
+      <button class="btn btn-sm btn-secondary" style="margin-top:10px;" onclick="document.getElementById('card-sklad-add').style.display='block'">➕ Přidat nový produkt</button>
+    </div>
+    <div class="card" id="card-sklad-add" style="display:none;">
+      <div class="card-title">➕ Nový produkt</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group" style="margin:0;"><label class="form-label">Název</label><input class="form-input" id="sk-nazev" placeholder="např. Rohlík"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Kategorie</label><input class="form-input" id="sk-kategorie" placeholder="volitelné"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Jednotka</label><input class="form-input" id="sk-jednotka" placeholder="ks / kg / l" value="ks"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Počáteční stav</label><input class="form-input" type="number" id="sk-mnozstvi" value="0"/></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="saveNewSkladProdukt()">Uložit</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🧮 Poslední inventura brigádníků</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Co si brigádníci napočítali při týdenní inventuře (záložka "Sklad" v jejich appce), porovnané se stavem, co appka eviduje podle příjmů/výdejů.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="inv-admin-week-btns"></div>
+      <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="inv-admin-table"></table></div>
+    </div>
+  </div>
+
   <!-- STATISTIKY -->
   <div class="page" id="tab-statistiky">
     <div class="card">
@@ -228,6 +255,7 @@ function showTab(id,btn){
   if(id==='vyplaty') renderVyplaty();
   if(id==='penalizace') renderPenalizace();
   if(id==='objednavky') renderObjednavkyAdmin();
+  if(id==='sklad') { renderSkladAdmin(); renderInventuraAdmin(); }
   if(id==='dostupnost') renderAvailAdmin();
   if(id==='brigadnici') renderBrigadnici();
   if(id==='dochazka') renderDochazkaAdmin();
@@ -355,8 +383,8 @@ function renderBrigadnici(){
         ? '<details><summary style="cursor:pointer;color:var(--water-dark);">'+pdRows.length+' dní</summary><div style="font-size:11px;max-width:240px;margin-top:4px;">'+pdRows.map(function(p){ return formatDate(p.datum)+': '+(p.prichod||'–')+'–'+(p.odchod||'–')+' <a href="#" onclick="event.preventDefault();mazPracovniDenAdmin('+p.id+')" style="color:var(--red);">✕</a>'; }).join('<br>')+'</div></details>'
         : '<span style="color:var(--text-muted);">– žádná –</span>';
       var jeDomovska = w.venue_id === venue.id;
-      var akce = jeDomovska ? '' : '<button class="btn btn-sm btn-danger" onclick="odebratBrigadnika('+w.id+')">Odebrat odsud</button>';
-      return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+(w.email||'–')+'</td><td>'+dostCell+'</td><td>'+pdCell+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td><td>'+(v.uctyDluh?v.uctyDluh+' Kč':'0 Kč')+'</td><td>'+akce+'</td></tr>';
+      var akce = '<button class="btn btn-sm btn-secondary" onclick="ucetModal('+w.id+')">🧾 Účet</button> ' + (jeDomovska ? '' : '<button class="btn btn-sm btn-danger" onclick="odebratBrigadnika('+w.id+')">Odebrat odsud</button>');
+      return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+(w.email||'–')+'</td><td>'+dostCell+'</td><td>'+pdCell+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td><td>'+(v.uctyDluh?v.uctyDluh+' Kč':'0 Kč')+'</td><td style="white-space:nowrap;">'+akce+'</td></tr>';
     }).join('');
   }
 
@@ -494,11 +522,47 @@ function renderVyplaty(){
 }
 async function vyplatit(workerId, castka){
   if (castka<=0) { alert('Není co vyplácet.'); return; }
-  if (!confirm('Vyplatit '+castka+' Kč?')) return;
-  await addVyplataVenue(venue.id, workerId, castka, '', []);
+  if (!confirm('Vyplatit '+castka+' Kč? Položky na účtu tomuhle brigádníkovi po vyplacení zmizí (admin je pořád uvidí v historii).')) return;
+  await addVyplataVenue(venue.id, workerId, castka, '', [], currentAdmin.id);
   renderVyplaty();
   renderBrigadnici();
 }
+
+// ── ÚČET brigádníka (položky) - jednotlivé mazání smí jen admin/správce ──
+function ucetModal(workerId){
+  var w = getWorkerById(workerId);
+  var polozky = getUctyForWorkerVenue(workerId, venue.id);
+  var html = '<div class="modal-title">🧾 Účet – '+(w?w.jmeno:'?')+'</div>';
+  if (!polozky.length) html += '<p style="color:var(--text-muted);font-size:13px;">Žádné nesmazané položky.</p>';
+  else html += polozky.slice().sort(function(a,b){return b.datum.localeCompare(a.datum)||b.id-a.id;}).map(function(p){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
+      '<span>'+p.popis+' <span style="color:var(--text-muted);">· '+formatDate(p.datum)+'</span></span>'+
+      '<span style="display:flex;align-items:center;gap:8px;"><strong>'+p.castka+' Kč</strong>'+
+      '<button class="btn btn-sm btn-danger" onclick="smazatUcetPolozkuAdmin('+p.id+','+workerId+')">🗑️</button></span></div>';
+  }).join('');
+  html += '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Zavřít</button></div>';
+  showModal(html);
+}
+async function smazatUcetPolozkuAdmin(id, workerId){
+  if (!confirm('Trvale skrýt tuhle položku z účtu brigádníka?')) return;
+  await deleteUcetPolozkaAdmin(id, currentAdmin.id);
+  ucetModal(workerId);
+  renderVyplaty();
+  renderBrigadnici();
+}
+function showModal(innerHtml){
+  var ov = document.getElementById('generic-modal');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'generic-modal';
+    ov.className = 'modal-overlay';
+    ov.innerHTML = '<div class="modal-box" id="generic-modal-box"></div>';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('generic-modal-box').innerHTML = innerHtml;
+  ov.classList.remove('hidden');
+}
+function closeModal(){ var ov=document.getElementById('generic-modal'); if (ov) ov.classList.add('hidden'); }
 
 // ── PENALIZACE ──
 function renderPenalizace(){
@@ -610,6 +674,39 @@ async function skladDeleteAdmin(id){
   await deleteSkladProdukt(id);
   renderSkladAdmin();
 }
+
+// ── INVENTURA (přehled toho, co si brigádníci napočítali) ──
+var invAdminWeek = null;
+function renderInventuraAdmin(){
+  var weeks = getAllInventuraWeeks(skladId());
+  var wrap = document.getElementById('inv-admin-week-btns');
+  if (!weeks.length) {
+    wrap.innerHTML = '';
+    document.getElementById('inv-admin-table').innerHTML = '<tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím žádná inventura.</td></tr>';
+    return;
+  }
+  if (!invAdminWeek || weeks.indexOf(invAdminWeek)===-1) invAdminWeek = weeks[weeks.length-1];
+  wrap.innerHTML = weeks.slice().reverse().map(function(w){
+    return '<button class="btn btn-sm '+(w===invAdminWeek?'btn-primary':'btn-secondary')+'" onclick="setInvAdminWeek(\''+w+'\')">týden do '+formatDate(w)+'</button>';
+  }).join('');
+  var map = getInventuraForWeek(skladId(), invAdminWeek);
+  var produkty = getSkladProdukty(skladId());
+  var html = '<thead><tr><th>Produkt</th><th>Napočítáno</th><th>Aktuální stav appky</th><th>Kdo počítal</th></tr></thead><tbody>';
+  var zaznamy = SKLAD_INVENTURY.filter(function(x){return x.sklad===skladId() && x.tyden===invAdminWeek;});
+  if (!zaznamy.length) html += '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Nikdo nic nezapsal.</td></tr>';
+  zaznamy.forEach(function(z){
+    var p = getSkladProdukt(z.produktId);
+    var w = getWorkerById(z.workerId);
+    var sedi = p && p.mnozstvi === z.mnozstvi;
+    html += '<tr><td style="font-weight:500;">'+(p?p.nazev:'?')+'</td>'+
+      '<td style="font-weight:600;">'+z.mnozstvi+'</td>'+
+      '<td style="'+(sedi?'':'color:var(--red);font-weight:600;')+'">'+(p?p.mnozstvi:'?')+'</td>'+
+      '<td>'+(w?w.jmeno.split(' ')[0]:'?')+'</td></tr>';
+  });
+  html += '</tbody>';
+  document.getElementById('inv-admin-table').innerHTML = html;
+}
+function setInvAdminWeek(w){ invAdminWeek = w; renderInventuraAdmin(); }
 </script>
 </body>
 </html>
