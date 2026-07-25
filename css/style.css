@@ -26,6 +26,11 @@
 
 html { height: -webkit-fill-available; }
 
+html, body {
+  overflow-x: hidden; /* žádný obsah (ani zapomenutá nezabalená tabulka) nesmí roztáhnout celou stránku do strany */
+  width: 100%;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--sand);
@@ -114,6 +119,7 @@ body {
   border: 1px solid var(--sand-dark);
   padding: 1.25rem;
   margin-bottom: 1rem;
+  overflow-x: auto; /* pojistka: i tabulka, co náhodou není zabalená ve .schedule-wrap, se aspoň scrolluje uvnitř karty, ne přes celou stránku */
 }
 
 .card-title {

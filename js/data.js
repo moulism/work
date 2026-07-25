@@ -654,8 +654,15 @@ function getNevyplaceneDny(workerId) {
 // ===================== PŘEPOČET VÝDĚLKU (bere jen dny, co ještě nebyly v žádné výplatě) =====================
 function getVydelek(workerId) {
   var dny = getNevyplaceneDny(workerId);
-  var hodiny=0, hruby=0, pen=0, ucty=0;
-  dny.forEach(function(d){ hodiny+=d.hodiny; hruby+=d.hruby; pen+=d.penalizace; ucty+=d.ucty; });
+  var hodiny=0, hruby=0, pen=0;
+  dny.forEach(function(d){ hodiny+=d.hodiny; hruby+=d.hruby; pen+=d.penalizace; });
+  // DŮLEŽITÉ: dluh na účtu se počítá jako prostý součet všech nesmazaných položek
+  // (bez ohledu na to, jestli datum položky přesně sedí na nějaký odpracovaný den).
+  // Dřív se počítal jen z getNevyplaceneDny() přes shodu data - položka, která nepadla
+  // přesně na den s odpracovanou směnou (nebo když brigádník neměl žádnou), se tím
+  // tiše ztratila a dluh vycházel 0, i když na účtu reálně něco viselo.
+  var ucty = 0;
+  UCTY_POLOZKY.forEach(function(p){ if (p.workerId===workerId && !p.smazano) ucty+=p.castka; });
   var vyplaceno = getVyplaceno(workerId);
   return { hodiny:hodiny, hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, vyplaceno:vyplaceno, cisty:hruby-pen-ucty, nevyplaceneDny:dny };
 }
