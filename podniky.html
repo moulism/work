@@ -47,7 +47,7 @@
     <div class="dash-grid" id="dash-grid"></div>
 
     <div class="dash-card" id="hp-pokladna-card" style="margin-top:14px;display:none;">
-      <div class="dc-name">💵 Hotovost v pokladnách</div>
+      <div class="dc-name">💵 Zůstatek pokladních knih</div>
       <div style="font-size:26px;font-weight:700;" id="hp-pokladna-total"></div>
       <div id="hp-pokladna-breakdown" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
     </div>
@@ -337,16 +337,30 @@ function renderDash(){
       acc.trzby+=z.trzby; acc.naklady+=z.naklady; acc.vyplaty+=z.vyplaty; acc.zisk+=z.zisk;
       return acc;
     }, {trzby:0,naklady:0,vyplaty:0,zisk:0});
+    var breakdownId = 'dc-breakdown-'+b.id;
+    var breakdownRows = venuesInBiz.map(function(v){
+      var z = getZiskVenueMonth(v.id, 2026, month);
+      return '<div class="dc-row" style="padding-left:4px;"><span>'+v.ikona+' '+v.nazev.replace(b.nazev+' - ','').replace(b.nazev+' ','')+'</span>'+
+        '<span style="font-weight:600;color:'+(z.zisk>=0?'var(--green)':'var(--red)')+';">'+z.zisk.toLocaleString('cs-CZ')+' Kč</span></div>';
+    }).join('') || '<div class="dc-row" style="padding-left:4px;color:var(--text-muted);">Zatím žádné provozovny.</div>';
     return '<div class="dash-card">'+
       '<div class="dc-name">'+b.ikona+' '+b.nazev+'</div>'+
       '<div class="dc-row"><span>Tržby</span><span>'+agg.trzby.toLocaleString('cs-CZ')+' Kč</span></div>'+
       '<div class="dc-row"><span>Náklady</span><span>-'+agg.naklady.toLocaleString('cs-CZ')+' Kč</span></div>'+
       '<div class="dc-row"><span>Mzdy</span><span>-'+agg.vyplaty.toLocaleString('cs-CZ')+' Kč</span></div>'+
       '<div class="dc-zisk" style="color:'+(agg.zisk>=0?'var(--green)':'var(--red)')+';">'+agg.zisk.toLocaleString('cs-CZ')+' Kč čistého</div>'+
+      (venuesInBiz.length>1 ? '<button class="btn btn-sm btn-secondary" style="margin-top:8px;width:100%;" onclick="toggleDcBreakdown(\''+breakdownId+'\',this)">▸ Po provozovnách</button>'+
+      '<div id="'+breakdownId+'" style="display:none;margin-top:8px;border-top:1px solid var(--sand-dark);padding-top:8px;">'+breakdownRows+'</div>' : '')+
     '</div>';
   }).join('');
   document.getElementById('dash-grid').innerHTML = html;
   document.getElementById('dash-wrap').style.display = 'block';
+}
+function toggleDcBreakdown(id, btn){
+  var el = document.getElementById(id);
+  var open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▸ Po provozovnách' : '▾ Skrýt provozovny';
 }
 
 // Přehled hotovosti v pokladnách - jen provozovny s pokladní knihou (byty), sečtené přes všechny, které vidí.

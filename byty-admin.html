@@ -62,9 +62,9 @@
   <!-- POKLADNA -->
   <div class="page" id="tab-pokladna">
     <div class="card">
-      <div class="card-title">💵 Aktuální hotovost v pokladně</div>
+      <div class="card-title">💵 Aktuální zůstatek pokladní knihy</div>
       <div style="font-size:28px;font-weight:700;" id="pokladna-zustatek">0 Kč</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Součet všech příjmů mínus výdaje zapsané níže.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Součet všech příjmů mínus výdaje zapsané níže (nemusí jít jen o fyzickou hotovost - eviduj tu klidně i platby na účet).</p>
     </div>
 
     <div class="card">
@@ -81,7 +81,7 @@
         <div class="form-group" style="margin:0;"><label class="form-label">Částka (Kč)</label><input type="number" class="form-input" id="pk-castka" placeholder="Kč"/></div>
       </div>
       <button class="btn btn-primary" style="margin-top:10px;" onclick="ulozitPokladnaZapis()">💾 Uložit</button>
-      <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">Tip: pokud jde o platbu konkrétního nájemníka, zapiš ji rovnou i do záložky "Byty a nájemné" u dané jednotky - v pokladně se to eviduje jako hotovost, u bytu jako splátka dluhu (jsou to dvě různé věci).</p>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">Tip: pokud jde o platbu konkrétního nájemníka, zapiš ji rovnou i do záložky "Byty a nájemné" u dané jednotky - v pokladní knize se to eviduje jako pohyb peněz, u bytu jako splátka dluhu (jsou to dvě různé věci).</p>
     </div>
 
     <div class="card">

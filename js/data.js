@@ -1238,6 +1238,12 @@ async function removeNaklad(id) {
 function getZiskVenueMonth(venueId, year, month) {
   var trzby = getTrzbyForVenueMonth ? getTrzbyForVenueMonth(venueId, year, month) : [];
   var trzbySum = trzby.reduce(function(s,t){ return s+(t.castka||0); }, 0);
+  // U bytů/nájmů "tržby" = přijaté nájemné za daný měsíc (nemají klasické denní tržby jako podnik s obsluhou).
+  var venue = getVenueById(venueId);
+  if (venue && venue.rezim === 'byty') {
+    var mesic = year+'-'+String(month).padStart(2,'0');
+    trzbySum += getBytyPlatbyForVenue(venueId).filter(function(p){ return p.mesic===mesic; }).reduce(function(s,p){ return s+p.castka; }, 0);
+  }
   var naklady = getNakladyForVenueMonth(venueId, year, month);
   var nakladySum = naklady.reduce(function(s,n){ return s+(n.castka||0); }, 0);
   var prefix = year+'-'+String(month).padStart(2,'0');
