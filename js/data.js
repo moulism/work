@@ -1702,6 +1702,18 @@ function urlBase64ToUint8Array(base64String) {
 async function pushIsSupported() {
   return ('serviceWorker' in navigator) && ('PushManager' in window);
 }
+// Vysvětlí SLOVY, proč tlačítko chybí, místo aby zmizelo beze stopy - hlavně na
+// iPhonu je důvodů víc (stará appka nepřidaná na plochu, stará verze iOS, appka
+// otevřená v Safari místo z ikonky na ploše...).
+function pushUnsupportedReason() {
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isIOS && !isStandalone) return 'Na iPhonu/iPadu push notifikace fungují jen v appce přidané na plochu - otevři appku přes ikonku na ploše, ne přes Safari.';
+  if (isIOS && isStandalone) return 'Push notifikace na iPhonu/iPadu fungují až od iOS 16.4. Zkontroluj si verzi iOS (Nastavení → Obecné → Informace o zařízení) a případně ji aktualizuj.';
+  if (!('serviceWorker' in navigator)) return 'Tenhle prohlížeč vůbec nepodporuje service workery (push notifikace) - zkus jiný/novější prohlížeč.';
+  return 'Tenhle prohlížeč push notifikace nepodporuje.';
+}
 async function pushGetPermissionState() {
   if (!('Notification' in window)) return 'unsupported';
   return Notification.permission; // 'default' | 'granted' | 'denied'

@@ -108,7 +108,18 @@ function hideSavedOverlay() {
 async function initPushButton(btnId, workerId) {
   var btn = document.getElementById(btnId);
   if (!btn) return;
-  if (!await pushIsSupported()) { btn.style.display = 'none'; return; }
+  if (!await pushIsSupported()) {
+    btn.style.display = 'none';
+    var reasonEl = document.getElementById(btnId + '-reason');
+    if (!reasonEl) {
+      reasonEl = document.createElement('div');
+      reasonEl.id = btnId + '-reason';
+      reasonEl.style.cssText = 'font-size:12px;color:var(--red,#c1666b);margin-top:6px;';
+      btn.parentNode.insertBefore(reasonEl, btn.nextSibling);
+    }
+    reasonEl.textContent = '⚠️ ' + (typeof pushUnsupportedReason === 'function' ? pushUnsupportedReason() : 'Tenhle prohlížeč/appka push notifikace nepodporuje.');
+    return;
+  }
   var perm = await pushGetPermissionState();
   function render() {
     if (perm === 'granted') { btn.textContent = '🔔 Oznámení zapnutá'; btn.disabled = true; btn.classList.remove('btn-primary'); btn.classList.add('btn-secondary'); }
