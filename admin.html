@@ -196,40 +196,8 @@
       <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveMuzikaDny()">💾 Uložit</button>
     </div>
 
-    <div class="card">
-      <div class="card-title">🏠 Přidat provozovnu</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Založí novou provozovnu (podnik/byty) - hned se objeví v Podnicích, i pro registraci nových brigádníků.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="form-group"><label class="form-label">Firma/skupina</label>
-          <select class="form-select" id="nv-business"></select>
-        </div>
-        <div class="form-group"><label class="form-label">Nebo nová firma/skupina</label><input class="form-input" id="nv-business-new" placeholder="název nové firmy (nech prázdné, když vybíráš výše)"/></div>
-        <div class="form-group"><label class="form-label">Název provozovny</label><input class="form-input" id="nv-nazev" placeholder="např. Bar Anděl"/></div>
-        <div class="form-group"><label class="form-label">Zkratka (slug, bez mezer)</label><input class="form-input" id="nv-slug" placeholder="např. andel"/></div>
-        <div class="form-group"><label class="form-label">Ikona (emoji)</label><input class="form-input" id="nv-ikona" placeholder="🏠" value="🏠"/></div>
-        <div class="form-group"><label class="form-label">Režim</label>
-          <select class="form-select" id="nv-rezim">
-            <option value="zaklad">Podnik (tržby/náklady/výplaty)</option>
-            <option value="byty">Byty/nájmy</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">Výchozí sazba (Kč/h)</label><input class="form-input" type="number" id="nv-sazba" value="180"/></div>
-      </div>
-      <button class="btn btn-primary" onclick="createVenueUi()">+ Založit provozovnu</button>
-      <div class="form-error" id="nv-err"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📍 Přidat stanoviště do provozovny</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Pro provozovny založené výše (ne pro Kosatku - tu uprav v sekci Stanoviště nahoře).</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="form-group"><label class="form-label">Provozovna</label><select class="form-select" id="nst-venue"></select></div>
-        <div class="form-group"><label class="form-label">Název stanoviště</label><input class="form-input" id="nst-label" placeholder="např. Bar"/></div>
-        <div class="form-group"><label class="form-label">Zkratka (slug)</label><input class="form-input" id="nst-slug" placeholder="např. bar"/></div>
-        <div class="form-group"><label class="form-label">Ikona (emoji)</label><input class="form-input" id="nst-ikona" placeholder="🧑‍💼" value="🧑‍💼"/></div>
-      </div>
-      <button class="btn btn-primary" onclick="createStanovisteUi()">+ Přidat stanoviště</button>
-      <div class="form-error" id="nst-err"></div>
+    <div class="card" style="background:#f0f8fc;border-color:#bfdbfe;">
+      <p style="font-size:12px;color:#1e40af;">🏠 Přidání nové provozovny nebo stanoviště v ní najdeš na <strong>Hlavním panelu</strong> (Podniky) → sekce "Podniky a jejich provozovny" - tahle Kosatka je jen jedna provozovna mezi ostatními, ne hlavní správa.</p>
     </div>
   </div>
 
@@ -1920,8 +1888,6 @@ function renderNastaveni(){
   renderSetPenalizace();
   renderSetMesice();
   renderSetMuzikaDny();
-  renderNvBusiness();
-  renderNstVenue();
 }
 
 async function saveHodinovaSazba(){
@@ -2039,51 +2005,8 @@ async function saveMuzikaDny(){
   alert('Uloženo.');
 }
 
-// -- nová provozovna / stanoviště (samoobslužné rozšiřování appky) --
-function renderNvBusiness(){
-  var sel = document.getElementById('nv-business');
-  sel.innerHTML = '<option value="">– vyber –</option>'+BUSINESSES.map(function(b){return '<option value="'+b.id+'">'+b.ikona+' '+b.nazev+'</option>';}).join('');
-}
-function renderNstVenue(){
-  var sel = document.getElementById('nst-venue');
-  sel.innerHTML = VENUES.filter(function(v){return v.rezim!=='kosatka';}).map(function(v){return '<option value="'+v.id+'">'+v.ikona+' '+v.nazev+'</option>';}).join('') || '<option value="">– zatím žádná provozovna –</option>';
-}
-async function createVenueUi(){
-  var err = document.getElementById('nv-err'); err.style.display='none';
-  var businessId = parseInt(document.getElementById('nv-business').value) || null;
-  var novaFirma = document.getElementById('nv-business-new').value.trim();
-  var nazev = document.getElementById('nv-nazev').value.trim();
-  var slug = document.getElementById('nv-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
-  var ikona = document.getElementById('nv-ikona').value.trim() || '🏠';
-  var rezim = document.getElementById('nv-rezim').value;
-  var sazba = parseFloat(document.getElementById('nv-sazba').value) || 180;
-  if (!nazev || !slug) { err.style.display='block'; err.textContent='Vyplň název i zkratku provozovny.'; return; }
-  if (!businessId && !novaFirma) { err.style.display='block'; err.textContent='Vyber existující firmu nebo napiš název nové.'; return; }
-  if (VENUES.some(function(v){return v.slug===slug;})) { err.style.display='block'; err.textContent='Tahle zkratka už existuje, zvol jinou.'; return; }
-  if (!businessId) {
-    var rb = await addBusiness(novaFirma, ikona);
-    if (!rb.ok) { err.style.display='block'; err.textContent='Nepovedlo se založit firmu, zkus to znovu.'; return; }
-    businessId = rb.row.id;
-  }
-  var rv = await addVenue(businessId, nazev, slug, ikona, rezim, sazba);
-  if (!rv.ok) { err.style.display='block'; err.textContent='Nepovedlo se založit provozovnu, zkus to znovu.'; return; }
-  document.getElementById('nv-nazev').value=''; document.getElementById('nv-slug').value=''; document.getElementById('nv-business-new').value='';
-  alert('Provozovna "'+nazev+'" založena! Objeví se v Podnicích a v registraci.');
-  renderNvBusiness(); renderNstVenue();
-}
-async function createStanovisteUi(){
-  var err = document.getElementById('nst-err'); err.style.display='none';
-  var venueId = parseInt(document.getElementById('nst-venue').value);
-  var label = document.getElementById('nst-label').value.trim();
-  var slug = document.getElementById('nst-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
-  var ikona = document.getElementById('nst-ikona').value.trim() || '🧑‍💼';
-  if (!venueId) { err.style.display='block'; err.textContent='Vyber provozovnu.'; return; }
-  if (!label || !slug) { err.style.display='block'; err.textContent='Vyplň název i zkratku stanoviště.'; return; }
-  var res = await addStanovisteRow(venueId, slug, label, ikona);
-  if (!res.ok) { err.style.display='block'; err.textContent='Nepovedlo se to založit, zkus to znovu.'; return; }
-  document.getElementById('nst-label').value=''; document.getElementById('nst-slug').value='';
-  alert('Stanoviště "'+label+'" přidáno.');
-}
+// Přidání provozovny/stanoviště se přesunulo na Hlavní panel (podniky.html) -
+// Kosatka je jen jedna provozovna mezi ostatními, nemá k tomu být speciální místo.
 </script>
 </body>
 </html>

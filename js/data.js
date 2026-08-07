@@ -1305,7 +1305,11 @@ function getZiskVenueMonth(venueId, year, month) {
   // U bytů/nájmů "tržby" = přijaté nájemné za daný měsíc (nemají klasické denní tržby jako podnik s obsluhou).
   var venue = getVenueById(venueId);
   if (venue && venue.rezim === 'byty') {
-    var mesice = month==='all' ? getSeasonMonths().map(function(m){return year+'-'+String(m).padStart(2,'0');}) : [year+'-'+String(month).padStart(2,'0')];
+    // 'all' = celý rok (byty/nájmy běží celoročně, ne jen sezónu jako Kosatka) - proto tu jede
+    // přes všech 12 měsíců, ne jen přes ROZPIS_MESICE (to je jen pro sezónní podniky).
+    var mesice = month==='all'
+      ? Array.from({length:12}, function(_,i){ return year+'-'+String(i+1).padStart(2,'0'); })
+      : [year+'-'+String(month).padStart(2,'0')];
     trzbySum += getBytyPlatbyForVenue(venueId).filter(function(p){ return mesice.indexOf(p.mesic)!==-1; }).reduce(function(s,p){ return s+p.castka; }, 0);
   }
   var naklady = getNakladyForVenueMonth(venueId, year, month);
