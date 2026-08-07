@@ -207,8 +207,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=3"></script>
-<script src="js/auth.js?v=3"></script>
+<script src="js/data.js?v=4"></script>
+<script src="js/auth.js?v=4"></script>
+<script src="js/ui.js?v=2"></script>
 <script>
 var venue = null;
 var stanoviste = [];
@@ -297,12 +298,12 @@ function renderShiftTable(){
 function buildMonthBtns(){
   var el = document.getElementById('trzby-month-btns');
   var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
-  el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===trzbyMonth?'btn-primary':'btn-secondary')+'" onclick="setTrzbyMonth('+x.m+',this)">'+x.l+'</button>';}).join('');
+  el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===trzbyMonth?'btn-primary':'btn-secondary')+'" onclick="setTrzbyMonth('+x.m+',this)">'+x.l+'</button>';}).join('')+
+    '<button type="button" class="btn btn-sm '+(trzbyMonth==='all'?'btn-primary':'btn-secondary')+'" onclick="setTrzbyMonth(\'all\',this)">📊 Celá sezóna</button>';
 }
 function setTrzbyMonth(m,btn){
   trzbyMonth=m;
-  document.querySelectorAll('#trzby-month-btns .btn').forEach(function(b){b.className='btn btn-sm btn-secondary';});
-  if(btn) btn.className='btn btn-sm btn-primary';
+  buildMonthBtns();
   renderTrzbyTable();
   renderNakladyAdmin();
   renderZisk();
@@ -333,7 +334,7 @@ function renderZisk(){
     '<div class="stat-box"><div class="stat-lbl">Čistý zisk</div><div class="stat-val" style="color:'+(z.zisk>=0?'var(--green)':'var(--red)')+';">'+z.zisk.toLocaleString('cs-CZ')+' Kč</div></div>';
 }
 function renderTrzbyTable(){
-  var days = getMonthDays(2026, trzbyMonth);
+  var days = getMonthDaysAny(2026, trzbyMonth);
   var html = '<thead><tr><th>Datum</th><th>Tržba</th></tr></thead><tbody>';
   var total = 0;
   days.forEach(function(d){
@@ -395,7 +396,8 @@ function renderBrigadnici(){
 }
 function renderStatistikyAdmin(){
   var monthNames=['','leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
-  document.getElementById('stat-month-label').textContent = monthNames[trzbyMonth]+' 2026';
+  var mesicLabel = trzbyMonth==='all' ? 'celá sezóna' : monthNames[trzbyMonth];
+  document.getElementById('stat-month-label').textContent = trzbyMonth==='all' ? 'Celá sezóna' : (mesicLabel+' 2026');
 
   var z = getZiskVenueMonth(venue.id, 2026, trzbyMonth);
   var workers = getWorkersForVenue(venue.id);
@@ -407,9 +409,9 @@ function renderStatistikyAdmin(){
   });
 
   var kpi = [
-    {lbl:'Tržby ('+monthNames[trzbyMonth]+')', val: z.trzby.toLocaleString('cs-CZ')+' Kč'},
-    {lbl:'Náklady ('+monthNames[trzbyMonth]+')', val: z.naklady.toLocaleString('cs-CZ')+' Kč'},
-    {lbl:'Čistý zisk ('+monthNames[trzbyMonth]+')', val: z.zisk.toLocaleString('cs-CZ')+' Kč'},
+    {lbl:'Tržby ('+mesicLabel+')', val: z.trzby.toLocaleString('cs-CZ')+' Kč'},
+    {lbl:'Náklady ('+mesicLabel+')', val: z.naklady.toLocaleString('cs-CZ')+' Kč'},
+    {lbl:'Čistý zisk ('+mesicLabel+')', val: z.zisk.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Odprac. hodin celkem', val: Math.round(totalHodiny)+'h'},
     {lbl:'Hrubé mzdy celkem', val: totalHruby.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Dluh na účtech celkem', val: totalDluh.toLocaleString('cs-CZ')+' Kč'},

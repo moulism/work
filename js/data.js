@@ -6,7 +6,31 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ====================================================
 
-const HODINOVA_SAZBA = 180;
+// ===================== EDGE FUNCTIONS / PUSH =====================
+// Sdílené tajemství pro interní admin edge function (admin-worker-account) - stejná
+// úroveň zabezpečení jako zbytek appky, co běží na veřejném anon klíči.
+const ADMIN_FN_SECRET = 'fd8884deeefd8a7009c3e748c03fc382eb66c2a3099fee3c';
+const EDGE_FN_BASE = SUPABASE_URL + '/functions/v1';
+// VAPID veřejný klíč pro web push - veřejný záměrně (stejné jako anon klíč), soukromý klíč
+// zůstává jen v Supabase (tabulka app_secrets, čitelná pouze přes service_role v edge funkcích).
+const VAPID_PUBLIC_KEY = 'BLdWNFQmj1r74vztRXgbFqaz-SCyM1osgiVKyRK4FqqHnzV_HbSu5Cr6MF8zG7hyG24WTxax6lWxf_6Xj8bjS70';
+
+async function callAdminFn(action, authUserId) {
+  try {
+    var res = await fetch(EDGE_FN_BASE + '/admin-worker-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action, authUserId: authUserId, secret: ADMIN_FN_SECRET })
+    });
+    var json = await res.json();
+    if (!res.ok) return { ok:false, error: json.error || ('HTTP '+res.status) };
+    return { ok:true, data: json };
+  } catch(e) {
+    return { ok:false, error:e };
+  }
+}
+
+var HODINOVA_SAZBA = 180;
 
 // Stanoviště — Restaurace = 200 Kč/h, ostatní = 180 Kč/h
 const STANOVISTE = [
@@ -353,6 +377,24 @@ function getMonthDays(year, month) {
   for (var d=1; d<=last; d++) days.push(year+'-'+String(month).padStart(2,'0')+'-'+String(d).padStart(2,'0'));
   return days;
 }
+// Který měsíc ze sezóny (ROZPIS_MESICE) odpovídá dnešnímu datu - pro výchozí výběr
+// v adminu (rozpis, statistiky, tržby...), ať appka po otevření rovnou ukáže "teď",
+// místo aby to bylo natvrdo na jeden konkrétní měsíc.
+function getCurrentSeasonMonth() {
+  var m = new Date().getMonth()+1;
+  var months = ROZPIS_MESICE.map(function(x){return x.m;});
+  return months.indexOf(m)!==-1 ? m : (months.length ? months[0] : m);
+}
+function getSeasonMonths() { return ROZPIS_MESICE.map(function(x){return x.m;}); }
+// month může být číslo (konkrétní měsíc) nebo řetězec 'all' (celá sezóna najednou).
+function getMonthDaysAny(year, month) {
+  if (month === 'all') {
+    var out = [];
+    getSeasonMonths().forEach(function(m){ out = out.concat(getMonthDays(year, m)); });
+    return out;
+  }
+  return getMonthDays(year, month);
+}
 function isWeekend(ds) {
   var p=ds.split('-'); var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
   return d.getDay()===0||d.getDay()===6;
@@ -375,6 +417,11 @@ function getStanoviste(id) { for (var i=0;i<STANOVISTE.length;i++) if(STANOVISTE
 function getNextId(arr) { var m=0; for(var i=0;i<arr.length;i++) if(arr[i].id>m) m=arr[i].id; return m+1; }
 
 function getSazba(mistoId, workerId) {
+  // Individuální sazba na brigádníkovi má vždycky přednost před sazbou stanoviště.
+  if (workerId) {
+    var w = getWorkerById(workerId);
+    if (w && w.sazba != null && w.sazba !== '' && !isNaN(w.sazba) && Number(w.sazba) > 0) return Number(w.sazba);
+  }
   var st = getStanoviste(mistoId);
   return (st && st.sazba) ? st.sazba : HODINOVA_SAZBA;
 }
@@ -486,6 +533,7 @@ async function submitTrzba(mistoId, datum, castka, workerId, poznamka) {
   return row;
 }
 function getTrzbyForMonth(year, month) {
+  if (month === 'all') return TRZBY.filter(function(t){return t.datum.indexOf(String(year)+'-')===0;});
   var prefix = year+'-'+String(month).padStart(2,'0');
   return TRZBY.filter(function(t){return t.datum.indexOf(prefix)===0;});
 }
@@ -935,6 +983,7 @@ function getAllProdejeWeeks(sklad) {
 
 // ===================== NAČTENÍ VŠECH DAT (rozšířeno o výplaty a sklad) =====================
 async function loadAll() {
+  await loadSettings(); // ať se hned na začátku načte případné admin nastavení (stanoviště, sazby, ...)
   try {
     var r = await db.from('schedule').select('*');
     if (r.error) throw r.error;
@@ -1186,6 +1235,13 @@ async function approveWorker(workerId, venueId, role) {
   if (updated.role === 'spravce' && venueId) {
     await setAdminVenues(workerId, [venueId]);
   }
+  // DŮLEŽITÉ: pokud se registroval e-mailem, Supabase Auth mu bez potvrzení e-mailu
+  // nedovolí přihlásit se, i když je tady "schváleno" - proto e-mail rovnou potvrdíme
+  // (přes edge funkci se service_role, to z prohlížeče s anon klíčem nejde).
+  if (w.auth_user_id) {
+    var confirmRes = await callAdminFn('confirm_email', w.auth_user_id);
+    if (!confirmRes.ok) console.error('Potvrzení e-mailu selhalo:', confirmRes.error);
+  }
   return { ok:true };
 }
 async function setAdminVenues(workerId, venueIds) {
@@ -1224,6 +1280,7 @@ function getNakladyForVenue(venueId) {
   return NAKLADY.filter(function(n){ return n.venue_id===venueId; }).sort(function(a,b){ return a.datum<b.datum?1:-1; });
 }
 function getNakladyForVenueMonth(venueId, year, month) {
+  if (month === 'all') return getNakladyForVenue(venueId).filter(function(n){ return (n.datum||'').indexOf(String(year)+'-')===0; });
   var prefix = year+'-'+String(month).padStart(2,'0');
   return getNakladyForVenue(venueId).filter(function(n){ return (n.datum||'').indexOf(prefix)===0; });
 }
@@ -1248,17 +1305,22 @@ function getZiskVenueMonth(venueId, year, month) {
   // U bytů/nájmů "tržby" = přijaté nájemné za daný měsíc (nemají klasické denní tržby jako podnik s obsluhou).
   var venue = getVenueById(venueId);
   if (venue && venue.rezim === 'byty') {
-    var mesic = year+'-'+String(month).padStart(2,'0');
-    trzbySum += getBytyPlatbyForVenue(venueId).filter(function(p){ return p.mesic===mesic; }).reduce(function(s,p){ return s+p.castka; }, 0);
+    var mesice = month==='all' ? getSeasonMonths().map(function(m){return year+'-'+String(m).padStart(2,'0');}) : [year+'-'+String(month).padStart(2,'0')];
+    trzbySum += getBytyPlatbyForVenue(venueId).filter(function(p){ return mesice.indexOf(p.mesic)!==-1; }).reduce(function(s,p){ return s+p.castka; }, 0);
   }
   var naklady = getNakladyForVenueMonth(venueId, year, month);
   var nakladySum = naklady.reduce(function(s,n){ return s+(n.castka||0); }, 0);
-  var prefix = year+'-'+String(month).padStart(2,'0');
-  var vyplatySum = VYPLATY.filter(function(v){ return v.venue_id===venueId && (v.datum||'').indexOf(prefix)===0; })
-    .reduce(function(s,v){ return s+(v.castka||0); }, 0);
+  var vyplatySum;
+  if (month==='all') {
+    vyplatySum = VYPLATY.filter(function(v){ return v.venue_id===venueId && (v.datum||'').indexOf(String(year)+'-')===0; }).reduce(function(s,v){ return s+(v.castka||0); }, 0);
+  } else {
+    var prefix = year+'-'+String(month).padStart(2,'0');
+    vyplatySum = VYPLATY.filter(function(v){ return v.venue_id===venueId && (v.datum||'').indexOf(prefix)===0; }).reduce(function(s,v){ return s+(v.castka||0); }, 0);
+  }
   return { trzby:trzbySum, naklady:nakladySum, vyplaty:vyplatySum, zisk: trzbySum - nakladySum - vyplatySum };
 }
 function getTrzbyForVenueMonth(venueId, year, month) {
+  if (month === 'all') return TRZBY.filter(function(t){return t.venue_id===venueId && t.datum.indexOf(String(year)+'-')===0;});
   var prefix = year+'-'+String(month).padStart(2,'0');
   return TRZBY.filter(function(t){return t.venue_id===venueId && t.datum.indexOf(prefix)===0;});
 }
@@ -1509,4 +1571,193 @@ async function ensureOpakovaneNaklady() {
   if (!toInsert.length) return;
   var res = await dbUpsert('naklady', toInsert);
   if (res.ok) NAKLADY = NAKLADY.concat(toInsert);
+}
+
+// ===================== NASTAVENÍ (konfigurace appky bez zásahu do kódu) =====================
+// Obecné klíč/hodnota úložiště (tabulka app_settings). Když je klíč v DB nastavený,
+// přebije odpovídající natvrdo napsanou konstantu v appce (STANOVISTE, PENALIZACE_DUVODY, ...).
+// Pokud DB nastavení chybí, appka normálně jede s výchozími hodnotami - nic se nerozbije.
+var APP_SETTINGS = {};
+async function loadSettings() {
+  try {
+    var r = await db.from('app_settings').select('*');
+    if (r.error) throw r.error;
+    APP_SETTINGS = {};
+    (r.data||[]).forEach(function(row){ APP_SETTINGS[row.key] = row.value; });
+    applySettingsOverrides();
+    return { ok:true };
+  } catch(e) {
+    console.error('Načtení nastavení selhalo:', e);
+    return { ok:false, error:e };
+  }
+}
+async function saveSetting(key, value) {
+  var row = { key:key, value:value, updated_at:new Date().toISOString() };
+  try {
+    var res = await db.from('app_settings').upsert([row]);
+    if (res.error) return { ok:false, error:res.error };
+    APP_SETTINGS[key] = value;
+    applySettingsOverrides();
+    return { ok:true };
+  } catch(e) { return { ok:false, error:e }; }
+}
+function applySettingsOverrides() {
+  if (Array.isArray(APP_SETTINGS.kosatka_stanoviste) && APP_SETTINGS.kosatka_stanoviste.length) {
+    STANOVISTE.length = 0;
+    APP_SETTINGS.kosatka_stanoviste.forEach(function(s){ STANOVISTE.push(s); });
+  }
+  if (Array.isArray(APP_SETTINGS.penalizace_duvody) && APP_SETTINGS.penalizace_duvody.length) {
+    PENALIZACE_DUVODY.length = 0;
+    APP_SETTINGS.penalizace_duvody.forEach(function(d){ PENALIZACE_DUVODY.push(d); });
+  }
+  if (Array.isArray(APP_SETTINGS.rozpis_mesice) && APP_SETTINGS.rozpis_mesice.length) {
+    ROZPIS_MESICE.length = 0;
+    APP_SETTINGS.rozpis_mesice.forEach(function(m){ ROZPIS_MESICE.push(m); });
+  }
+  if (Array.isArray(APP_SETTINGS.muzika_dny)) {
+    MUZIKA_DNY.length = 0;
+    APP_SETTINGS.muzika_dny.forEach(function(d){ MUZIKA_DNY.push(d); });
+  }
+  if (typeof APP_SETTINGS.hodinova_sazba === 'number' && APP_SETTINGS.hodinova_sazba > 0) {
+    HODINOVA_SAZBA = APP_SETTINGS.hodinova_sazba;
+  }
+}
+
+// ===================== SMAZÁNÍ CELÉHO ÚČTU BRIGÁDNÍKA (jedno tlačítko) =====================
+// Smaže brigádníka úplně ze všeho - rozpis, účty, výplaty, tržby, penalizace, docházka,
+// objednávky, sklad, dostupnost, VLOG, přiřazení provozoven i přihlašovací (Supabase Auth) účet.
+// Řádky, kde vystupuje jen jako "kdo tohle udělal" (ucty.odepsano_by/smazano_by, pokladna,
+// náklady zapsané jinému podniku) se nemažou, jen se od něj odpojí, ať nezmizí cizí historie.
+async function deleteWorkerCascade(workerId) {
+  var w = getWorkerById(workerId);
+  if (!w) return { ok:false, error:'Brigádník nenalezen' };
+  try {
+    // fotky ve storage
+    if (w.foto_url) {
+      var path = vlogStoragePathFromUrl(w.foto_url) || (function(){ var m=w.foto_url.match(/\/avatars\/(.+)$/); return m?m[1]:null; })();
+      if (path) { try { await db.storage.from('avatars').remove([path]); } catch(e){} }
+    }
+    var vlogy = VLOG_POSTS.filter(function(p){ return p.worker_id===workerId; });
+    for (var i=0;i<vlogy.length;i++) {
+      if (vlogy[i].foto_url) {
+        var vp = vlogStoragePathFromUrl(vlogy[i].foto_url);
+        if (vp) { try { await db.storage.from('avatars').remove([vp]); } catch(e){} }
+      }
+    }
+
+    // odpojit (ne smazat) cizí odkazy
+    await db.from('ucty').update({ odepsano_by:null }).eq('odepsano_by', workerId);
+    await db.from('ucty').update({ smazano_by:null }).eq('smazano_by', workerId);
+    await db.from('pokladna').update({ worker_id:null }).eq('worker_id', workerId);
+    await db.from('naklady').update({ workerId:null }).eq('workerId', workerId);
+
+    // smazat vlastní řádky
+    var vlastni = [
+      ['worker_venues','worker_id'], ['worker_dostupnost','worker_id'], ['admin_venues','worker_id'],
+      ['vlog_posts','worker_id'], ['ucty','workerId'], ['schedule','workerId'], ['uklid_log','workerId'],
+      ['penalizace','workerId'], ['pracovni_dny','workerId'], ['vyplaty','workerId'], ['trzby','workerId'],
+      ['objednavky','workerId'], ['sklad_pohyby','workerId'], ['sklad_inventury','workerId'],
+      ['push_subscriptions','worker_id']
+    ];
+    for (var j=0;j<vlastni.length;j++) {
+      await db.from(vlastni[j][0]).delete().eq(vlastni[j][1], workerId);
+    }
+
+    // Supabase Auth identita (pokud měl e-mailové přihlášení)
+    if (w.auth_user_id) { try { await callAdminFn('delete_auth_user', w.auth_user_id); } catch(e){} }
+
+    // nakonec samotný profil
+    var resW = await db.from('workers').delete().eq('id', workerId);
+    if (resW && resW.error) return { ok:false, error:resW.error };
+  } catch(e) {
+    return { ok:false, error:e };
+  }
+
+  WORKERS = WORKERS.filter(function(x){ return x.id!==workerId; });
+  SCHEDULE = SCHEDULE.filter(function(x){ return x.workerId!==workerId; });
+  UCTY_POLOZKY = UCTY_POLOZKY.filter(function(x){ return x.workerId!==workerId; });
+  VYPLATY = VYPLATY.filter(function(x){ return x.workerId!==workerId; });
+  TRZBY = TRZBY.filter(function(x){ return x.workerId!==workerId; });
+  PENALIZACE = PENALIZACE.filter(function(x){ return x.workerId!==workerId; });
+  PRACOVNI_DNY = PRACOVNI_DNY.filter(function(x){ return x.workerId!==workerId; });
+  UKLID_LOG = UKLID_LOG.filter(function(x){ return x.workerId!==workerId; });
+  VLOG_POSTS = VLOG_POSTS.filter(function(x){ return x.worker_id!==workerId; });
+  ADMIN_VENUES = ADMIN_VENUES.filter(function(x){ return x.worker_id!==workerId; });
+  WORKER_VENUES = WORKER_VENUES.filter(function(x){ return x.worker_id!==workerId; });
+  return { ok:true };
+}
+
+// ===================== PUSH NOTIFIKACE (web push) =====================
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(base64), out = new Uint8Array(raw.length);
+  for (var i=0;i<raw.length;i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+async function pushIsSupported() {
+  return ('serviceWorker' in navigator) && ('PushManager' in window);
+}
+async function pushGetPermissionState() {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission; // 'default' | 'granted' | 'denied'
+}
+// Zaregistruje service worker (pokud ještě není) a přihlásí zařízení k push notifikacím pro daného brigádníka.
+async function subscribeToPush(workerId) {
+  if (!await pushIsSupported()) return { ok:false, error:'Tenhle prohlížeč push notifikace nepodporuje.' };
+  try {
+    var reg = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') return { ok:false, error:'Notifikace nejsou povolené.' };
+    var sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+    }
+    var json = sub.toJSON();
+    var row = { worker_id:workerId, endpoint:json.endpoint, p256dh:json.keys.p256dh, auth:json.keys.auth };
+    var res = await db.from('push_subscriptions').upsert([row], { onConflict:'endpoint' });
+    if (res.error) return { ok:false, error:res.error };
+    return { ok:true };
+  } catch(e) {
+    return { ok:false, error:e };
+  }
+}
+async function unsubscribeFromPush() {
+  try {
+    if (!('serviceWorker' in navigator)) return { ok:true };
+    var reg = await navigator.serviceWorker.getRegistration('sw.js');
+    if (!reg) return { ok:true };
+    var sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await db.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      await sub.unsubscribe();
+    }
+    return { ok:true };
+  } catch(e) { return { ok:false, error:e }; }
+}
+
+// ===================== SAMOOBSLUŽNÁ SPRÁVA (nová provozovna / stanoviště) =====================
+async function addBusiness(nazev, ikona) {
+  var row = { nazev:nazev, ikona:ikona||'🏠', poradi: BUSINESSES.length };
+  var res = await db.from('businesses').insert([row]).select();
+  if (res.error) return { ok:false, error:res.error };
+  BUSINESSES.push(res.data[0]);
+  return { ok:true, row:res.data[0] };
+}
+async function addVenue(businessId, nazev, slug, ikona, rezim, sazba) {
+  var row = { business_id:businessId, nazev:nazev, slug:slug, ikona:ikona||'🏠', rezim:rezim||'zaklad', sazba_hodinova:sazba||180, poradi: VENUES.length };
+  var res = await db.from('venues').insert([row]).select();
+  if (res.error) return { ok:false, error:res.error };
+  VENUES.push(res.data[0]);
+  return { ok:true, row:res.data[0] };
+}
+async function addStanovisteRow(venueId, slug, label, ikona) {
+  var poradi = getStanovisteZaklad(venueId).length;
+  var row = { venue_id:venueId, slug:slug, label:label, ikona:ikona||'🧑‍💼', poradi:poradi };
+  var res = await db.from('stanoviste').insert([row]).select();
+  if (res.error) return { ok:false, error:res.error };
+  if (!STANOVISTE_ZAKLAD[venueId]) STANOVISTE_ZAKLAD[venueId]=[];
+  STANOVISTE_ZAKLAD[venueId].push(res.data[0]);
+  return { ok:true, row:res.data[0] };
 }

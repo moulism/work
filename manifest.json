@@ -1,0 +1,12 @@
+{
+  "name": "Kosatka",
+  "short_name": "Kosatka",
+  "start_url": "./app.html",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#2b7a9e",
+  "icons": [
+    { "src": "rozpis.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "rozpis.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

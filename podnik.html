@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Portál</title>
   <link rel="stylesheet" href="css/style.css"/>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#2b7a9e"/>
 </head>
 <body>
 
@@ -60,6 +62,7 @@
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Přišlo Makro, pivo, zásoby...? Zapiš, kolik to stálo.</p>
       <div class="form-group"><label class="form-label">Co to bylo</label><input type="text" class="form-input" id="nakl-popis" placeholder="např. Makro - pivo a limo"/></div>
       <div class="form-group"><label class="form-label">Kolik to stálo</label><input type="number" class="form-input" id="nakl-castka" placeholder="Kč" style="max-width:160px;"/></div>
+      <div class="form-group"><label class="form-label">Datum</label><input type="date" class="form-input" id="nakl-datum" style="max-width:200px;"/></div>
       <button class="btn btn-primary" onclick="ulozitNaklad()">💾 Uložit náklad</button>
       <div id="nakl-msg" style="display:none;margin-top:10px;" class="alert-box alert-blue">✅ Uloženo!</div>
     </div>
@@ -148,6 +151,11 @@
       </div>
     </div>
     <div class="card">
+      <div class="card-title">🔔 Oznámení</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Zapni si push notifikace do telefonu - dáme ti vědět, když si zapomeneš dopsat tržbu nebo směnu. Na iPhonu nejdřív appku přidej na plochu (Sdílet → Přidat na plochu), pak teprve jde zapnout.</p>
+      <button class="btn btn-primary" id="btn-push" style="width:100%">🔔 Povolit oznámení</button>
+    </div>
+    <div class="card">
       <div class="card-title">📅 Moje dostupnost</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Klikni na dny, kdy můžeš pracovat. Podle tohohle ti admin doplňuje rozpis.</p>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem;" id="prof-month-btns"></div>
@@ -161,8 +169,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=3"></script>
-<script src="js/auth.js?v=3"></script>
+<script src="js/data.js?v=4"></script>
+<script src="js/auth.js?v=4"></script>
+<script src="js/ui.js?v=2"></script>
 <script>
 var currentUser = null;
 var currentVenue = null;
@@ -224,6 +233,8 @@ function init(){
   renderShifts();
   var d = document.getElementById('pd-datum');
   if (!d.value) d.value = todayStr();
+  var nd = document.getElementById('nakl-datum');
+  if (nd && !nd.value) nd.value = todayStr();
   renderPracovniHistorie();
 }
 
@@ -558,6 +569,7 @@ function renderProfil(){
     b.classList.toggle('sel', profSel.has(b.dataset.key));
   });
   updProfCount();
+  if (typeof initPushButton === 'function') initPushButton('btn-push', currentUser.id);
 }
 function renderProfFoto(w){
   var img = document.getElementById('prof-foto'), ph = document.getElementById('prof-foto-placeholder');
@@ -639,11 +651,14 @@ async function profSaveDostupnost(){
 async function ulozitNaklad(){
   var popis = document.getElementById('nakl-popis').value.trim();
   var castka = parseFloat(document.getElementById('nakl-castka').value);
+  var datum = document.getElementById('nakl-datum').value || todayStr();
   if (!popis || isNaN(castka) || castka<=0) { alert('Vyplň prosím popis a částku.'); return; }
-  var res = await submitNaklad(currentVenue.id, currentUser.id, todayStr(), popis, castka);
+  var res = await submitNaklad(currentVenue.id, currentUser.id, datum, popis, castka);
   if (!res.ok) { alert('Nepovedlo se uložit, zkus to znovu. ('+(res.error||'')+')'); return; }
   document.getElementById('nakl-popis').value = '';
   document.getElementById('nakl-castka').value = '';
+  document.getElementById('nakl-datum').value = todayStr();
+  if (typeof showSavedOverlay==='function') showSavedOverlay('Uloženo', popis);
   var msg=document.getElementById('nakl-msg'); msg.style.display='block'; setTimeout(function(){msg.style.display='none';},2500);
 }
 </script>

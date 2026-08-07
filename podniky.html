@@ -55,10 +55,11 @@
     <div class="dash-card" style="margin-top:14px;">
       <div class="dc-name">🧾 Zapsat náklad / fakturu</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Makro, CocaCola, rozvoz, elektřina... - cokoliv, co jde do nákladů podniku.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
         <div class="form-group" style="margin:0;"><label class="form-label">Provozovna</label><select class="form-select" id="hp-nakl-venue"></select></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Co to bylo</label><input class="form-input" id="hp-nakl-popis" placeholder="např. Makro - pivo a limo"/></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Kolik to stálo</label><input type="number" class="form-input" id="hp-nakl-castka" placeholder="Kč"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Datum</label><input type="date" class="form-input" id="hp-nakl-datum"/></div>
       </div>
       <button class="btn btn-primary" style="margin-top:10px;" onclick="hpZapsatNaklad()">Uložit</button>
       <div id="hp-nakl-msg" style="display:none;margin-top:8px;" class="form-error"></div>
@@ -135,8 +136,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=3"></script>
-<script src="js/auth.js?v=3"></script>
+<script src="js/data.js?v=4"></script>
+<script src="js/auth.js?v=4"></script>
+<script src="js/ui.js?v=2"></script>
 <script>
 var currentUser = null;
 var myVenues = [];
@@ -161,14 +163,16 @@ async function hpZapsatNaklad(){
   var venueId = parseInt(document.getElementById('hp-nakl-venue').value);
   var popis = document.getElementById('hp-nakl-popis').value.trim();
   var castka = parseFloat(document.getElementById('hp-nakl-castka').value);
+  var datum = document.getElementById('hp-nakl-datum').value || todayStr();
   var msg = document.getElementById('hp-nakl-msg');
   msg.style.display = 'none';
   if (!venueId) { msg.style.display='block'; msg.textContent='Vyber provozovnu.'; return; }
   if (!popis || isNaN(castka) || castka<=0) { msg.style.display='block'; msg.textContent='Vyplň popis a částku.'; return; }
-  var res = await submitNaklad(venueId, currentUser.id, todayStr(), popis, castka);
+  var res = await submitNaklad(venueId, currentUser.id, datum, popis, castka);
   if (!res.ok) { msg.style.display='block'; msg.textContent = 'Nepovedlo se to uložit: '+(res.error && res.error.message ? res.error.message : (typeof res.error==='string'?res.error:'zkus to znovu.')); console.error('hpZapsatNaklad selhalo:', res.error); return; }
   document.getElementById('hp-nakl-popis').value = '';
   document.getElementById('hp-nakl-castka').value = '';
+  document.getElementById('hp-nakl-datum').value = todayStr();
   msg.style.display='block'; msg.style.color='var(--green)'; msg.textContent='✅ Uloženo.';
   setTimeout(function(){ msg.style.display='none'; msg.style.color=''; }, 2500);
   renderDash();
@@ -318,6 +322,8 @@ function renderDash(){
   document.getElementById('hp-nakl-venue').innerHTML = myVenues.map(function(v){
     return '<option value="'+v.id+'">'+v.ikona+' '+v.nazev+'</option>';
   }).join('') || '<option value="">– žádná provozovna –</option>';
+  var ndEl = document.getElementById('hp-nakl-datum');
+  if (ndEl && !ndEl.value) ndEl.value = todayStr();
   document.getElementById('hp-op-venue').innerHTML = myVenues.map(function(v){
     return '<option value="'+v.id+'">'+v.ikona+' '+v.nazev+'</option>';
   }).join('') || '<option value="">– žádná provozovna –</option>';

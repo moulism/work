@@ -529,3 +529,32 @@ textarea.form-input {
   /* Nechat poslední kartu na stránce "dýchat" nad domácím indikátorem/spodní lištou prohlížeče */
   .page { padding: 1rem; padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0)); }
 }
+
+/* ===================== FULLSCREEN "ULOŽENO" OVERLAY ===================== */
+.saved-overlay {
+  position: fixed; inset: 0; z-index: 100000;
+  background: rgba(20, 30, 25, 0.72);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease;
+}
+.saved-overlay.show { opacity: 1; pointer-events: auto; }
+.saved-overlay-box {
+  background: var(--white, #fff); border-radius: 20px;
+  padding: 2.2rem 2.4rem; text-align: center; max-width: 320px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  transform: scale(.85); transition: transform .18s ease;
+}
+.saved-overlay.show .saved-overlay-box { transform: scale(1); }
+.saved-overlay-check {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--green, #3B6D11); color: #fff;
+  font-size: 34px; line-height: 64px; margin: 0 auto 14px;
+}
+.saved-overlay-text { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.saved-overlay-sub { font-size: 13px; color: var(--text-muted, #777); }
+.saved-overlay-hint { font-size: 11px; color: var(--text-muted, #999); margin-top: 14px; }
+
+/* ===================== NASTAVENÍ (admin) ===================== */
+.settings-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:0.5px solid var(--sand-dark); flex-wrap:wrap; }
+.settings-row input { flex:1; min-width:80px; }

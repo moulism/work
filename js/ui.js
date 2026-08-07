@@ -76,3 +76,51 @@ function initSearchSelect(opts) {
 
   return { render: render, pick: pick, clear: clear };
 }
+
+// ===================== FULLSCREEN "ULOŽENO" OVERLAY =====================
+// Po uložení důležité věci (směna, tržba, ...) přes celou obrazovku na chvíli
+// potvrdí, že se to fakt uložilo - na mobilu se slabým signálem člověk jinak
+// neví jistě, jestli se zápis povedl, a radši si to zapíše ještě jednou.
+function showSavedOverlay(text, sub) {
+  var ov = document.getElementById('saved-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'saved-overlay';
+    ov.className = 'saved-overlay';
+    ov.innerHTML = '<div class="saved-overlay-box"><div class="saved-overlay-check">✓</div><div class="saved-overlay-text"></div><div class="saved-overlay-sub"></div><div class="saved-overlay-hint">Klepnutím zavřeš</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(){ hideSavedOverlay(); });
+  }
+  ov.querySelector('.saved-overlay-text').textContent = text || 'Uloženo';
+  ov.querySelector('.saved-overlay-sub').textContent = sub || '';
+  ov.classList.add('show');
+  clearTimeout(ov._hideTimer);
+  ov._hideTimer = setTimeout(hideSavedOverlay, 1600);
+}
+function hideSavedOverlay() {
+  var ov = document.getElementById('saved-overlay');
+  if (ov) ov.classList.remove('show');
+}
+
+// ===================== PUSH NOTIFIKACE - UI POMŮCKA =====================
+// Zobrazí/aktualizuje tlačítko "Povolit oznámení" podle aktuálního stavu.
+// btnId = id tlačítka, workerId = pro koho se přihlašuje.
+async function initPushButton(btnId, workerId) {
+  var btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (!await pushIsSupported()) { btn.style.display = 'none'; return; }
+  var perm = await pushGetPermissionState();
+  function render() {
+    if (perm === 'granted') { btn.textContent = '🔔 Oznámení zapnutá'; btn.disabled = true; btn.classList.remove('btn-primary'); btn.classList.add('btn-secondary'); }
+    else if (perm === 'denied') { btn.textContent = '🔕 Oznámení zablokovaná v prohlížeči'; btn.disabled = true; }
+    else { btn.textContent = '🔔 Povolit oznámení'; btn.disabled = false; }
+  }
+  render();
+  btn.onclick = async function() {
+    btn.disabled = true; btn.textContent = 'Zapínám...';
+    var res = await subscribeToPush(workerId);
+    perm = await pushGetPermissionState();
+    render();
+    if (!res.ok) alert('Nepovedlo se zapnout oznámení: ' + (res.error && res.error.message ? res.error.message : res.error));
+  };
+}
