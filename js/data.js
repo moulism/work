@@ -279,18 +279,23 @@ function getDostupnostPoznamkaVenue(workerId, venueId) {
   var row = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
   return row ? (row.poznamka || '') : '';
 }
-async function saveMyDostupnostVenue(workerId, venueId, dates, poznamka) {
+// Volba směny PRO KAŽDÝ DEN zvlášť (jen u Anděl provozoven) - {datum: text presetu}
+function getSmenyVenue(workerId, venueId) {
+  var row = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
+  return row ? (row.smeny || {}) : {};
+}
+async function saveMyDostupnostVenue(workerId, venueId, dates, poznamka, smeny) {
   var existing = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
   try {
     if (existing) {
       existing.dny = dates;
-      if (poznamka!==undefined) existing.poznamka = poznamka;
       var upd = { dny: dates };
-      if (poznamka!==undefined) upd.poznamka = poznamka;
+      if (poznamka!==undefined) { existing.poznamka = poznamka; upd.poznamka = poznamka; }
+      if (smeny!==undefined) { existing.smeny = smeny; upd.smeny = smeny; }
       var res = await db.from('worker_dostupnost').update(upd).eq('id', existing.id);
       if (res.error) return { ok:false, error:res.error };
     } else {
-      var row = { worker_id:workerId, venue_id:venueId, dny:dates, poznamka:poznamka||null };
+      var row = { worker_id:workerId, venue_id:venueId, dny:dates, poznamka:poznamka||null, smeny:smeny||{} };
       var res2 = await db.from('worker_dostupnost').insert([row]).select();
       if (res2.error) return { ok:false, error:res2.error };
       WORKER_DOSTUPNOST.push(res2.data[0]);
@@ -300,8 +305,8 @@ async function saveMyDostupnostVenue(workerId, venueId, dates, poznamka) {
     return { ok:false, error:'Nepovedlo se uložit (výpadek připojení?). Zkus to prosím znovu.' };
   }
 }
-// Přednastavené možnosti směn, které appka nabízí brigádníkům v podnicích Anděl při
-// zapisování dostupnosti (klikem se text přidá do poznámky, nemusí se psát ručně).
+// Přednastavené možnosti směn, které appka nabízí brigádníkům v podnicích Anděl -
+// u KAŽDÉHO označeného dne v kalendáři si vyberou, která z nich pro ten den platí.
 var ANDEL_SMENY_PRESETY = [
   '9:00–17:00',
   '15:00–00:00 (pátek+sobota 15:00–01:00)',
