@@ -644,7 +644,11 @@ function getVyplatyForWorker(workerId) {
 
 // Uloží novou výplatu - "dny" je pole konkrétních dat, které tato výplata pokrývá
 async function addVyplata(workerId, castka, poznamka, dny, adminId) {
-  var v = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamka||'', dny:dny||[] };
+  // DŮLEŽITÉ: venue_id musí být nastaveno stejně jako u submitTrzba(), jinak tahle výplata
+  // "zmizí" z venue-scoped přehledů (getZiskVenueMonth na Hlavním panelu v podniky.html) -
+  // přesně tohle byl bug, kdy se srpnové výplaty nepropsaly na hlavní stránku.
+  var kv = (typeof getVenueBySlug==='function') ? getVenueBySlug('kosatka') : null;
+  var v = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamka||'', dny:dny||[], venue_id: kv ? kv.id : null };
   var res = await dbUpsert('vyplaty', [v]);
   if (!res.ok) return { ok:false, error:res.error };
   VYPLATY.push(v);
