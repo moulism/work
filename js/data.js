@@ -274,15 +274,23 @@ function getDostupnostVenue(workerId, venueId) {
   var row = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
   return row ? (row.dny || []) : [];
 }
-async function saveMyDostupnostVenue(workerId, venueId, dates) {
+// Volná poznámka k dostupnosti ("od kolika do kolika můžeš" apod.)
+function getDostupnostPoznamkaVenue(workerId, venueId) {
+  var row = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
+  return row ? (row.poznamka || '') : '';
+}
+async function saveMyDostupnostVenue(workerId, venueId, dates, poznamka) {
   var existing = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
   try {
     if (existing) {
       existing.dny = dates;
-      var res = await db.from('worker_dostupnost').update({ dny: dates }).eq('id', existing.id);
+      if (poznamka!==undefined) existing.poznamka = poznamka;
+      var upd = { dny: dates };
+      if (poznamka!==undefined) upd.poznamka = poznamka;
+      var res = await db.from('worker_dostupnost').update(upd).eq('id', existing.id);
       if (res.error) return { ok:false, error:res.error };
     } else {
-      var row = { worker_id:workerId, venue_id:venueId, dny:dates };
+      var row = { worker_id:workerId, venue_id:venueId, dny:dates, poznamka:poznamka||null };
       var res2 = await db.from('worker_dostupnost').insert([row]).select();
       if (res2.error) return { ok:false, error:res2.error };
       WORKER_DOSTUPNOST.push(res2.data[0]);
@@ -291,6 +299,19 @@ async function saveMyDostupnostVenue(workerId, venueId, dates) {
   } catch(e) {
     return { ok:false, error:'Nepovedlo se uložit (výpadek připojení?). Zkus to prosím znovu.' };
   }
+}
+// Přednastavené možnosti směn, které appka nabízí brigádníkům v podnicích Anděl při
+// zapisování dostupnosti (klikem se text přidá do poznámky, nemusí se psát ručně).
+var ANDEL_SMENY_PRESETY = [
+  '9:00–17:00',
+  '15:00–00:00 (pátek+sobota 15:00–01:00)',
+  'výpomoc jen víkend 19:00–01:00',
+  'brigádníci 17:00 (pátek+sobota 17:00–00:00)'
+];
+function isAndelBusiness(venue) {
+  if (!venue) return false;
+  var b = BUSINESSES.find(function(x){ return x.id===venue.business_id; });
+  return !!(b && b.slug==='andel');
 }
 
 // Admin rovnou založí nového brigádníka jménem a PINem (bez registrace přes
@@ -1077,14 +1098,25 @@ function getMyShiftsVenue(workerId, venueId) {
 function getScheduleForVenue(venueId) {
   return SCHEDULE.filter(function(s){return s.venue_id===venueId;});
 }
-async function addShiftVenue(venueId, workerId, stanovisteId, datum) {
+async function addShiftVenue(venueId, workerId, stanovisteId, datum, poznamka) {
   var existing = SCHEDULE.find(function(s){return s.venue_id===venueId && s.workerId===workerId && s.datum===datum && s.mistoId===stanovisteId;});
   if (existing) return { ok:true, row:existing };
-  var row = { id:getNextId(SCHEDULE), workerId:workerId, datum:datum, mistoId:stanovisteId, venue_id:venueId };
+  var row = { id:getNextId(SCHEDULE), workerId:workerId, datum:datum, mistoId:stanovisteId, venue_id:venueId, poznamka:poznamka||null };
   SCHEDULE.push(row);
   var res = await saveSchedule();
   if (!res.ok) { SCHEDULE = SCHEDULE.filter(function(s){return s.id!==row.id;}); return res; }
   return { ok:true, row:row };
+}
+// Poznámka ke směně - dopsaná dodatečně (např. "přines vlastní reproduktor", poznámky k Dvorku apod.)
+async function setShiftPoznamka(id, poznamka) {
+  var s = SCHEDULE.find(function(x){return x.id===id;});
+  if (!s) return { ok:false, error:'Směna nenalezena' };
+  s.poznamka = poznamka||null;
+  try {
+    var res = await db.from('schedule').update({ poznamka:s.poznamka }).eq('id', id);
+    if (res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  return { ok:true };
 }
 async function delShiftVenue(id) {
   var predchozi = SCHEDULE;
@@ -1220,7 +1252,34 @@ async function setObjednavkaSplneno(id, splneno) {
 
 function getWorkersForVenue(venueId) {
   var secondaryIds = WORKER_VENUES.filter(function(wv){return wv.venue_id===venueId;}).map(function(wv){return wv.worker_id;});
-  return WORKERS.filter(function(w){return w.role==='user' && (w.venue_id===venueId || secondaryIds.indexOf(w.id)!==-1);});
+  return WORKERS.filter(function(w){return w.role==='user' && w.aktivni!==false && (w.venue_id===venueId || secondaryIds.indexOf(w.id)!==-1);});
+}
+// ── Editace brigádníka z Hlavního panelu (kód/PIN, domovská provozovna, odebrání) ──
+async function updateWorkerPin(workerId, novyPin) {
+  try {
+    var res = await db.from('workers').update({ pin:novyPin }).eq('id', workerId);
+    if (res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  var w = getWorkerById(workerId); if (w) w.pin = novyPin;
+  return { ok:true };
+}
+async function updateWorkerHomeVenue(workerId, venueId) {
+  try {
+    var res = await db.from('workers').update({ venue_id:venueId }).eq('id', workerId);
+    if (res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  var w = getWorkerById(workerId); if (w) w.venue_id = venueId;
+  return { ok:true };
+}
+// "Odebrání" brigádníka = měkké smazání (aktivni=false). Historie směn/mezd/tržeb
+// zůstává zachovaná pro účetnictví, jen zmizí ze seznamů aktivních lidí a nejde se jím přihlásit.
+async function removeWorkerSoft(workerId) {
+  try {
+    var res = await db.from('workers').update({ aktivni:false }).eq('id', workerId);
+    if (res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  var w = getWorkerById(workerId); if (w) w.aktivni = false;
+  return { ok:true };
 }
 function getPendingWorkers() {
   return WORKERS.filter(function(w){return w.schvaleno===false;});
@@ -1265,17 +1324,24 @@ function getUctyForWorkerVenue(workerId, venueId) {
 function getTrzbaVenue(venueId, stanovisteId, datum) {
   return TRZBY.find(function(t){return t.venue_id===venueId && t.mistoId===stanovisteId && t.datum===datum;}) || null;
 }
-async function submitTrzbaVenue(venueId, stanovisteId, datum, castka, workerId, poznamka) {
+async function submitTrzbaVenue(venueId, stanovisteId, datum, castka, workerId, poznamka, hotove, kartou) {
   var blocked = requireLoadOk('trzby'); if (blocked) return blocked;
   var existing = getTrzbaVenue(venueId, stanovisteId, datum);
+  var row;
   if (existing) {
     existing.castka=castka; existing.workerId=workerId; existing.poznamka=poznamka||'';
+    if (hotove!==undefined) existing.hotove = hotove;
+    if (kartou!==undefined) existing.kartou = kartou;
     await db.from('trzby').upsert([existing]);
-    return existing;
+    row = existing;
+  } else {
+    row = { id:getNextId(TRZBY), mistoId:stanovisteId, datum:datum, castka:castka, workerId:workerId||null, poznamka:poznamka||'', venue_id:venueId, hotove:hotove!==undefined?hotove:null, kartou:kartou!==undefined?kartou:null };
+    TRZBY.push(row);
+    await db.from('trzby').upsert([row]);
   }
-  var row = { id:getNextId(TRZBY), mistoId:stanovisteId, datum:datum, castka:castka, workerId:workerId||null, poznamka:poznamka||'', venue_id:venueId };
-  TRZBY.push(row);
-  await db.from('trzby').upsert([row]);
+  if (hotove!==undefined && hotove!==null) {
+    await syncPokladnaZTrzby(venueId, stanovisteId, datum, hotove, workerId);
+  }
   return row;
 }
 
@@ -1529,6 +1595,24 @@ async function addPokladnaZapis(venueId, typ, castka, popis, workerId) {
   if (!res.ok) return res;
   POKLADNA.push(row);
   return { ok:true, row:row };
+}
+// Automatický propis hotovostní části tržby do pokladní knihy (safu) provozovny -
+// brigádník zapíše kolik bylo z tržby hotově/kartou/celkem, hotová část se sama
+// objeví jako "příjem" v pokladně, ať tam správce jen kouká, kolik má v safu.
+var POKLADNA_AUTO_PREFIX = 'Tržba (auto)';
+async function syncPokladnaZTrzby(venueId, stanovisteId, datum, hotove, workerId) {
+  var marker = POKLADNA_AUTO_PREFIX+' · '+stanovisteId+' · '+datum;
+  var existing = POKLADNA.find(function(p){ return p.venue_id===venueId && p.popis===marker; });
+  if (existing) {
+    existing.castka = hotove;
+    if (workerId) existing.worker_id = workerId;
+    try { await db.from('pokladna').update({ castka:hotove, worker_id:existing.worker_id||null }).eq('id', existing.id); } catch(e) {}
+    return;
+  }
+  if (!hotove) return; // nula hotovosti = není co zapisovat
+  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:datum, typ:'prijem', castka:hotove, popis:marker, worker_id:workerId||null };
+  POKLADNA.push(row);
+  try { await dbUpsert('pokladna', [row]); } catch(e) {}
 }
 // Smazání zápisu v pokladní knize - výhradně admin (viz poznámka u deleteUcetPolozkaAdmin).
 async function deletePokladnaZapisAdmin(id) {

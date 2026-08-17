@@ -10,7 +10,7 @@ function authGetCurrent() {
 function authLogin(jmeno, pin) {
   var worker = null;
   for (var i=0; i<WORKERS.length; i++) {
-    if (WORKERS[i].jmeno.toLowerCase() === jmeno.trim().toLowerCase() && WORKERS[i].pin === pin) {
+    if (WORKERS[i].jmeno.toLowerCase() === jmeno.trim().toLowerCase() && WORKERS[i].pin === pin && WORKERS[i].aktivni!==false) {
       worker = WORKERS[i]; break;
     }
   }
@@ -47,6 +47,7 @@ async function authEmailLogin(email, password) {
     }
     if (!worker) { await db.auth.signOut(); return { ok:false, error:'K tomuto e-mailu není přiřazený žádný účet brigádníka.' }; }
     if (worker.schvaleno === false) { await db.auth.signOut(); return { ok:false, error:'Registrace ještě čeká na schválení adminem.' }; }
+    if (worker.aktivni === false) { await db.auth.signOut(); return { ok:false, error:'Tenhle účet byl deaktivován. Ozvi se adminovi.' }; }
     localStorage.setItem(AUTH_KEY, JSON.stringify({ id:worker.id, jmeno:worker.jmeno, role:worker.role }));
     return { ok:true, worker:worker };
   } catch(e) {
