@@ -162,13 +162,13 @@
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem;" id="prof-month-btns"></div>
       <div id="prof-cal"></div>
       <div style="font-size:12px;color:var(--text-muted);margin:8px 0;">Vybráno: <strong id="prof-sel-count">0</strong> dní</div>
-      <div class="form-group" id="prof-dost-presets-wrap" style="display:none;margin-top:6px;">
-        <label class="form-label">Rychlá volba směny</label>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="prof-dost-presets"></div>
+      <div id="prof-smeny-wrap" style="display:none;margin-top:6px;">
+        <label class="form-label">Vyber směnu pro každý označený den</label>
+        <div id="prof-smeny-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--sand-dark);border-radius:8px;padding:8px;"></div>
       </div>
-      <div class="form-group" style="margin-top:6px;">
-        <label class="form-label">Poznámka – od kolika do kolika můžeš</label>
-        <textarea class="form-input" id="prof-dost-poznamka" rows="2" placeholder="např. Po–Pá od 15 do 23, víkendy celý den"></textarea>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">Další poznámka (nepovinné)</label>
+        <textarea class="form-input" id="prof-dost-poznamka" rows="2" placeholder="cokoliv dalšího, co by admin měl vědět"></textarea>
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="profSaveDostupnost()">💾 Uložit dostupnost</button>
       <div id="prof-msg" style="display:none;margin-top:10px;" class="alert-box alert-blue">✅ Uloženo!</div>
@@ -582,6 +582,7 @@ async function ulozitInventuru(){
 var PROF_DAY_NAMES=['Po','Út','St','Čt','Pá','So','Ne'];
 var PROF_MONTH_NAMES=['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
 var profSel = new Set(), profCalBuilt = false, PROF_MONTHS = [];
+var profSmeny = {}; // {datum: text presetu} - jen u Anděl provozoven, volba pro každý den zvlášť
 
 function renderProfil(){
   var w = getWorkerById(currentUser.id);
@@ -590,27 +591,43 @@ function renderProfil(){
   renderProfFoto(w);
   buildProfCal();
   profSel = new Set(getDostupnostVenue(currentUser.id, currentVenue.id));
+  profSmeny = Object.assign({}, getSmenyVenue(currentUser.id, currentVenue.id));
   document.querySelectorAll('#prof-cal .cal-day').forEach(function(b){
     b.classList.toggle('sel', profSel.has(b.dataset.key));
   });
   updProfCount();
   document.getElementById('prof-dost-poznamka').value = getDostupnostPoznamkaVenue(currentUser.id, currentVenue.id);
-  renderProfDostPresets();
+  renderProfSmenyList();
   if (typeof initPushButton === 'function') initPushButton('btn-push', currentUser.id);
 }
-// V podnicích pod "Anděl" appka nabízí předdefinované možnosti směn, ať si je
-// brigádník nemusí vypisovat ručně - klik jen přidá text do poznámky.
-function renderProfDostPresets(){
-  var wrap = document.getElementById('prof-dost-presets-wrap');
+// V podnicích pod "Anděl" appka u KAŽDÉHO označeného dne nabídne, kterou ze čtyř
+// možností směny brigádník na ten den zvolí (klik jen přepne výběr pro ten den).
+var PROF_DOW_LABELS = ['Ne','Po','Út','St','Čt','Pá','So'];
+function renderProfSmenyList(){
+  var wrap = document.getElementById('prof-smeny-wrap');
   if (!isAndelBusiness(currentVenue)) { wrap.style.display='none'; return; }
-  wrap.style.display='block';
-  document.getElementById('prof-dost-presets').innerHTML = ANDEL_SMENY_PRESETY.map(function(p){
-    return '<button type="button" class="btn btn-sm btn-secondary" onclick="profPridatPreset(\''+p.replace(/'/g,"\\'")+'\')">'+p+'</button>';
+  wrap.style.display = profSel.size ? 'block' : 'none';
+  var dates = Array.from(profSel).sort();
+  var list = document.getElementById('prof-smeny-list');
+  if (!dates.length) { list.innerHTML = ''; return; }
+  list.innerHTML = dates.map(function(key){
+    var d = new Date(key+'T00:00:00');
+    var lbl = PROF_DOW_LABELS[d.getDay()]+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
+    var picked = profSmeny[key] || '';
+    var btns = ANDEL_SMENY_PRESETY.map(function(p){
+      var sel = p===picked;
+      return '<button type="button" class="btn btn-sm '+(sel?'btn-primary':'btn-secondary')+'" style="font-size:11px;padding:4px 8px;" '+
+        'onclick="profVyberSmenu(\''+key+'\',\''+p.replace(/'/g,"\\'")+'\')">'+p+'</button>';
+    }).join('');
+    return '<div style="padding:6px 0;border-bottom:0.5px solid var(--sand-dark);">'+
+      '<div style="font-weight:600;font-size:12px;margin-bottom:4px;">'+lbl+(picked?'':' <span style="color:var(--orange);font-weight:400;">– vyber směnu</span>')+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:5px;">'+btns+'</div></div>';
   }).join('');
 }
-function profPridatPreset(text){
-  var el = document.getElementById('prof-dost-poznamka');
-  el.value = el.value ? (el.value.replace(/\s+$/,'') + '\n' + text) : text;
+function profVyberSmenu(datum, preset){
+  if (profSmeny[datum]===preset) delete profSmeny[datum]; // druhý klik na stejnou = zrušit výběr
+  else profSmeny[datum] = preset;
+  renderProfSmenyList();
 }
 function renderProfFoto(w){
   var img = document.getElementById('prof-foto'), ph = document.getElementById('prof-foto-placeholder');
@@ -658,7 +675,11 @@ function buildProfCal(){
       if (date<today) { var em2=document.createElement('div'); em2.className='cal-day emp'; g.appendChild(em2); continue; }
       var wd=date.getDay(), isWe = wd===0||wd===6;
       var btn2=document.createElement('div'); btn2.className='cal-day'+(isWe?' we':''); btn2.textContent=d; btn2.dataset.key=key;
-      (function(k,b){ b.onclick=function(){ profSel.has(k) ? (profSel.delete(k), b.classList.remove('sel')) : (profSel.add(k), b.classList.add('sel')); updProfCount(); }; })(key, btn2);
+      (function(k,b){ b.onclick=function(){
+        if (profSel.has(k)) { profSel.delete(k); b.classList.remove('sel'); delete profSmeny[k]; }
+        else { profSel.add(k); b.classList.add('sel'); }
+        updProfCount(); renderProfSmenyList();
+      }; })(key, btn2);
       g.appendChild(btn2);
     }
     cal.appendChild(g);
@@ -680,12 +701,23 @@ function profSelMonth(y,m){
     var btn=document.querySelector('#prof-cal [data-key="'+key+'"]'); if (btn) btn.classList.add('sel');
   }
   updProfCount();
+  renderProfSmenyList();
 }
-function profClear(){ profSel.clear(); document.querySelectorAll('#prof-cal .cal-day.sel').forEach(function(b){ b.classList.remove('sel'); }); updProfCount(); }
+function profClear(){
+  profSel.clear(); profSmeny = {};
+  document.querySelectorAll('#prof-cal .cal-day.sel').forEach(function(b){ b.classList.remove('sel'); });
+  updProfCount(); renderProfSmenyList();
+}
 async function profSaveDostupnost(){
   var dates = Array.from(profSel).sort();
   var poznamka = document.getElementById('prof-dost-poznamka').value.trim();
-  var res = await saveMyDostupnostVenue(currentUser.id, currentVenue.id, dates, poznamka);
+  // Pošli jen výběry pro dny, které jsou pořád označené (kdyby se den zrušil, poklidí se i jeho směna).
+  var smeny = {};
+  dates.forEach(function(d){ if (profSmeny[d]) smeny[d] = profSmeny[d]; });
+  if (isAndelBusiness(currentVenue) && dates.some(function(d){ return !smeny[d]; })) {
+    if (!confirm('U některých vybraných dnů jsi nezvolil/a konkrétní směnu. Uložit i tak?')) return;
+  }
+  var res = await saveMyDostupnostVenue(currentUser.id, currentVenue.id, dates, poznamka, smeny);
   if (!res.ok) { alert('Nepovedlo se uložit dostupnost, zkus to znovu. ('+(res.error||'')+')'); return; }
   var msg=document.getElementById('prof-msg'); msg.style.display='block'; setTimeout(function(){msg.style.display='none';},2500);
 }

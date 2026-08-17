@@ -295,17 +295,28 @@ function showTab(id,btn){
   if(id==='statistiky') renderStatistikyAdmin();
 }
 
+var PA_DOW_LABELS = ['Ne','Po','Út','St','Čt','Pá','So'];
 function renderAvailPoznamky(){
   var workers = getWorkersForVenue(venue.id);
   var rows = workers.map(function(w){
     var pz = getDostupnostPoznamkaVenue(w.id, venue.id);
-    return { w:w, pz:pz };
-  }).filter(function(r){ return r.pz; });
+    var smeny = getSmenyVenue(w.id, venue.id);
+    var smenyDates = Object.keys(smeny).sort();
+    return { w:w, pz:pz, smenyDates:smenyDates, smeny:smeny };
+  }).filter(function(r){ return r.pz || r.smenyDates.length; });
   var el = document.getElementById('pa-avail-poznamky');
-  if (!rows.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Zatím nikdo nenapsal poznámku k dostupnosti.</p>'; return; }
+  if (!rows.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Zatím nikdo nenapsal poznámku ani nevybral směny.</p>'; return; }
   el.innerHTML = rows.map(function(r){
+    var smenyHtml = r.smenyDates.length ? '<div style="margin-top:4px;">'+r.smenyDates.map(function(d){
+      var dt = new Date(d+'T00:00:00');
+      var lbl = PA_DOW_LABELS[dt.getDay()]+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'.';
+      return '<div style="font-size:12px;"><strong>'+lbl+'</strong> – '+r.smeny[d]+'</div>';
+    }).join('')+'</div>' : '';
     return '<div style="padding:6px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
-      '<strong>'+r.w.jmeno+'</strong><div style="color:var(--text-muted);white-space:pre-wrap;">'+r.pz+'</div></div>';
+      '<strong>'+r.w.jmeno+'</strong>'+
+      (r.pz ? '<div style="color:var(--text-muted);white-space:pre-wrap;">'+r.pz+'</div>' : '')+
+      smenyHtml+
+      '</div>';
   }).join('');
 }
 
