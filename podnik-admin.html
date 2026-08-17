@@ -26,10 +26,11 @@
     <button class="nav-tab"        onclick="showTab('trzby',this)">💵 Tržby</button>
     <button class="nav-tab"        onclick="showTab('penalizace',this)">⚠️ Penalizace</button>
     <button class="nav-tab"        onclick="showTab('objednavky',this)">📦 Objednávky</button>
-    <button class="nav-tab"        onclick="showTab('sklad',this)">🗄️ Sklad</button>
+    <!-- Sklad je jen pro Kosatku, tady záměrně schovaný (na přání majitele). -->
     <button class="nav-tab"        onclick="showTab('brigadnici',this)">👥 Brigádníci</button>
     <button class="nav-tab"        onclick="showTab('dochazka',this)">⏱️ Docházka</button>
     <button class="nav-tab"        onclick="showTab('dostupnost',this)">🗓️ Dostupnost</button>
+    <button class="nav-tab"        onclick="showTab('pokladna',this)">💵 Pokladna</button>
     <button class="nav-tab"        onclick="showTab('statistiky',this)">📊 Statistiky</button>
   </div>
 
@@ -42,6 +43,7 @@
         <div class="form-group" style="margin:0;"><label class="form-label">Datum</label><input type="date" class="form-input" id="rz-datum"/></div>
         <button class="btn btn-primary" onclick="addShift()">+ Přidat</button>
       </div>
+      <div class="form-group" style="margin-top:10px;"><label class="form-label">Poznámka ke směně (nepovinné)</label><input class="form-input" id="rz-poznamka" placeholder="např. přines vlastní reproduktor..."/></div>
     </div>
     <div class="card">
       <div class="card-title">Rozpis</div>
@@ -144,6 +146,35 @@
       <div class="card-title">🗓️ Dostupnost brigádníků – nejbližší 3 měsíce</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Zelená = brigádník si sám zaškrtl, že může. Podle tohohle doplňuj rozpis.</p>
       <div class="schedule-wrap" id="pa-avail-wrap"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📝 Poznámky k dostupnosti (od kolika do kolika)</div>
+      <div id="pa-avail-poznamky"></div>
+    </div>
+  </div>
+
+  <!-- POKLADNA -->
+  <div class="page" id="tab-pokladna">
+    <div class="card">
+      <div class="card-title">💵 Zůstatek v pokladně (safu)</div>
+      <div style="font-size:32px;font-weight:700;" id="pk-zustatek"></div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Hotovost z tržeb, které brigádníci zapisují (položka "Hotové"), se sem propisuje automaticky. Ruční zápisy použij na ostatní příjmy/výdaje (např. vklad, výběr, nákup drobností z hotovosti).</p>
+    </div>
+    <div class="card">
+      <div class="card-title">➕ Ruční zápis</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Typ</label>
+          <select class="form-select" id="pk-typ"><option value="prijem">Příjem</option><option value="vydaj">Výdaj</option></select>
+        </div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Částka (Kč)</label><input class="form-input" type="number" id="pk-castka" min="0"/></div>
+        <button class="btn btn-primary" onclick="pkZapsat()">Uložit</button>
+      </div>
+      <div class="form-group" style="margin-top:10px;"><label class="form-label">Popis</label><input class="form-input" id="pk-popis" placeholder="např. vklad do banky, nákup drobností..."/></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Historie pokladny</div>
+      <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="pk-table"></table></div>
     </div>
   </div>
 
@@ -257,10 +288,63 @@ function showTab(id,btn){
   if(id==='penalizace') renderPenalizace();
   if(id==='objednavky') renderObjednavkyAdmin();
   if(id==='sklad') { renderSkladAdmin(); renderInventuraAdmin(); }
-  if(id==='dostupnost') renderAvailAdmin();
+  if(id==='dostupnost') { renderAvailAdmin(); renderAvailPoznamky(); }
   if(id==='brigadnici') renderBrigadnici();
   if(id==='dochazka') renderDochazkaAdmin();
+  if(id==='pokladna') renderPokladnaAdmin();
   if(id==='statistiky') renderStatistikyAdmin();
+}
+
+function renderAvailPoznamky(){
+  var workers = getWorkersForVenue(venue.id);
+  var rows = workers.map(function(w){
+    var pz = getDostupnostPoznamkaVenue(w.id, venue.id);
+    return { w:w, pz:pz };
+  }).filter(function(r){ return r.pz; });
+  var el = document.getElementById('pa-avail-poznamky');
+  if (!rows.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Zatím nikdo nenapsal poznámku k dostupnosti.</p>'; return; }
+  el.innerHTML = rows.map(function(r){
+    return '<div style="padding:6px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
+      '<strong>'+r.w.jmeno+'</strong><div style="color:var(--text-muted);white-space:pre-wrap;">'+r.pz+'</div></div>';
+  }).join('');
+}
+
+// ── POKLADNA (saf) ──
+function renderPokladnaAdmin(){
+  var z = getPokladnaZustatek(venue.id);
+  var elZ = document.getElementById('pk-zustatek');
+  elZ.textContent = z.toLocaleString('cs-CZ')+' Kč';
+  elZ.style.color = z<0 ? 'var(--red)' : 'var(--water-dark)';
+  var rows = getPokladnaForVenue(venue.id);
+  var html = '<thead><tr><th>Datum</th><th>Typ</th><th>Popis</th><th>Kdo</th><th>Částka</th><th></th></tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím žádné zápisy.</td></tr>';
+  rows.forEach(function(p){
+    var w = p.worker_id ? getWorkerById(p.worker_id) : null;
+    var auto = (p.popis||'').indexOf(POKLADNA_AUTO_PREFIX)===0;
+    html += '<tr><td>'+formatDate(p.datum)+'</td>'+
+      '<td>'+(p.typ==='prijem'?'⬆️ Příjem':'⬇️ Výdaj')+'</td>'+
+      '<td style="font-size:12px;'+(auto?'color:var(--text-muted);':'')+'">'+(auto?'💳 Tržba (automaticky)':(p.popis||'–'))+'</td>'+
+      '<td>'+(w?w.jmeno.split(' ')[0]:'–')+'</td>'+
+      '<td style="font-weight:600;color:'+(p.typ==='prijem'?'var(--green)':'var(--red)')+';">'+(p.typ==='prijem'?'+':'−')+p.castka.toLocaleString('cs-CZ')+' Kč</td>'+
+      '<td>'+(auto?'':'<button class="btn btn-sm btn-danger" onclick="pkSmazat('+p.id+')">🗑️</button>')+'</td></tr>';
+  });
+  html += '</tbody>';
+  document.getElementById('pk-table').innerHTML = html;
+}
+async function pkZapsat(){
+  var typ = document.getElementById('pk-typ').value;
+  var castka = parseFloat(document.getElementById('pk-castka').value);
+  var popis = document.getElementById('pk-popis').value.trim();
+  if (isNaN(castka) || castka<=0) { alert('Zadej platnou částku.'); return; }
+  if (!popis) { alert('Napiš, o co jde.'); return; }
+  await addPokladnaZapis(venue.id, typ, castka, popis, currentAdmin.id);
+  document.getElementById('pk-castka').value=''; document.getElementById('pk-popis').value='';
+  renderPokladnaAdmin();
+}
+async function pkSmazat(id){
+  if (!confirm('Smazat tenhle zápis z pokladny?')) return;
+  await deletePokladnaZapisAdmin(id);
+  renderPokladnaAdmin();
 }
 
 function initSelects(){
@@ -273,8 +357,10 @@ function initSelects(){
 async function addShift(){
   var workerId = parseInt(document.getElementById('rz-worker').value);
   var datum = document.getElementById('rz-datum').value;
+  var poznamka = document.getElementById('rz-poznamka').value.trim();
   if (!workerId || !datum) { alert('Vyber brigádníka a datum.'); return; }
-  await addShiftVenue(venue.id, workerId, 'hlavni', datum);
+  await addShiftVenue(venue.id, workerId, 'hlavni', datum, poznamka);
+  document.getElementById('rz-poznamka').value = '';
   renderShiftTable();
 }
 async function removeShift(id){
@@ -282,13 +368,21 @@ async function removeShift(id){
   await delShiftVenue(id);
   renderShiftTable();
 }
+async function editShiftPoznamka(id, current){
+  var val = prompt('Poznámka ke směně:', current||'');
+  if (val===null) return;
+  await setShiftPoznamka(id, val.trim());
+  renderShiftTable();
+}
 function renderShiftTable(){
   var rows = getScheduleForVenue(venue.id).slice().sort(function(a,b){return a.datum.localeCompare(b.datum);});
-  var html = '<thead><tr><th>Datum</th><th>Brigádník</th><th></th></tr></thead><tbody>';
-  if (!rows.length) html += '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím žádné směny.</td></tr>';
+  var html = '<thead><tr><th>Datum</th><th>Brigádník</th><th>Poznámka</th><th></th></tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím žádné směny.</td></tr>';
   rows.forEach(function(s){
     var w = getWorkerById(s.workerId);
+    var pz = (s.poznamka||'').replace(/'/g,"\\'");
     html += '<tr><td>'+formatDate(s.datum)+'</td><td>'+(w?w.jmeno:'?')+'</td>'+
+      '<td style="font-size:12px;color:var(--text-muted);cursor:pointer;" onclick="editShiftPoznamka('+s.id+',\''+pz+'\')">'+(s.poznamka?('📝 '+s.poznamka):'<span style="text-decoration:underline;">+ přidat</span>')+'</td>'+
       '<td><button class="btn btn-sm btn-danger" onclick="removeShift('+s.id+')">🗑️</button></td></tr>';
   });
   html += '</tbody>';

@@ -112,6 +112,18 @@
       <div class="card-title">💰 Čistý zisk tenhle měsíc</div>
       <div id="zisk-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;"></div>
     </div>
+
+    <div class="card">
+      <div class="card-title">📊 Tržby vs. mzdy podle stanoviště (vlastní období)</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Vyber si jedno nebo víc stanovišť (klidně "výčep" + "občerstvení" dohromady) a libovolné období - hned uvidíš, kolik tam vydělaly tržby a kolik jsme na tom stanovišti zaplatili na hrubých mzdách.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="tvm-mista-checks"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px;">
+        <div class="form-group" style="margin:0;"><label class="form-label">Od</label><input type="date" class="form-input" id="tvm-od"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Do</label><input type="date" class="form-input" id="tvm-do"/></div>
+        <button class="btn btn-primary" onclick="renderTrzbyVsMzdy()">Spočítat</button>
+      </div>
+      <div id="tvm-vysledek"></div>
+    </div>
   </div>
 
   <!-- STATISTIKY -->
@@ -572,7 +584,7 @@ function showTab(id,btn){
   if(id==='ucty'){buildUctyTabs();renderUcty();}
   if(id==='uklid'){renderUklid(uklidMonth);renderVycepPlac(vpcMonth);}
   if(id==='vyplaty'){renderVyplaty();buildVyplatyDetailWorker();}
-  if(id==='trzby'){renderTrzby();renderNakladyAdmin();renderZisk();}
+  if(id==='trzby'){renderTrzby();renderNakladyAdmin();renderZisk();initTrzbyVsMzdy();}
   if(id==='penalizace') renderPenalizace();
   if(id==='jidlo') renderJidlo();
   if(id==='objednavky') adminRenderObjednavky('vse');
@@ -849,6 +861,63 @@ function renderZisk(){
     '<div class="stat-box"><div class="stat-lbl">Náklady</div><div class="stat-val" style="color:var(--red);">-'+z.naklady.toLocaleString('cs-CZ')+' Kč</div></div>'+
     '<div class="stat-box"><div class="stat-lbl">Vyplacené mzdy</div><div class="stat-val" style="color:var(--red);">-'+z.vyplaty.toLocaleString('cs-CZ')+' Kč</div></div>'+
     '<div class="stat-box"><div class="stat-lbl">Čistý zisk</div><div class="stat-val" style="color:'+(z.zisk>=0?'var(--green)':'var(--red)')+';">'+z.zisk.toLocaleString('cs-CZ')+' Kč</div></div>';
+}
+
+// ── Tržby vs. mzdy podle stanoviště, vlastní datumové období ──
+var tvmInited = false;
+function initTrzbyVsMzdy(){
+  if (tvmInited) return; tvmInited = true;
+  document.getElementById('tvm-mista-checks').innerHTML = TRZBA_MISTA.map(function(mid){
+    var s = getStanoviste(mid);
+    return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;background:var(--sand);padding:5px 10px;border-radius:20px;">'+
+      '<input type="checkbox" class="tvm-check" value="'+mid+'" checked/> '+(s?s.icon+' '+s.label:mid)+'</label>';
+  }).join('');
+  document.getElementById('tvm-od').value = '2026-06-26';
+  document.getElementById('tvm-do').value = todayStr();
+  renderTrzbyVsMzdy();
+}
+function renderTrzbyVsMzdy(){
+  var checks = Array.from(document.querySelectorAll('.tvm-check:checked')).map(function(c){return c.value;});
+  var od = document.getElementById('tvm-od').value;
+  var doD = document.getElementById('tvm-do').value;
+  var el = document.getElementById('tvm-vysledek');
+  if (!checks.length || !od || !doD) { el.innerHTML = '<p style="font-size:12px;color:var(--orange);">Vyber aspoň jedno stanoviště a obě data.</p>'; return; }
+
+  // Tržby: součet TRZBY.castka pro vybraná stanoviště v období
+  var trzbaSum = 0;
+  TRZBY.forEach(function(t){
+    if (checks.indexOf(t.mistoId)===-1) return;
+    if (t.datum < od || t.datum > doD) return;
+    trzbaSum += (t.castka||0);
+  });
+
+  // Mzdy: hrubá mzda za směny na vybraných stanovištích v období (hodiny × sazba stanoviště/brigádníka)
+  var mzdaSum = 0;
+  var smenyDny = {}; // workerId|datum -> [schedule řádky v období na vybraných mistech]
+  SCHEDULE.forEach(function(s){
+    if (checks.indexOf(s.mistoId)===-1) return;
+    if (s.datum < od || s.datum > doD) return;
+    var key = s.workerId+'|'+s.datum;
+    if (!smenyDny[key]) smenyDny[key] = [];
+    smenyDny[key].push(s);
+  });
+  Object.keys(smenyDny).forEach(function(key){
+    var parts = key.split('|'); var workerId = parseInt(parts[0]); var datum = parts[1];
+    var pd = getPracovniDen(workerId, datum);
+    if (!pd || !pd.prichod || !pd.odchod) return;
+    var h = calcHodiny(pd.prichod, pd.odchod);
+    var mistoId = smenyDny[key][0].mistoId;
+    mzdaSum += h * getSazba(mistoId, workerId);
+  });
+
+  var rozdil = trzbaSum - mzdaSum;
+  el.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">'+
+    '<div class="stat-box"><div class="stat-lbl">Tržby</div><div class="stat-val">'+trzbaSum.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Hrubé mzdy (odhad)</div><div class="stat-val" style="color:var(--red);">-'+mzdaSum.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Rozdíl</div><div class="stat-val" style="color:'+(rozdil>=0?'var(--green)':'var(--red)')+';">'+rozdil.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '</div>'+
+    '<p style="font-size:11px;color:var(--text-muted);margin-top:8px;">"Hrubé mzdy" je odhad podle odpracovaných hodin × sazba stanoviště (ne nutně přesně to, co bylo už fyzicky vyplaceno).</p>';
 }
 function renderTrzby(){
   var days=getMonthDaysAny(2026, trzbyMonth);

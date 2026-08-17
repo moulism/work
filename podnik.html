@@ -28,7 +28,8 @@
     <button class="nav-tab active" onclick="showTab('dnes',this)">🏠 Dnes</button>
     <button class="nav-tab"        onclick="showTab('rozpis',this)">📅 Rozpis</button>
     <button class="nav-tab"        onclick="showTab('objednavky',this)">📦 Objednávky</button>
-    <button class="nav-tab"        onclick="showTab('sklad',this)">🗄️ Sklad</button>
+    <!-- Sklad je jen pro Kosatku (app.html) - tady v generické appce pro ostatní
+         provozovny (Republika, Anděl...) záměrně není, na přání majitele. -->
     <button class="nav-tab"        onclick="showTab('profil',this)">👤 Profil</button>
   </div>
 
@@ -161,6 +162,14 @@
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem;" id="prof-month-btns"></div>
       <div id="prof-cal"></div>
       <div style="font-size:12px;color:var(--text-muted);margin:8px 0;">Vybráno: <strong id="prof-sel-count">0</strong> dní</div>
+      <div class="form-group" id="prof-dost-presets-wrap" style="display:none;margin-top:6px;">
+        <label class="form-label">Rychlá volba směny</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="prof-dost-presets"></div>
+      </div>
+      <div class="form-group" style="margin-top:6px;">
+        <label class="form-label">Poznámka – od kolika do kolika můžeš</label>
+        <textarea class="form-input" id="prof-dost-poznamka" rows="2" placeholder="např. Po–Pá od 15 do 23, víkendy celý den"></textarea>
+      </div>
       <button class="btn btn-primary" style="width:100%" onclick="profSaveDostupnost()">💾 Uložit dostupnost</button>
       <div id="prof-msg" style="display:none;margin-top:10px;" class="alert-box alert-blue">✅ Uloženo!</div>
     </div>
@@ -303,19 +312,32 @@ function renderTrzba(){
   var mistoId = 'hlavni';
   var existing = getTrzbaVenue(currentVenue.id, mistoId, datum);
   var zapsal = existing && existing.workerId ? getWorkerById(existing.workerId) : null;
-  var html = '<div style="display:flex;gap:8px;">'+
-    '<input type="number" class="form-input" id="trzba-inp" value="'+(existing?existing.castka:'')+'" placeholder="Kč"/>'+
-    '<button class="btn btn-primary btn-sm" onclick="saveTrzba(\''+mistoId+'\',\''+datum+'\')">Uložit</button>'+
+  var html =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
+    '<div class="form-group" style="margin:0;"><label class="form-label">Hotové</label><input type="number" class="form-input" id="trzba-hotove" value="'+(existing&&existing.hotove!=null?existing.hotove:'')+'" placeholder="Kč" oninput="trzbaPrepocti()"/></div>'+
+    '<div class="form-group" style="margin:0;"><label class="form-label">Kartou</label><input type="number" class="form-input" id="trzba-kartou" value="'+(existing&&existing.kartou!=null?existing.kartou:'')+'" placeholder="Kč" oninput="trzbaPrepocti()"/></div>'+
     '</div>'+
+    '<div class="form-group" style="margin-top:8px;"><label class="form-label">Celkem</label><input type="number" class="form-input" id="trzba-inp" value="'+(existing?existing.castka:'')+'" placeholder="Kč (dopočítá se samo)"/></div>'+
+    '<button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveTrzba(\''+mistoId+'\',\''+datum+'\')">Uložit</button>'+
     (existing
       ? '<p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Naposledy zapsal/a: '+(zapsal?zapsal.jmeno.split(' ')[0]:'?')+'</p>'
       : '<p style="font-size:11px;color:var(--orange);margin-top:4px;">Ještě nikdo nezapsal.</p>');
   document.getElementById('trzba-content').innerHTML = html;
 }
+// Hotové + kartou se automaticky sečtou do "Celkem" (jde ho pak i ručně přepsat,
+// kdyby něco nesedělo a chtělo se to opravit).
+function trzbaPrepocti(){
+  var h = parseFloat(document.getElementById('trzba-hotove').value) || 0;
+  var k = parseFloat(document.getElementById('trzba-kartou').value) || 0;
+  document.getElementById('trzba-inp').value = (h+k) || '';
+}
 async function saveTrzba(mistoId, datum){
+  var hotoveEl = document.getElementById('trzba-hotove'), kartouEl = document.getElementById('trzba-kartou');
+  var hotove = hotoveEl.value==='' ? null : parseFloat(hotoveEl.value);
+  var kartou = kartouEl.value==='' ? null : parseFloat(kartouEl.value);
   var val = parseFloat(document.getElementById('trzba-inp').value);
-  if (isNaN(val) || val<0) { alert('Zadej platnou částku.'); return; }
-  await submitTrzbaVenue(currentVenue.id, mistoId, datum, val, currentUser.id, '');
+  if (isNaN(val) || val<0) { alert('Zadej platnou částku (aspoň celkem).'); return; }
+  await submitTrzbaVenue(currentVenue.id, mistoId, datum, val, currentUser.id, '', hotove, kartou);
   renderTrzba();
 }
 
@@ -342,10 +364,13 @@ function renderShifts(){
     var st = stanoviste.find(function(x){return x.slug===s.mistoId;});
     var pd = getPracovniDen(currentUser.id, s.datum);
     var cas = pd && pd.prichod && pd.odchod ? pd.prichod+' – '+pd.odchod : '';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;'+(s.datum===today?'background:#f0f8fc;':'')+'">'+
+    return '<div style="padding:8px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;'+(s.datum===today?'background:#f0f8fc;':'')+'">'+
+      '<div style="display:flex;align-items:center;gap:10px;">'+
       '<span style="min-width:80px;font-weight:'+(s.datum===today?700:400)+';">'+formatDate(s.datum)+'</span>'+
       '<span style="flex:1;">'+(st?st.ikona+' '+st.label:s.mistoId)+'</span>'+
       '<span style="color:var(--text-muted);font-size:12px;">'+(cas||'–')+'</span>'+
+      '</div>'+
+      (s.poznamka ? '<div style="margin-top:4px;font-size:12px;color:var(--water-dark);">📝 '+s.poznamka+'</div>' : '')+
       '</div>';
   }).join('');
 }
@@ -569,7 +594,23 @@ function renderProfil(){
     b.classList.toggle('sel', profSel.has(b.dataset.key));
   });
   updProfCount();
+  document.getElementById('prof-dost-poznamka').value = getDostupnostPoznamkaVenue(currentUser.id, currentVenue.id);
+  renderProfDostPresets();
   if (typeof initPushButton === 'function') initPushButton('btn-push', currentUser.id);
+}
+// V podnicích pod "Anděl" appka nabízí předdefinované možnosti směn, ať si je
+// brigádník nemusí vypisovat ručně - klik jen přidá text do poznámky.
+function renderProfDostPresets(){
+  var wrap = document.getElementById('prof-dost-presets-wrap');
+  if (!isAndelBusiness(currentVenue)) { wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  document.getElementById('prof-dost-presets').innerHTML = ANDEL_SMENY_PRESETY.map(function(p){
+    return '<button type="button" class="btn btn-sm btn-secondary" onclick="profPridatPreset(\''+p.replace(/'/g,"\\'")+'\')">'+p+'</button>';
+  }).join('');
+}
+function profPridatPreset(text){
+  var el = document.getElementById('prof-dost-poznamka');
+  el.value = el.value ? (el.value.replace(/\s+$/,'') + '\n' + text) : text;
 }
 function renderProfFoto(w){
   var img = document.getElementById('prof-foto'), ph = document.getElementById('prof-foto-placeholder');
@@ -643,7 +684,8 @@ function profSelMonth(y,m){
 function profClear(){ profSel.clear(); document.querySelectorAll('#prof-cal .cal-day.sel').forEach(function(b){ b.classList.remove('sel'); }); updProfCount(); }
 async function profSaveDostupnost(){
   var dates = Array.from(profSel).sort();
-  var res = await saveMyDostupnostVenue(currentUser.id, currentVenue.id, dates);
+  var poznamka = document.getElementById('prof-dost-poznamka').value.trim();
+  var res = await saveMyDostupnostVenue(currentUser.id, currentVenue.id, dates, poznamka);
   if (!res.ok) { alert('Nepovedlo se uložit dostupnost, zkus to znovu. ('+(res.error||'')+')'); return; }
   var msg=document.getElementById('prof-msg'); msg.style.display='block'; setTimeout(function(){msg.style.display='none';},2500);
 }
