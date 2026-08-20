@@ -32,6 +32,7 @@
     <button class="nav-tab"        onclick="showTab('dostupnost',this)">🗓️ Dostupnost</button>
     <button class="nav-tab"        onclick="showTab('pokladna',this)">💵 Pokladna</button>
     <button class="nav-tab"        onclick="showTab('statistiky',this)">📊 Statistiky</button>
+    <button class="nav-tab"        onclick="showTab('nastaveni',this)">⚙️ Nastavení</button>
   </div>
 
   <!-- ROZPIS -->
@@ -244,6 +245,23 @@
     </div>
   </div>
 
+  <!-- NASTAVENÍ -->
+  <div class="page" id="tab-nastaveni">
+    <div class="card">
+      <div class="card-title">💳 Hodinová sazba</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Podle týhle sazby se počítá hrubá mzda brigádníků na téhle provozovně (odpracované hodiny × sazba).</p>
+      <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+        <div class="form-group" style="margin:0;max-width:160px;"><label class="form-label">Kč / hodina</label><input class="form-input" type="number" id="set-sazba" min="1"/></div>
+        <button class="btn btn-primary" onclick="setUlozitSazbu()">💾 Uložit</button>
+      </div>
+      <div id="set-sazba-msg" style="display:none;margin-top:10px;" class="alert-box alert-blue">✅ Uloženo.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠️ Důvody srážek (penalizace)</div>
+      <p style="font-size:12px;color:var(--text-muted);">Důvod srážky se u téhle provozovny píše rovnou jako text (v záložce Penalizace) – takže si tam admin může napsat úplně cokoliv, žádný pevný seznam k úpravě tu není potřeba.</p>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -302,6 +320,20 @@ function showTab(id,btn){
   if(id==='dochazka') renderDochazkaAdmin();
   if(id==='pokladna') renderPokladnaAdmin();
   if(id==='statistiky') renderStatistikyAdmin();
+  if(id==='nastaveni') renderNastaveni();
+}
+
+function renderNastaveni(){
+  document.getElementById('set-sazba').value = venue.sazba_hodinova || 180;
+}
+async function setUlozitSazbu(){
+  var v = parseFloat(document.getElementById('set-sazba').value);
+  if (isNaN(v) || v<=0) { alert('Zadej platnou sazbu.'); return; }
+  var res = await updateVenueSazba(venue.id, v);
+  if (!res.ok) { alert('Nepovedlo se uložit, zkus to znovu.'); return; }
+  var msg = document.getElementById('set-sazba-msg');
+  msg.style.display='block'; setTimeout(function(){ msg.style.display='none'; }, 2500);
+  renderBrigadnici();
 }
 
 var PA_DOW_LABELS = ['Ne','Po','Út','St','Čt','Pá','So'];
