@@ -1861,6 +1861,13 @@ async function addVenue(businessId, nazev, slug, ikona, rezim, sazba) {
   VENUES.push(res.data[0]);
   return { ok:true, row:res.data[0] };
 }
+async function updateVenueSazba(venueId, sazba) {
+  var res = await db.from('venues').update({ sazba_hodinova: sazba }).eq('id', venueId);
+  if (res.error) return { ok:false, error:res.error };
+  var v = VENUES.find(function(x){ return x.id===venueId; });
+  if (v) v.sazba_hodinova = sazba;
+  return { ok:true };
+}
 async function addStanovisteRow(venueId, slug, label, ikona) {
   var poradi = getStanovisteZaklad(venueId).length;
   var row = { venue_id:venueId, slug:slug, label:label, ikona:ikona||'🧑‍💼', poradi:poradi };
