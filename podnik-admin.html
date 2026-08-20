@@ -38,12 +38,21 @@
   <div class="page active" id="tab-rozpis">
     <div class="card">
       <div class="card-title">Přidat směnu</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
-        <div class="form-group" style="margin:0;"><label class="form-label">Brigádník</label><select class="form-select" id="rz-worker"></select></div>
-        <div class="form-group" style="margin:0;"><label class="form-label">Datum</label><input type="date" class="form-input" id="rz-datum"/></div>
-        <button class="btn btn-primary" onclick="addShift()">+ Přidat</button>
+      <div class="form-group" style="margin:0;max-width:220px;"><label class="form-label">Datum</label><input type="date" class="form-input" id="rz-datum" onchange="renderRzDostupni()"/></div>
+
+      <div id="rz-dostupni-wrap" style="margin-top:14px;">
+        <div class="card-title" style="font-size:13px;">✅ Dostupní na tenhle den</div>
+        <div id="rz-dostupni-list"></div>
       </div>
-      <div class="form-group" style="margin-top:10px;"><label class="form-label">Poznámka ke směně (nepovinné)</label><input class="form-input" id="rz-poznamka" placeholder="např. přines vlastní reproduktor..."/></div>
+
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--sand-dark);">
+        <div class="card-title" style="font-size:13px;">Přidat i někoho jiného (nemá zapsanou dostupnost)</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;">
+          <div class="form-group" style="margin:0;"><label class="form-label">Brigádník</label><select class="form-select" id="rz-worker"></select></div>
+          <button class="btn btn-secondary" onclick="addShift()">+ Přidat</button>
+        </div>
+        <div class="form-group" style="margin-top:10px;"><label class="form-label">Poznámka ke směně (nepovinné)</label><input class="form-input" id="rz-poznamka" placeholder="např. přines vlastní reproduktor..."/></div>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">Rozpis</div>
@@ -363,6 +372,7 @@ function initSelects(){
   document.getElementById('rz-worker').innerHTML = workers.map(function(w){return '<option value="'+w.id+'">'+w.jmeno+'</option>';}).join('');
   document.getElementById('rz-datum').value = todayStr();
   document.getElementById('pen-worker').innerHTML = workers.map(function(w){return '<option value="'+w.id+'">'+w.jmeno+'</option>';}).join('');
+  renderRzDostupni();
 }
 
 async function addShift(){
@@ -373,6 +383,43 @@ async function addShift(){
   await addShiftVenue(venue.id, workerId, 'hlavni', datum, poznamka);
   document.getElementById('rz-poznamka').value = '';
   renderShiftTable();
+  renderRzDostupni();
+}
+
+// Když admin vybere den, ukáže se seznam JEN těch brigádníků, co si na ten den
+// zapsali dostupnost - a rovnou u nich vidí, kterou konkrétní směnu (u Anděl
+// provozoven) na ten den chtějí. Klik na "+ Přidat" je rovnou zapíše do rozpisu
+// i s jejich zvolenou směnou jako poznámkou.
+function renderRzDostupni(){
+  var datum = document.getElementById('rz-datum').value;
+  var el = document.getElementById('rz-dostupni-list');
+  if (!datum) { el.innerHTML = ''; return; }
+  var jeAndel = isAndelBusiness(venue);
+  var workers = getWorkersForVenue(venue.id);
+  var jizNaSmene = getScheduleForVenue(venue.id).filter(function(s){return s.datum===datum;}).map(function(s){return s.workerId;});
+  var dostupni = workers.filter(function(w){
+    var dny = getDostupnostVenue(w.id, venue.id);
+    return dny.indexOf(datum)!==-1;
+  });
+  if (!dostupni.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Na tenhle den si zatím nikdo nezapsal dostupnost.</p>'; return; }
+  el.innerHTML = dostupni.map(function(w){
+    var uz = jizNaSmene.indexOf(w.id)!==-1;
+    var smena = jeAndel ? (getSmenyVenue(w.id, venue.id)[datum] || '') : '';
+    var poznamka = getDostupnostPoznamkaVenue(w.id, venue.id);
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--sand-dark);">'+
+      '<div><strong style="font-size:13px;">'+w.jmeno+'</strong>'+
+      (smena ? '<div style="font-size:12px;color:var(--water-dark);">🕒 '+smena+'</div>' : (jeAndel ? '<div style="font-size:11px;color:var(--orange);">nevybral/a konkrétní směnu</div>' : ''))+
+      (poznamka && !jeAndel ? '<div style="font-size:11px;color:var(--text-muted);">'+poznamka+'</div>' : '')+
+      '</div>'+
+      (uz ? '<span class="badge badge-warning" style="font-size:11px;">už v rozpisu</span>'
+          : '<button class="btn btn-sm btn-primary" onclick="rzPridatDostupneho('+w.id+',\''+datum+'\',\''+(smena||'').replace(/'/g,"\\'")+'\')">+ Přidat</button>')+
+      '</div>';
+  }).join('');
+}
+async function rzPridatDostupneho(workerId, datum, smena){
+  await addShiftVenue(venue.id, workerId, 'hlavni', datum, smena||'');
+  renderShiftTable();
+  renderRzDostupni();
 }
 async function removeShift(id){
   if (!confirm('Smazat tuhle směnu?')) return;
