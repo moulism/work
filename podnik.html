@@ -603,7 +603,7 @@ function renderProfil(){
 // V podnicích pod "Anděl" appka u KAŽDÉHO označeného dne nabídne možnosti
 // směny brigádník na ten den zvolí (klik jen přepne výběr pro ten den). Které
 // možnosti se nabídnou závisí na dni v týdnu toho konkrétního data - viz "dny"
-// u ANDEL_SMENY_PRESETY (např. "brigádníci 17:00" jen v pátek+sobotu, nedělní
+// u ANDEL_SMENY_PRESETY_VENUE (např. "brigádníci 17:00" jen v pátek+sobotu, nedělní
 // možnosti jen v neděli).
 var PROF_DOW_LABELS = ['Ne','Po','Út','St','Čt','Pá','So'];
 function renderProfSmenyList(){
@@ -618,7 +618,7 @@ function renderProfSmenyList(){
     var dow = d.getDay();
     var lbl = PROF_DOW_LABELS[dow]+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
     var picked = profSmeny[key] || '';
-    var presety = ANDEL_SMENY_PRESETY.filter(function(p){ return p.dny.indexOf(dow)!==-1; });
+    var presety = getAndelSmenyPresety(currentVenue).filter(function(p){ return p.dny.indexOf(dow)!==-1; });
     var btns = presety.map(function(p){
       var sel = p.text===picked;
       return '<button type="button" class="btn btn-sm '+(sel?'btn-primary':'btn-secondary')+'" style="font-size:11px;padding:4px 8px;" '+
