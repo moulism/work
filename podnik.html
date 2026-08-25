@@ -651,28 +651,33 @@ function buildProfCal(){
   var cal = document.getElementById('prof-cal'); cal.innerHTML='';
   var btnsWrap = document.getElementById('prof-month-btns'); btnsWrap.innerHTML='';
   PROF_MONTHS = [];
-  for (var mo=-1; mo<=5; mo++) {
+  // Dřív se okno počítalo od mo=-1 (minulý měsíc) a u KAŽDÉHO uplynulého
+  // dne (včetně celého minulého měsíce) se vykreslila neviditelná buňka
+  // (.cal-day.emp) - vypadalo to jako zbytečně prázdný červenec a ošklivá
+  // mezera v srpnu před dnešním datem. Teď se okno počítá od dneška (mo=0)
+  // a v aktuálním měsíci se rovnou začíná dnešním dnem - žádné prázdné dny
+  // navíc, zarovnání na den v týdnu se počítá podle prvního OPRAVDU
+  // zobrazeného dne, ne podle 1. v měsíci.
+  for (var mo=0; mo<=5; mo++) {
     var y = today.getFullYear(), m = today.getMonth()+mo;
     while (m > 11) { m -= 12; y++; }
     while (m < 0) { m += 12; y--; }
     PROF_MONTHS.push({y:y, m:m});
-    if (mo >= 0) {
-      var btn = document.createElement('button');
-      btn.type='button'; btn.className='btn btn-sm btn-secondary';
-      btn.textContent = 'Celý '+PROF_MONTH_NAMES[m].toLowerCase();
-      btn.onclick = (function(yy,mm){ return function(){ profSelMonth(yy,mm); }; })(y,m);
-      btnsWrap.appendChild(btn);
-    }
+    var btn = document.createElement('button');
+    btn.type='button'; btn.className='btn btn-sm btn-secondary';
+    btn.textContent = 'Celý '+PROF_MONTH_NAMES[m].toLowerCase();
+    btn.onclick = (function(yy,mm){ return function(){ profSelMonth(yy,mm); }; })(y,m);
+    btnsWrap.appendChild(btn);
 
     var t=document.createElement('div'); t.className='cal-month-title'; t.textContent=PROF_MONTH_NAMES[m]+' '+y; cal.appendChild(t);
     var g=document.createElement('div'); g.className='cal-grid';
     PROF_DAY_NAMES.forEach(function(n){ var h=document.createElement('div'); h.className='cal-dh'; h.textContent=n; g.appendChild(h); });
-    var first=new Date(y,m,1), dow=first.getDay(); dow = dow===0?6:dow-1;
-    for (var e=0; e<dow; e++) { var em=document.createElement('div'); em.className='cal-day emp'; g.appendChild(em); }
     var dim = new Date(y,m+1,0).getDate();
-    for (var d=1; d<=dim; d++) {
+    var startDay = (mo===0) ? today.getDate() : 1;
+    var firstShown = new Date(y,m,startDay), dow = firstShown.getDay(); dow = dow===0?6:dow-1;
+    for (var e=0; e<dow; e++) { var em=document.createElement('div'); em.className='cal-day emp'; g.appendChild(em); }
+    for (var d=startDay; d<=dim; d++) {
       var date=new Date(y,m,d), key=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
-      if (date<today) { var em2=document.createElement('div'); em2.className='cal-day emp'; g.appendChild(em2); continue; }
       var wd=date.getDay(), isWe = wd===0||wd===6;
       var btn2=document.createElement('div'); btn2.className='cal-day'+(isWe?' we':''); btn2.textContent=d; btn2.dataset.key=key;
       (function(k,b){ b.onclick=function(){
