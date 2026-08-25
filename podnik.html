@@ -600,8 +600,11 @@ function renderProfil(){
   renderProfSmenyList();
   if (typeof initPushButton === 'function') initPushButton('btn-push', currentUser.id);
 }
-// V podnicích pod "Anděl" appka u KAŽDÉHO označeného dne nabídne, kterou ze čtyř
-// možností směny brigádník na ten den zvolí (klik jen přepne výběr pro ten den).
+// V podnicích pod "Anděl" appka u KAŽDÉHO označeného dne nabídne možnosti
+// směny brigádník na ten den zvolí (klik jen přepne výběr pro ten den). Které
+// možnosti se nabídnou závisí na dni v týdnu toho konkrétního data - viz "dny"
+// u ANDEL_SMENY_PRESETY (např. "brigádníci 17:00" jen v pátek+sobotu, nedělní
+// možnosti jen v neděli).
 var PROF_DOW_LABELS = ['Ne','Po','Út','St','Čt','Pá','So'];
 function renderProfSmenyList(){
   var wrap = document.getElementById('prof-smeny-wrap');
@@ -612,12 +615,14 @@ function renderProfSmenyList(){
   if (!dates.length) { list.innerHTML = ''; return; }
   list.innerHTML = dates.map(function(key){
     var d = new Date(key+'T00:00:00');
-    var lbl = PROF_DOW_LABELS[d.getDay()]+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
+    var dow = d.getDay();
+    var lbl = PROF_DOW_LABELS[dow]+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
     var picked = profSmeny[key] || '';
-    var btns = ANDEL_SMENY_PRESETY.map(function(p){
-      var sel = p===picked;
+    var presety = ANDEL_SMENY_PRESETY.filter(function(p){ return p.dny.indexOf(dow)!==-1; });
+    var btns = presety.map(function(p){
+      var sel = p.text===picked;
       return '<button type="button" class="btn btn-sm '+(sel?'btn-primary':'btn-secondary')+'" style="font-size:11px;padding:4px 8px;" '+
-        'onclick="profVyberSmenu(\''+key+'\',\''+p.replace(/'/g,"\\'")+'\')">'+p+'</button>';
+        'onclick="profVyberSmenu(\''+key+'\',\''+p.text.replace(/'/g,"\\'")+'\')">'+p.text+'</button>';
     }).join('');
     return '<div style="padding:6px 0;border-bottom:0.5px solid var(--sand-dark);">'+
       '<div style="font-weight:600;font-size:12px;margin-bottom:4px;">'+lbl+(picked?'':' <span style="color:var(--orange);font-weight:400;">– vyber směnu</span>')+'</div>'+

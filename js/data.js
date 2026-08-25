@@ -307,11 +307,17 @@ async function saveMyDostupnostVenue(workerId, venueId, dates, poznamka, smeny) 
 }
 // Přednastavené možnosti směn, které appka nabízí brigádníkům v podnicích Anděl -
 // u KAŽDÉHO označeného dne v kalendáři si vyberou, která z nich pro ten den platí.
+// Každá možnost má "dny", pro které se má vůbec nabízet (0=neděle, 1=pondělí,
+// ... 6=sobota - stejně jako JS Date.getDay()). renderProfSmenyList() v
+// podnik.html podle tohohle pro každý vybraný den v kalendáři vyfiltruje jen
+// možnosti, co pro ten konkrétní den vůbec dávají smysl.
 var ANDEL_SMENY_PRESETY = [
-  '9:00–17:00',
-  '15:00–00:00 (pátek+sobota 15:00–01:00)',
-  'výpomoc jen víkend 19:00–01:00',
-  'brigádníci 17:00 (pátek+sobota 17:00–00:00)'
+  { text:'9:00–17:00',                                     dny:[1,2,3,4,5,6] },
+  { text:'15:00–01:00',                                     dny:[5,6] },
+  { text:'výpomoc jen víkend 19:00–01:00',                  dny:[5,6] },
+  { text:'brigádníci 17:00 (pátek+sobota 17:00–01:00)',     dny:[5,6] },
+  { text:'hlavní směna 16:00–22:00',                        dny:[0] },
+  { text:'brigáda 16:00–22:00',                             dny:[0] }
 ];
 function isAndelBusiness(venue) {
   if (!venue) return false;
