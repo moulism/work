@@ -599,27 +599,43 @@ function buildMonthBtns(cid,cur,fn){
   }).join('');
 }
 
+// ── Kosatka-scoping: appka je od "zaklad" provozovnu (Republika 24, Anděl,
+// byty) čte přes stejnou globální tabulku `workers`, ale tahle appka (admin.html)
+// je jen pro Kosatku a dřív žádné venue filtrování nedělala - proto se ve výplatách
+// i jinde míchali brigádníci ze všech podniků. isKosatkaWorker() to opravuje: bere
+// jen ty, co mají venue_id Kosatky, nebo starší záznamy bez venue_id vůbec (ty jsou
+// z doby před zavedením více provozoven, tedy taky Kosatka).
+function kosatkaVenueId(){
+  var kv = (typeof getVenueBySlug==='function') ? getVenueBySlug('kosatka') : null;
+  return kv ? kv.id : null;
+}
+function isKosatkaWorker(w){
+  if (w.schvaleno===false) return false; // ještě neschválená registrace, může být pro jiný podnik
+  var kid = kosatkaVenueId();
+  return w.venue_id===kid || w.venue_id==null;
+}
+
 function initSelects(){
   var ws=document.getElementById('m-worker');
   ws.innerHTML='<option value="">– vyber –</option>';
-  WORKERS.filter(function(w){return w.role!=='admin';}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;ws.appendChild(o);});
+  WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;ws.appendChild(o);});
   var ms=document.getElementById('m-misto');
   ms.innerHTML='<option value="">– vyber –</option>';
   STANOVISTE.forEach(function(s){var o=document.createElement('option');o.value=s.id;o.textContent=s.icon+' '+s.label+' ('+s.cas+')';ms.appendChild(o);});
   var pw=document.getElementById('pen-worker');
   pw.innerHTML='<option value="">– vyber –</option>';
-  WORKERS.filter(function(w){return w.role!=='admin';}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;pw.appendChild(o);});
+  WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;pw.appendChild(o);});
   var pd=document.getElementById('pen-duvod');
   PENALIZACE_DUVODY.forEach(function(d){var o=document.createElement('option');o.value=d;o.textContent=d;pd.appendChild(o);});
   var bw=document.getElementById('bk-worker');
   bw.innerHTML='<option value="">– vyber –</option>';
-  WORKERS.filter(function(w){return w.role!=='admin';}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;bw.appendChild(o);});
+  WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;bw.appendChild(o);});
   var bm=document.getElementById('bk-misto');
   bm.innerHTML='<option value="">– vyber –</option>';
   STANOVISTE.forEach(function(s){var o=document.createElement('option');o.value=s.id;o.textContent=s.icon+' '+s.label+' ('+s.cas+')';bm.appendChild(o);});
   var swf=document.getElementById('sched-worker-filter');
   swf.innerHTML='<option value="">Všichni brigádníci</option>';
-  WORKERS.filter(function(w){return w.role!=='admin';}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;swf.appendChild(o);});
+  WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;swf.appendChild(o);});
   buildMonthBtns('rozpis-month-btns',schedMonth,'setSchedMonth');
   buildMonthBtns('uklid-month-btns',uklidMonth,'setUklidMonth');
   buildMonthBtns('avail-month-btns',availMonth,'setAvailMonth');
@@ -699,7 +715,7 @@ document.getElementById('check-date').addEventListener('change',function(){check
 function checkAvail(dateStr){
   if(!dateStr)return;
   var el=document.getElementById('check-result');
-  var avail=WORKERS.filter(function(w){return w.role!=='admin'&&w.dostupnost&&w.dostupnost.includes(dateStr);});
+  var avail=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w) && w.dostupnost&&w.dostupnost.includes(dateStr);});
   var assigned=SCHEDULE.filter(function(s){return s.datum===dateStr;}).map(function(s){return s.workerId;});
   if(!avail.length){el.innerHTML='<p style="color:var(--text-muted);font-size:13px;">Nikdo není dostupný.</p>';return;}
   el.innerHTML=avail.map(function(w){
@@ -950,7 +966,7 @@ async function adminSetTrzba(mistoId, datum, val){
 
 // ── VÝPLATY ──
 function renderVyplaty(){
-  document.getElementById('vyplaty-tbody').innerHTML=WORKERS.filter(function(w){return w.role!=='admin';}).map(function(w){
+  document.getElementById('vyplaty-tbody').innerHTML=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).map(function(w){
     var v=getVydelek(w.id);
     var st=w.misto?getStanoviste(w.misto):null;
     return '<tr><td><span style="font-weight:500;font-size:13px;">'+w.jmeno+'</span>'+(st?'<br><span class="misto-pill" style="background:'+st.color+';color:'+st.text+';font-size:10px;">'+st.label+'</span>':'')+'</td>'+
@@ -967,7 +983,7 @@ function renderVyplaty(){
 function buildVyplatyDetailWorker(){
   var sel=document.getElementById('vyplaty-detail-worker');
   sel.innerHTML='<option value="">– vyber brigádníka –</option>';
-  WORKERS.filter(function(w){return w.role!=='admin';}).forEach(function(w){
+  WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).forEach(function(w){
     var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;sel.appendChild(o);
   });
 }
@@ -1155,7 +1171,7 @@ function initStatistiky(){
 function renderStatKpi(){
   var totalTrzba = 0; TRZBY.forEach(function(t){ totalTrzba += t.castka; });
   var totalHodiny = 0, totalHruby = 0;
-  WORKERS.filter(function(w){return w.role==='user';}).forEach(function(w){
+  WORKERS.filter(function(w){return w.role==='user' && isKosatkaWorker(w);}).forEach(function(w){
     var v = getVydelek(w.id);
     totalHodiny += v.hodiny; totalHruby += v.hruby;
   });
@@ -1202,7 +1218,7 @@ function renderStatMuzika(){
 
 function renderStatWorkerTable(){
   var q = (document.getElementById('stat-worker-search').value||'').toLowerCase();
-  var rows = WORKERS.filter(function(w){return w.role==='user' && w.jmeno.toLowerCase().indexOf(q)!==-1;})
+  var rows = WORKERS.filter(function(w){return w.role==='user' && isKosatkaWorker(w) && w.jmeno.toLowerCase().indexOf(q)!==-1;})
     .map(function(w){ return { w:w, v:getVydelek(w.id) }; })
     .sort(function(a,b){ return b.v.hruby - a.v.hruby; });
   var html = '<thead><tr><th>Brigádník</th><th>Hodin</th><th>Hrubý</th><th>Pen.</th><th>Účty</th><th>Čistý</th></tr></thead><tbody>';
@@ -1281,7 +1297,7 @@ function renderStatTrzby(){
 }
 
 function renderStatHodiny(){
-  var rows = WORKERS.filter(function(w){return w.role!=='admin';}).map(function(w){
+  var rows = WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).map(function(w){
     var seen={}, hodiny=0;
     PRACOVNI_DNY.forEach(function(pd){
       if(pd.workerId!==w.id || !pd.prichod || !pd.odchod) return;
@@ -1669,7 +1685,7 @@ function renderJidlo(){
 // ── ÚČTY ──
 var uctyActiveW=null;
 function buildUctyTabs(){
-  var workers=WORKERS.filter(function(w){return w.role!=='admin';});
+  var workers=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);});
   if(!uctyActiveW&&workers.length) uctyActiveW=workers[0].id;
   document.getElementById('ucty-worker-tabs').innerHTML=workers.map(function(w){
     return '<button class="btn btn-sm '+(w.id===uctyActiveW?'btn-primary':'btn-secondary')+'" onclick="setUctyW('+w.id+',this)">'+w.jmeno.split(' ')[0]+'</button>';
@@ -1741,7 +1757,7 @@ async function saveUcetEdit(){
 function setAvailMonth(m,btn){availMonth=m;document.querySelectorAll('#avail-month-btns .btn').forEach(function(b){b.className='btn btn-sm btn-secondary';});btn.className='btn btn-sm btn-primary';renderAvail(m);}
 function renderAvail(month){
   var days=getMonthDays(2026,month);
-  var workers=WORKERS.filter(function(w){return w.role!=='admin';});
+  var workers=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);});
   var html='<table class="schedule-table" style="min-width:'+(110+days.length*20)+'px;"><thead><tr><th style="min-width:130px">Brigádník</th>';
   days.forEach(function(d){var we=isWeekend(d);html+='<th style="width:20px;text-align:center;font-size:10px;padding:2px 1px;'+(we?'color:var(--red)':'')+'">'+d.slice(8)+'</th>';});
   html+='</tr></thead><tbody>';
@@ -1803,11 +1819,11 @@ function renderBrigadnici(){
   ['m-worker','pen-worker'].forEach(function(id){
     var el=document.getElementById(id);
     el.innerHTML='<option value="">– vyber –</option>';
-    WORKERS.filter(function(w){return w.role!=='admin';}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;el.appendChild(o);});
+    WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).forEach(function(w){var o=document.createElement('option');o.value=w.id;o.textContent=w.jmeno;el.appendChild(o);});
   });
   buildVyplatyDetailWorker();
   var tbody=document.getElementById('brigadnici-tbody');
-  tbody.innerHTML=WORKERS.filter(function(w){return w.role!=='admin';}).map(function(w,i){
+  tbody.innerHTML=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).map(function(w,i){
     var st=w.misto?getStanoviste(w.misto):null;
     var v=getVydelek(w.id);
     return '<tr><td style="color:var(--text-muted)">'+(i+1)+'</td>'+
@@ -1927,7 +1943,7 @@ function addBrigadnik(){
   if(!jmeno||pin.length!==4||!/^\d{4}$/.test(pin)){err.style.display='block';err.textContent='Vyplň jméno a 4místný číselný PIN.';return;}
   if(WORKERS.find(function(w){return w.pin===pin;})){err.style.display='block';err.textContent='Tento PIN už existuje.';return;}
   var dostupnost=[...nbSel].sort();
-  WORKERS.push({id:getNextWorkerId(),jmeno:jmeno,pin:pin,role:'user',misto:misto,dostupnost:dostupnost});
+  WORKERS.push({id:getNextWorkerId(),jmeno:jmeno,pin:pin,role:'user',misto:misto,dostupnost:dostupnost,venue_id:kosatkaVenueId()});
   saveWorkers();
   document.getElementById('nb-jmeno').value='';document.getElementById('nb-pin').value='';document.getElementById('nb-misto').value='';
   nbClear();renderBrigadnici();
