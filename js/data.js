@@ -486,6 +486,12 @@ function calcHodiny(prichod, odchod) {
   if (mins < 0) mins += 24*60; // přes půlnoc
   return Math.round(mins/60 * 10) / 10;
 }
+// Zaokrouhlení hodin na 1 desetinné místo - používá se všude, kde se sčítá víc
+// už zaokrouhlených hodnot dohromady (binární floating point sčítání jinak umí
+// vyrobit "61.900000000000006h" místo "61.9h").
+function roundH(h) {
+  return Math.round((h + Number.EPSILON) * 10) / 10;
+}
 
 // Najdi záznam pracovního dne
 function getPracovniDen(workerId, datum) {
@@ -534,7 +540,7 @@ function getVydelek(workerId) {
   }
   for (var i=0; i<PENALIZACE.length; i++) if(PENALIZACE[i].workerId===workerId) pen += PENALIZACE[i].castka;
   for (var i=0; i<UCTY_POLOZKY.length; i++) { var p=UCTY_POLOZKY[i]; if(p.workerId===workerId&&!p.smazano) ucty+=p.castka; }
-  return { hodiny:hodiny, hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, cisty:hruby-pen-ucty };
+  return { hodiny:roundH(hodiny), hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, cisty:hruby-pen-ucty };
 }
 
 function getTotalVydelekFull(workerId) {
@@ -554,7 +560,7 @@ function getTotalVydelekFull(workerId) {
       }
     }
   }
-  return { hodiny:hodiny, hruby:hruby };
+  return { hodiny:roundH(hodiny), hruby:hruby };
 }
 
 
@@ -716,6 +722,20 @@ async function delVyplata(id) {
   return { ok:true };
 }
 
+// Oprava už zapsané výplaty (částka a/nebo poznámka) - pro admina, co si všimne
+// překlepu nebo chce zpětně opravit částku, aniž by musel výplatu mazat a psát znovu.
+async function updateVyplata(id, castka, poznamka) {
+  try {
+    var patch = { castka:castka };
+    if (poznamka!==undefined) patch.poznamka = poznamka;
+    var res = await db.from('vyplaty').update(patch).eq('id', id);
+    if (res && res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  var v = VYPLATY.find(function(x){return x.id===id;});
+  if (v) { v.castka = castka; if (poznamka!==undefined) v.poznamka = poznamka; }
+  return { ok:true };
+}
+
 // ===================== STANOVIŠTĚ PRO DEN (fallback mimo rozpis) =====================
 // Pro výpočet výdělku a sazby v den, kdy brigádník nemá naplánovanou směnu
 // (např. si jen dopisuje čas z předchozí noci), použij jeho výchozí stanoviště.
@@ -767,7 +787,7 @@ function getVydelek(workerId) {
   var ucty = 0;
   UCTY_POLOZKY.forEach(function(p){ if (p.workerId===workerId && !p.smazano) ucty+=p.castka; });
   var vyplaceno = getVyplaceno(workerId);
-  return { hodiny:hodiny, hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, vyplaceno:vyplaceno, cisty:hruby-pen-ucty, nevyplaceneDny:dny };
+  return { hodiny:roundH(hodiny), hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, vyplaceno:vyplaceno, cisty:hruby-pen-ucty, nevyplaceneDny:dny };
 }
 
 function getTotalVydelekFull(workerId) {
@@ -784,7 +804,7 @@ function getTotalVydelekFull(workerId) {
     var mistoId = getMistoProDen(workerId, pd.datum);
     hruby += h * getSazba(mistoId, workerId);
   }
-  return { hodiny:hodiny, hruby:hruby };
+  return { hodiny:roundH(hodiny), hruby:hruby };
 }
 
 // ===================== SKLAD (Krámek + Výčep) =====================
@@ -1179,7 +1199,7 @@ function getVydelekVenue(workerId, venueId) {
   var hruby = Math.round(hodiny*sazba);
   UCTY_POLOZKY.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId && !p.smazano) ucty+=p.castka; });
   PENALIZACE.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId) pen+=p.castka; });
-  return { hodiny:hodiny, hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, cisty:hruby-ucty-pen };
+  return { hodiny:roundH(hodiny), hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, cisty:hruby-ucty-pen };
 }
 
 async function addUcetPolozkaVenue(workerId, venueId, stanovisteId, popis, castka) {
@@ -1427,6 +1447,42 @@ function getTrzbyForVenueMonth(venueId, year, month) {
   if (month === 'all') return TRZBY.filter(function(t){return t.venue_id===venueId && t.datum.indexOf(String(year)+'-')===0;});
   var prefix = year+'-'+String(month).padStart(2,'0');
   return TRZBY.filter(function(t){return t.venue_id===venueId && t.datum.indexOf(prefix)===0;});
+}
+// Čistý zisk provozovny za JEDEN konkrétní den (na rozdíl od getZiskVenueMonth, co počítá celý měsíc).
+function getZiskVenueDay(venueId, datum) {
+  var trzbySum = TRZBY.filter(function(t){return t.venue_id===venueId && t.datum===datum;}).reduce(function(s,t){return s+(t.castka||0);}, 0);
+  var nakladySum = NAKLADY.filter(function(n){return n.venue_id===venueId && n.datum===datum;}).reduce(function(s,n){return s+(n.castka||0);}, 0);
+  var vyplatySum = VYPLATY.filter(function(v){return v.venue_id===venueId && v.datum===datum;}).reduce(function(s,v){return s+(v.castka||0);}, 0);
+  return { trzby:trzbySum, naklady:nakladySum, vyplaty:vyplatySum, zisk: trzbySum - nakladySum - vyplatySum };
+}
+// Pondělí-neděle týden, do kterého patří dané datum (YYYY-MM-DD) - vrací {start, end} jako YYYY-MM-DD.
+function getWeekRange(datum) {
+  var d = new Date(datum+'T00:00:00');
+  var dow = d.getDay(); // 0=neděle..6=sobota
+  var diffToMonday = dow===0 ? -6 : 1-dow;
+  var mon = new Date(d); mon.setDate(d.getDate()+diffToMonday);
+  var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  function toStr(x){ return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+  return { start: toStr(mon), end: toStr(sun) };
+}
+function getTrzbyForVenueRange(venueId, fromDatum, toDatum) {
+  return TRZBY.filter(function(t){return t.venue_id===venueId && t.datum>=fromDatum && t.datum<=toDatum;});
+}
+function getTrzbyForVenueWeek(venueId, datumVTydnu) {
+  var w = getWeekRange(datumVTydnu);
+  return getTrzbyForVenueRange(venueId, w.start, w.end);
+}
+// Součty (celkem/hotově/kartou) pro seznam řádků tržeb - "hotove"/"kartou" chybí u
+// starších záznamů (null), proto se pro ně bere fallback na celou částku jako "neurčeno".
+function sumTrzby(rows) {
+  var s = { celkem:0, hotove:0, kartou:0, neurcene:0 };
+  rows.forEach(function(t){
+    s.celkem += (t.castka||0);
+    if (t.hotove!=null) s.hotove += t.hotove;
+    if (t.kartou!=null) s.kartou += t.kartou;
+    if (t.hotove==null && t.kartou==null) s.neurcene += (t.castka||0);
+  });
+  return s;
 }
 
 function getBusinessById(id) { return BUSINESSES.find(function(b){return b.id===id;}) || null; }

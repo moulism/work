@@ -59,10 +59,44 @@
       <div class="card-title">Rozpis</div>
       <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="rz-table"></table></div>
     </div>
+    <div class="card">
+      <div class="card-title">🗓️ Hromadný přehled – celý měsíc</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Kdo je na směně který den v celém měsíci, na jeden pohled - místo klikání den po dni.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="rz-mesic-btns"></div>
+      <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="rz-mesic-table"></table></div>
+    </div>
   </div>
 
   <!-- TRŽBY -->
   <div class="page" id="tab-trzby">
+    <div class="card">
+      <div class="card-title">✏️ Zapsat / opravit tržbu (i zpětně)</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Vyber libovolné datum (i minulé) a zapiš, kolik bylo hotově a kolik kartou - "Celkem" se dopočítá samo, jde ho ale i ručně přepsat.</p>
+      <div class="form-group" style="max-width:220px;"><label class="form-label">Datum</label><input type="date" class="form-input" id="tv-datum" onchange="renderTrzbaFormVenue();renderTrzbySouhrn();"/></div>
+      <div id="trzba-form-v"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 Souhrny</div>
+      <div id="trzby-souhrn-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔎 Vlastní filtr tržeb</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Rozsah dat (např. jen víkendy v tomhle rozsahu), nebo vyber rovnou konkrétní měsíce dohromady (třeba červen + srpen) - ať to jde spočítat úplně libovolně.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
+        <div class="form-group" style="margin:0;"><label class="form-label">Od</label><input type="date" class="form-input" id="tf-od"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Do</label><input type="date" class="form-input" id="tf-do"/></div>
+        <button class="btn btn-primary" onclick="renderTrzbyFiltr()">Spočítat</button>
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:13px;"><input type="checkbox" id="tf-vikendy"/> Jen víkendy (So+Ne)</label>
+      <div style="margin-top:10px;">
+        <label class="form-label" style="display:block;">Nebo konkrétní měsíce (bez ohledu na rozsah dat výše)</label>
+        <div id="tf-mesice" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+      </div>
+      <div id="tf-vysledek" style="margin-top:14px;"></div>
+    </div>
+
     <div class="card">
       <div class="card-title">Tržby podle měsíce</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="trzby-month-btns"></div>
@@ -86,12 +120,43 @@
   <div class="page" id="tab-vyplaty">
     <div class="card">
       <div class="card-title">Přehled výdělků</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny a účty od té chvíle počítají znovu od nuly.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se účty od té chvíle počítají znovu od nuly.</p>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
           <thead><tr><th>Brigádník</th><th>Hodin</th><th>Hrubý</th><th>Účty</th><th>Vyplaceno</th><th>Zbývá</th><th></th></tr></thead>
           <tbody id="vyplaty-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✏️ Upravit odpracované hodiny zpětně</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Vyber brigádníka, uprav příchod/odchod pro libovolný den (i zpětně), nebo přidej den, který v rozpisu vůbec není.</p>
+      <div class="form-group" style="max-width:280px;"><label class="form-label">Brigádník</label><select class="form-select" id="vd-worker" onchange="renderVyplatyDetailVenue()"></select></div>
+      <div id="vyplaty-detail-v"></div>
+      <div id="vyplaty-add-day-v" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--sand-dark);">
+        <div class="card-title" style="font-size:13px;">➕ Přidat den ručně</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">
+          <div class="form-group" style="margin:0;"><label class="form-label">Datum</label><input type="date" class="form-input" id="vd-datum"/></div>
+          <div class="form-group" style="margin:0;"><label class="form-label">Příchod</label><input type="time" class="form-input" id="vd-prichod"/></div>
+          <div class="form-group" style="margin:0;"><label class="form-label">Odchod</label><input type="time" class="form-input" id="vd-odchod"/></div>
+          <button class="btn btn-primary" onclick="saveVyplatyDetailDenVenue()">Uložit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VYPLATIT (venue) -->
+  <div class="modal-overlay hidden" id="modal-vyplatit-v">
+    <div class="modal-box">
+      <div class="modal-title" id="vypl-v-title">Zapsat výplatu</div>
+      <div class="form-group"><label class="form-label">Částka (Kč)</label><input class="form-input" type="number" id="vypl-v-castka"/></div>
+      <div class="form-group"><label class="form-label">Poznámka</label><input class="form-input" id="vypl-v-poznamka" placeholder="volitelné"/></div>
+      <div class="form-error" id="vypl-v-err" style="display:none;"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--sand-dark);" id="vypl-v-historie"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="confirmVyplatitVenue()">✅ Zapsat výplatu</button>
+        <button class="btn btn-secondary" onclick="closeVyplatitModalVenue()">Zavřít</button>
       </div>
     </div>
   </div>
@@ -175,7 +240,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
         <div class="form-group" style="margin:0;">
           <label class="form-label">Typ</label>
-          <select class="form-select" id="pk-typ"><option value="prijem">Příjem</option><option value="vydaj">Výdaj</option></select>
+          <select class="form-select" id="pk-typ"><option value="prijem">Příjem</option><option value="vydaj">Výdej</option></select>
         </div>
         <div class="form-group" style="margin:0;"><label class="form-label">Částka (Kč)</label><input class="form-input" type="number" id="pk-castka" min="0"/></div>
         <button class="btn btn-primary" onclick="pkZapsat()">Uložit</button>
@@ -293,12 +358,18 @@ loadAll().then(function(){
 
   initSelects();
   renderShiftTable();
+  buildRzMonthBtns();
+  renderRzMesic();
   buildMonthBtns();
+  renderTrzbaFormVenue();
   renderTrzbyTable();
   renderNakladyAdmin();
   renderZisk();
+  renderTrzbySouhrn();
+  buildTfMesice();
   renderBrigadnici();
   renderVyplaty();
+  buildVyplatyDetailWorkerVenue();
   renderPenalizace();
 
   document.getElementById('app').style.display='block';
@@ -311,7 +382,7 @@ function showTab(id,btn){
   document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
   document.getElementById('tab-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
-  if(id==='vyplaty') renderVyplaty();
+  if(id==='vyplaty') { renderVyplaty(); buildVyplatyDetailWorkerVenue(); renderVyplatyDetailVenue(); }
   if(id==='penalizace') renderPenalizace();
   if(id==='objednavky') renderObjednavkyAdmin();
   if(id==='sklad') { renderSkladAdmin(); renderInventuraAdmin(); }
@@ -374,7 +445,7 @@ function renderPokladnaAdmin(){
     var w = p.worker_id ? getWorkerById(p.worker_id) : null;
     var auto = (p.popis||'').indexOf(POKLADNA_AUTO_PREFIX)===0;
     html += '<tr><td>'+formatDate(p.datum)+'</td>'+
-      '<td>'+(p.typ==='prijem'?'⬆️ Příjem':'⬇️ Výdaj')+'</td>'+
+      '<td>'+(p.typ==='prijem'?'⬆️ Příjem':'⬇️ Výdej')+'</td>'+
       '<td style="font-size:12px;'+(auto?'color:var(--text-muted);':'')+'">'+(auto?'💳 Tržba (automaticky)':(p.popis||'–'))+'</td>'+
       '<td>'+(w?w.jmeno.split(' ')[0]:'–')+'</td>'+
       '<td style="font-weight:600;color:'+(p.typ==='prijem'?'var(--green)':'var(--red)')+';">'+(p.typ==='prijem'?'+':'−')+p.castka.toLocaleString('cs-CZ')+' Kč</td>'+
@@ -416,6 +487,7 @@ async function addShift(){
   document.getElementById('rz-poznamka').value = '';
   renderShiftTable();
   renderRzDostupni();
+  renderRzMesic();
 }
 
 // Když admin vybere den, ukáže se seznam JEN těch brigádníků, co si na ten den
@@ -452,17 +524,20 @@ async function rzPridatDostupneho(workerId, datum, smena){
   await addShiftVenue(venue.id, workerId, 'hlavni', datum, smena||'');
   renderShiftTable();
   renderRzDostupni();
+  renderRzMesic();
 }
 async function removeShift(id){
   if (!confirm('Smazat tuhle směnu?')) return;
   await delShiftVenue(id);
   renderShiftTable();
+  renderRzMesic();
 }
 async function editShiftPoznamka(id, current){
   var val = prompt('Poznámka ke směně:', current||'');
   if (val===null) return;
   await setShiftPoznamka(id, val.trim());
   renderShiftTable();
+  renderRzMesic();
 }
 function renderShiftTable(){
   var rows = getScheduleForVenue(venue.id).slice().sort(function(a,b){return a.datum.localeCompare(b.datum);});
@@ -479,6 +554,40 @@ function renderShiftTable(){
   document.getElementById('rz-table').innerHTML = html;
 }
 
+// ── Hromadný měsíční přehled rozpisu (všichni brigádníci/stanoviště najednou) ──
+var rzMonth = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
+function buildRzMonthBtns(){
+  var el = document.getElementById('rz-mesic-btns');
+  var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
+  el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===rzMonth?'btn-primary':'btn-secondary')+'" onclick="setRzMonth('+x.m+',this)">'+x.l+'</button>';}).join('');
+}
+function setRzMonth(m, btn){
+  rzMonth = m;
+  buildRzMonthBtns();
+  renderRzMesic();
+}
+function renderRzMesic(){
+  var days = getMonthDaysAny(2026, rzMonth);
+  var vsechnySmeny = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(2026+'-'+String(rzMonth).padStart(2,'0'))===0; });
+  // Sloupce = brigádníci, co mají tenhle měsíc aspoň jednu směnu (řazeno podle jména).
+  var workerIds = Array.from(new Set(vsechnySmeny.map(function(s){return s.workerId;})));
+  var workers = workerIds.map(getWorkerById).filter(Boolean).sort(function(a,b){return a.jmeno.localeCompare(b.jmeno,'cs');});
+  var el = document.getElementById('rz-mesic-table');
+  if (!workers.length) { el.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">V tomhle měsíci zatím nejsou žádné směny.</td></tr></tbody>'; return; }
+  var html = '<thead><tr><th>Datum</th>'+workers.map(function(w){return '<th>'+w.jmeno.split(' ')[0]+'</th>';}).join('')+'</tr></thead><tbody>';
+  days.forEach(function(d){
+    html += '<tr'+(d===todayStr()?' style="background:#f0f8fc;"':'')+'>'+
+      '<td style="font-weight:500;'+(isWeekend(d)?'color:var(--red);':'')+'">'+formatDate(d)+'</td>';
+    workers.forEach(function(w){
+      var s = vsechnySmeny.find(function(x){return x.workerId===w.id && x.datum===d;});
+      html += '<td style="text-align:center;">'+(s ? ('✅'+(s.poznamka?'<div style="font-size:10px;color:var(--water-dark);">'+s.poznamka+'</div>':'')) : '')+'</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  el.innerHTML = html;
+}
+
 function buildMonthBtns(){
   var el = document.getElementById('trzby-month-btns');
   var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
@@ -491,7 +600,108 @@ function setTrzbyMonth(m,btn){
   renderTrzbyTable();
   renderNakladyAdmin();
   renderZisk();
+  renderTrzbySouhrn();
 }
+
+// ── Zápis/oprava tržby zpětně (hotové + kartou) ──
+function renderTrzbaFormVenue(){
+  var d = document.getElementById('tv-datum');
+  if (!d.value) d.value = todayStr();
+  var datum = d.value;
+  var existing = getTrzbaVenue(venue.id, 'hlavni', datum);
+  var zapsal = existing && existing.workerId ? getWorkerById(existing.workerId) : null;
+  var html =
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">'+
+    '<div class="form-group" style="margin:0;"><label class="form-label">Hotové</label><input type="number" class="form-input" id="tv-hotove" value="'+(existing&&existing.hotove!=null?existing.hotove:'')+'" placeholder="Kč" oninput="trzbaPrepoctiVenue()"/></div>'+
+    '<div class="form-group" style="margin:0;"><label class="form-label">Kartou</label><input type="number" class="form-input" id="tv-kartou" value="'+(existing&&existing.kartou!=null?existing.kartou:'')+'" placeholder="Kč" oninput="trzbaPrepoctiVenue()"/></div>'+
+    '<div class="form-group" style="margin:0;"><label class="form-label">Celkem</label><input type="number" class="form-input" id="tv-celkem" value="'+(existing?existing.castka:'')+'" placeholder="Kč (dopočítá se samo)"/></div>'+
+    '</div>'+
+    '<button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveTrzbaVenueForm()">💾 Uložit tržbu za '+formatDate(datum)+'</button>'+
+    (existing
+      ? '<p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Naposledy zapsal/a: '+(zapsal?zapsal.jmeno.split(' ')[0]:'?')+'</p>'
+      : '<p style="font-size:11px;color:var(--orange);margin-top:6px;">Ještě nikdo nezapsal.</p>');
+  document.getElementById('trzba-form-v').innerHTML = html;
+}
+function trzbaPrepoctiVenue(){
+  var h = parseFloat(document.getElementById('tv-hotove').value) || 0;
+  var k = parseFloat(document.getElementById('tv-kartou').value) || 0;
+  document.getElementById('tv-celkem').value = (h+k) || '';
+}
+async function saveTrzbaVenueForm(){
+  var datum = document.getElementById('tv-datum').value || todayStr();
+  var hotoveEl = document.getElementById('tv-hotove'), kartouEl = document.getElementById('tv-kartou');
+  var hotove = hotoveEl.value==='' ? null : parseFloat(hotoveEl.value);
+  var kartou = kartouEl.value==='' ? null : parseFloat(kartouEl.value);
+  var val = parseFloat(document.getElementById('tv-celkem').value);
+  if (isNaN(val) || val<0) { alert('Zadej platnou částku (aspoň celkem).'); return; }
+  await submitTrzbaVenue(venue.id, 'hlavni', datum, val, currentAdmin.id, '', hotove, kartou);
+  renderTrzbaFormVenue();
+  renderTrzbyTable();
+  renderZisk();
+  renderTrzbySouhrn();
+}
+function trzbaFormJumpTo(datum){
+  document.getElementById('tv-datum').value = datum;
+  renderTrzbaFormVenue();
+  document.getElementById('tv-datum').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+// ── Souhrny (den / týden / měsíc, hotově vs. kartou) ──
+function renderTrzbySouhrn(){
+  var datum = (document.getElementById('tv-datum') && document.getElementById('tv-datum').value) || todayStr();
+  var den = getZiskVenueDay(venue.id, datum);
+  var tyden = sumTrzby(getTrzbyForVenueWeek(venue.id, datum));
+  var mesicRows = trzbyMonth==='all' ? getTrzbyForVenueMonth(venue.id, 2026, 'all') : getTrzbyForVenueMonth(venue.id, 2026, trzbyMonth);
+  var mesic = sumTrzby(mesicRows);
+  var w = getWeekRange(datum);
+  document.getElementById('trzby-souhrn-grid').innerHTML =
+    '<div class="stat-box"><div class="stat-lbl">Tržba '+formatDate(datum)+'</div><div class="stat-val">'+den.trzby.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Týden '+formatDate(w.start)+'–'+formatDate(w.end)+'</div><div class="stat-val">'+tyden.celkem.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Týden – hotově</div><div class="stat-val">'+tyden.hotove.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Týden – kartou</div><div class="stat-val">'+tyden.kartou.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Měsíc – hotově</div><div class="stat-val">'+mesic.hotove.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Měsíc – kartou</div><div class="stat-val">'+mesic.kartou.toLocaleString('cs-CZ')+' Kč</div></div>';
+}
+
+// ── Vlastní filtr tržeb (rozsah dat + jen víkendy, nebo libovolná kombinace měsíců) ──
+var tfMesiceSel = {};
+function buildTfMesice(){
+  var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
+  document.getElementById('tf-mesice').innerHTML = months.map(function(x){
+    return '<button type="button" class="btn btn-sm '+(tfMesiceSel[x.m]?'btn-primary':'btn-secondary')+'" onclick="tfToggleMesic('+x.m+',this)">'+x.l+'</button>';
+  }).join('');
+}
+function tfToggleMesic(m, btn){
+  tfMesiceSel[m] = !tfMesiceSel[m];
+  btn.className = 'btn btn-sm '+(tfMesiceSel[m]?'btn-primary':'btn-secondary');
+}
+function renderTrzbyFiltr(){
+  var vybraneMesice = Object.keys(tfMesiceSel).filter(function(m){return tfMesiceSel[m];}).map(Number);
+  var rows;
+  var popisObdobi;
+  if (vybraneMesice.length) {
+    var monthNames=['','led','úno','bře','dub','kvě','čer','čvc','srp','zář','říj','lis','pro'];
+    rows = vybraneMesice.reduce(function(acc,m){ return acc.concat(getTrzbyForVenueMonth(venue.id, 2026, m)); }, []);
+    popisObdobi = vybraneMesice.map(function(m){return monthNames[m];}).join(' + ');
+  } else {
+    var od = document.getElementById('tf-od').value;
+    var doD = document.getElementById('tf-do').value;
+    if (!od || !doD) { document.getElementById('tf-vysledek').innerHTML = '<p class="form-error" style="display:block;">Vyber rozsah dat (Od–Do), nebo aspoň jeden měsíc.</p>'; return; }
+    rows = getTrzbyForVenueRange(venue.id, od, doD);
+    popisObdobi = formatDate(od)+'–'+formatDate(doD);
+  }
+  var jenVikendy = document.getElementById('tf-vikendy').checked;
+  if (jenVikendy) { rows = rows.filter(function(t){ return isWeekend(t.datum); }); popisObdobi += ' (jen víkendy)'; }
+  var s = sumTrzby(rows);
+  document.getElementById('tf-vysledek').innerHTML =
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Období: '+popisObdobi+' · '+rows.length+' zapsaných dní</p>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">'+
+    '<div class="stat-box"><div class="stat-lbl">Celkem</div><div class="stat-val">'+s.celkem.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Hotově</div><div class="stat-val">'+s.hotove.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Kartou</div><div class="stat-val">'+s.kartou.toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '</div>';
+}
+
 function renderNakladyAdmin(){
   var rows = getNakladyForVenueMonth(venue.id, 2026, trzbyMonth);
   var el = document.getElementById('nakl-admin-list');
@@ -519,16 +729,22 @@ function renderZisk(){
 }
 function renderTrzbyTable(){
   var days = getMonthDaysAny(2026, trzbyMonth);
-  var html = '<thead><tr><th>Datum</th><th>Tržba</th></tr></thead><tbody>';
-  var total = 0;
+  var html = '<thead><tr><th>Datum</th><th>Hotově</th><th>Kartou</th><th>Celkem</th><th></th></tr></thead><tbody>';
+  var total = 0, hotoveTotal = 0, kartouTotal = 0;
   days.forEach(function(d){
     var t = getTrzbaVenue(venue.id, 'hlavni', d);
-    if (t) total += t.castka;
-    html += '<tr><td>'+formatDate(d)+'</td><td>'+(t?t.castka+' Kč':'<span style="color:#ccc">–</span>')+'</td></tr>';
+    if (t) { total += (t.castka||0); if (t.hotove!=null) hotoveTotal += t.hotove; if (t.kartou!=null) kartouTotal += t.kartou; }
+    html += '<tr'+(isWeekend(d)?' style="background:#fafafa;"':'')+'>'+
+      '<td>'+formatDate(d)+'</td>'+
+      '<td>'+(t&&t.hotove!=null?t.hotove.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
+      '<td>'+(t&&t.kartou!=null?t.kartou.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
+      '<td'+(t?' style="font-weight:600;"':'')+'>'+(t?t.castka.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
+      '<td><button class="btn btn-sm btn-secondary" onclick="trzbaFormJumpTo(\''+d+'\')">✏️</button></td>'+
+      '</tr>';
   });
   html += '</tbody>';
   document.getElementById('trzby-table').innerHTML = html;
-  document.getElementById('trzby-total').textContent = 'Celkem za měsíc: '+total.toLocaleString('cs-CZ')+' Kč';
+  document.getElementById('trzby-total').textContent = 'Celkem za měsíc: '+total.toLocaleString('cs-CZ')+' Kč (hotově '+hotoveTotal.toLocaleString('cs-CZ')+' Kč, kartou '+kartouTotal.toLocaleString('cs-CZ')+' Kč)';
 }
 
 function buildUctyTabs(){
@@ -568,7 +784,8 @@ function renderBrigadnici(){
         ? '<details><summary style="cursor:pointer;color:var(--water-dark);">'+pdRows.length+' dní</summary><div style="font-size:11px;max-width:240px;margin-top:4px;">'+pdRows.map(function(p){ return formatDate(p.datum)+': '+(p.prichod||'–')+'–'+(p.odchod||'–')+' <a href="#" onclick="event.preventDefault();mazPracovniDenAdmin('+p.id+')" style="color:var(--red);">✕</a>'; }).join('<br>')+'</div></details>'
         : '<span style="color:var(--text-muted);">– žádná –</span>';
       var jeDomovska = w.venue_id === venue.id;
-      var akce = '<button class="btn btn-sm btn-secondary" onclick="ucetModal('+w.id+')">🧾 Účet</button> ' + (jeDomovska ? '' : '<button class="btn btn-sm btn-danger" onclick="odebratBrigadnika('+w.id+')">Odebrat odsud</button>');
+      var akce = '<button class="btn btn-sm btn-secondary" onclick="ucetModal('+w.id+')">🧾 Účet</button> ' +
+        '<button class="btn btn-sm btn-danger" onclick="odebratBrigadnika('+w.id+','+(jeDomovska?'true':'false')+')">Odebrat odsud</button>';
       return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+(w.email||'–')+'</td><td>'+dostCell+'</td><td>'+pdCell+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td><td>'+(v.uctyDluh?v.uctyDluh+' Kč':'0 Kč')+'</td><td style="white-space:nowrap;">'+akce+'</td></tr>';
     }).join('');
   }
@@ -685,9 +902,18 @@ async function addBrigadnikSem(){
   if (!res.ok) { alert('Nepovedlo se to přidat, zkus to znovu.'); return; }
   renderBrigadnici();
 }
-async function odebratBrigadnika(workerId){
-  if (!confirm('Odebrat tohohle brigádníka z téhle provozovny? (Jeho domovská provozovna se tím nezmění.)')) return;
-  await removeWorkerVenue(workerId, venue.id);
+async function odebratBrigadnika(workerId, jeDomovska){
+  var w = getWorkerById(workerId);
+  if (jeDomovska) {
+    // Tohle je jeho domovská provozovna - "odebrání" tu nejde jen zrušit vedlejší
+    // přiřazení (žádné není), takže se rovnou zeptáme na měkké smazání (deaktivaci).
+    if (!confirm('"'+(w?w.jmeno:'')+'" má tuhle provozovnu jako domovskou. Odebrat ho úplně (deaktivovat)? Nepůjde se mu už přihlásit, ale historie směn/mezd/tržeb zůstane zachovaná pro účetnictví.')) return;
+    var res = await removeWorkerSoft(workerId);
+    if (!res.ok) { alert('Nepovedlo se to odebrat, zkus to znovu.'); return; }
+  } else {
+    if (!confirm('Odebrat tohohle brigádníka z téhle provozovny? (Jeho domovská provozovna se tím nezmění.)')) return;
+    await removeWorkerVenue(workerId, venue.id);
+  }
   renderBrigadnici();
 }
 
@@ -703,15 +929,130 @@ function renderVyplaty(){
     return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td>'+(v.uctyDluh?'−'+v.uctyDluh:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td style="font-weight:600;">'+zbyva.toLocaleString('cs-CZ')+' Kč</td>'+
-      '<td><button class="btn btn-sm btn-primary" onclick="vyplatit('+w.id+','+zbyva+')">💰 Vyplatit</button></td></tr>';
+      '<td><button class="btn btn-sm btn-primary" onclick="openVyplatitModalVenue('+w.id+','+zbyva+')">💰 Vyplatit</button></td></tr>';
   }).join('');
 }
-async function vyplatit(workerId, castka){
-  if (castka<=0) { alert('Není co vyplácet.'); return; }
-  if (!confirm('Vyplatit '+castka+' Kč? Položky na účtu tomuhle brigádníkovi po vyplacení zmizí (admin je pořád uvidí v historii).')) return;
-  await addVyplataVenue(venue.id, workerId, castka, '', [], currentAdmin.id);
+
+// ── VYPLATIT (modál - jde v něm upravit částku před uložením + vidět/upravit/smazat historii) ──
+var vyplVWorkerId=null;
+function openVyplatitModalVenue(workerId, zbyva){
+  vyplVWorkerId = workerId;
+  var w = getWorkerById(workerId);
+  document.getElementById('vypl-v-title').textContent = 'Zapsat výplatu – '+(w?w.jmeno:'');
+  document.getElementById('vypl-v-castka').value = Math.round(zbyva);
+  document.getElementById('vypl-v-poznamka').value = '';
+  document.getElementById('vypl-v-err').style.display = 'none';
+  renderVyplHistorieVenue(workerId);
+  document.getElementById('modal-vyplatit-v').classList.remove('hidden');
+}
+function closeVyplatitModalVenue(){ document.getElementById('modal-vyplatit-v').classList.add('hidden'); vyplVWorkerId=null; }
+async function confirmVyplatitVenue(){
+  var castka = parseFloat(document.getElementById('vypl-v-castka').value);
+  var poznamka = document.getElementById('vypl-v-poznamka').value.trim();
+  var err = document.getElementById('vypl-v-err');
+  err.style.display = 'none';
+  if (isNaN(castka) || castka<=0) { err.style.display='block'; err.textContent='Zadej platnou částku.'; return; }
+  if (!confirm('Vyplatit '+castka.toLocaleString('cs-CZ')+' Kč? Položky na účtu tomuhle brigádníkovi po vyplacení zmizí (admin je pořád uvidí v historii).')) return;
+  await addVyplataVenue(venue.id, vyplVWorkerId, castka, poznamka, [], currentAdmin.id);
+  document.getElementById('vypl-v-poznamka').value = '';
+  renderVyplHistorieVenue(vyplVWorkerId);
   renderVyplaty();
   renderBrigadnici();
+}
+function renderVyplHistorieVenue(workerId){
+  var list = getVyplatyForVenueWorker(venue.id, workerId).slice().sort(function(a,b){ return b.datum.localeCompare(a.datum); });
+  var el = document.getElementById('vypl-v-historie');
+  if (!list.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Zatím žádné výplaty.</p>'; return; }
+  el.innerHTML = '<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">HISTORIE VÝPLAT</p>'+list.map(function(v){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:0.5px solid var(--sand-dark);">'+
+      '<span style="flex:1;">'+formatDate(v.datum)+(v.poznamka?' – '+v.poznamka:'')+'</span>'+
+      '<span style="font-weight:600;">'+v.castka.toLocaleString('cs-CZ')+' Kč</span>'+
+      '<button class="btn btn-sm btn-secondary" onclick="editVyplataVenue('+v.id+')">✏️</button>'+
+      '<button class="btn btn-sm btn-danger" onclick="delVyplataVenueConfirm('+v.id+')">🗑️</button></div>';
+  }).join('');
+}
+async function editVyplataVenue(id){
+  var v = VYPLATY.find(function(x){return x.id===id;});
+  if (!v) return;
+  var novaCastkaStr = prompt('Nová částka (Kč):', v.castka);
+  if (novaCastkaStr===null) return;
+  var novaCastka = parseFloat(novaCastkaStr);
+  if (isNaN(novaCastka) || novaCastka<0) { alert('Zadej platnou částku.'); return; }
+  var novaPoznamka = prompt('Poznámka:', v.poznamka||'');
+  if (novaPoznamka===null) novaPoznamka = v.poznamka||'';
+  var res = await updateVyplata(id, novaCastka, novaPoznamka);
+  if (!res.ok) { alert('Nepovedlo se to uložit, zkus to znovu.'); return; }
+  renderVyplHistorieVenue(v.workerId);
+  renderVyplaty();
+}
+async function delVyplataVenueConfirm(id){
+  if (!confirm('Smazat tuhle výplatu z historie? (Nedá se vrátit zpět, položky na účtu, co zmizely při vyplacení, se tím samy neobnoví.)')) return;
+  var v = VYPLATY.find(function(x){return x.id===id;});
+  var res = await delVyplata(id);
+  if (!res.ok) { alert('Nepovedlo se to smazat, zkus to znovu.'); return; }
+  if (v) renderVyplHistorieVenue(v.workerId);
+  renderVyplaty();
+}
+
+// ── Úprava odpracovaných hodin zpětně (příchod/odchod po dnech, i mimo rozpis) ──
+function buildVyplatyDetailWorkerVenue(){
+  var sel = document.getElementById('vd-worker');
+  var workers = getWorkersForVenue(venue.id);
+  sel.innerHTML = '<option value="">– vyber brigádníka –</option>'+workers.map(function(w){return '<option value="'+w.id+'">'+w.jmeno+'</option>';}).join('');
+}
+function renderVyplatyDetailVenue(){
+  var wId = parseInt(document.getElementById('vd-worker').value);
+  var el = document.getElementById('vyplaty-detail-v');
+  var addDayWrap = document.getElementById('vyplaty-add-day-v');
+  if (!wId) { el.innerHTML=''; addDayWrap.style.display='none'; return; }
+  addDayWrap.style.display = 'block';
+  var days = {};
+  getScheduleForVenue(venue.id).filter(function(s){return s.workerId===wId;}).forEach(function(s){days[s.datum]=true;});
+  PRACOVNI_DNY.filter(function(p){return p.workerId===wId && p.venue_id===venue.id;}).forEach(function(p){days[p.datum]=true;});
+  var dayList = Object.keys(days).sort();
+  if (!dayList.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Žádné směny ani zapsané časy.</p>'; return; }
+  var sazba = venue.sazba_hodinova || 180;
+  var html = '<table class="schedule-table" style="width:100%;margin-top:10px;"><thead><tr><th>Datum</th><th>Příchod</th><th>Odchod</th><th>Hodin</th><th>Výdělek</th><th></th></tr></thead><tbody>';
+  dayList.forEach(function(d){
+    var pd = getPracovniDen(wId, d);
+    var h = pd && pd.prichod && pd.odchod ? calcHodiny(pd.prichod, pd.odchod) : 0;
+    var kc = h * sazba;
+    html += '<tr'+(d===todayStr()?' style="background:#f0f8fc;"':'')+'>'+
+      '<td style="'+(isWeekend(d)?'color:var(--red)':'')+'">'+formatDate(d)+'</td>'+
+      '<td><input type="time" class="form-input" style="padding:4px 6px;font-size:12px;min-width:90px;" value="'+(pd&&pd.prichod?pd.prichod:'')+'" onchange="adminEditTimeVenue('+wId+',\''+d+'\',this.value,null)"/></td>'+
+      '<td><input type="time" class="form-input" style="padding:4px 6px;font-size:12px;min-width:90px;" value="'+(pd&&pd.odchod?pd.odchod:'')+'" onchange="adminEditTimeVenue('+wId+',\''+d+'\',null,this.value)"/></td>'+
+      '<td>'+(h?h+'h':'–')+'</td>'+
+      '<td>'+(kc?Math.round(kc)+' Kč':'–')+'</td>'+
+      '<td><button class="btn btn-sm btn-danger" onclick="adminDeleteTimeEntryVenue('+wId+',\''+d+'\')">🗑️</button></td>'+
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+async function adminEditTimeVenue(workerId, datum, prichod, odchod){
+  var pd = getPracovniDen(workerId, datum);
+  var res = await saveTimeVenue(workerId, venue.id, datum, prichod!==null?(prichod||null):(pd?pd.prichod:null), odchod!==null?(odchod||null):(pd?pd.odchod:null));
+  if (!res.ok) { alert('Nepovedlo se to uložit (výpadek?), zkus to prosím znovu.'); }
+  renderVyplatyDetailVenue();
+  renderVyplaty();
+  renderBrigadnici();
+}
+async function adminDeleteTimeEntryVenue(workerId, datum){
+  if (!confirm('Smazat zapsaný čas pro tento den?')) return;
+  var pd = getPracovniDen(workerId, datum);
+  if (pd) { await removePracovniDen(pd.id); }
+  renderVyplatyDetailVenue();
+  renderVyplaty();
+  renderBrigadnici();
+}
+async function saveVyplatyDetailDenVenue(){
+  var wId = parseInt(document.getElementById('vd-worker').value);
+  var datum = document.getElementById('vd-datum').value;
+  var prichod = document.getElementById('vd-prichod').value;
+  var odchod = document.getElementById('vd-odchod').value;
+  if (!wId || !datum || !prichod || !odchod) { alert('Vyplň brigádníka, datum, příchod i odchod.'); return; }
+  await adminEditTimeVenue(wId, datum, prichod, odchod);
+  document.getElementById('vd-datum').value=''; document.getElementById('vd-prichod').value=''; document.getElementById('vd-odchod').value='';
 }
 
 // ── ÚČET brigádníka (položky) - jednotlivé mazání smí jen admin/správce ──

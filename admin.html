@@ -122,6 +122,7 @@
         <div class="form-group" style="margin:0;"><label class="form-label">Do</label><input type="date" class="form-input" id="tvm-do"/></div>
         <button class="btn btn-primary" onclick="renderTrzbyVsMzdy()">Spočítat</button>
       </div>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;font-size:13px;"><input type="checkbox" id="tvm-vikendy" onchange="renderTrzbyVsMzdy()"/> Jen víkendy (So+Ne)</label>
       <div id="tvm-vysledek"></div>
     </div>
   </div>
@@ -898,12 +899,14 @@ function renderTrzbyVsMzdy(){
   var doD = document.getElementById('tvm-do').value;
   var el = document.getElementById('tvm-vysledek');
   if (!checks.length || !od || !doD) { el.innerHTML = '<p style="font-size:12px;color:var(--orange);">Vyber aspoň jedno stanoviště a obě data.</p>'; return; }
+  var jenVikendy = document.getElementById('tvm-vikendy').checked;
 
   // Tržby: součet TRZBY.castka pro vybraná stanoviště v období
   var trzbaSum = 0;
   TRZBY.forEach(function(t){
     if (checks.indexOf(t.mistoId)===-1) return;
     if (t.datum < od || t.datum > doD) return;
+    if (jenVikendy && !isWeekend(t.datum)) return;
     trzbaSum += (t.castka||0);
   });
 
@@ -913,6 +916,7 @@ function renderTrzbyVsMzdy(){
   SCHEDULE.forEach(function(s){
     if (checks.indexOf(s.mistoId)===-1) return;
     if (s.datum < od || s.datum > doD) return;
+    if (jenVikendy && !isWeekend(s.datum)) return;
     var key = s.workerId+'|'+s.datum;
     if (!smenyDny[key]) smenyDny[key] = [];
     smenyDny[key].push(s);
@@ -1023,7 +1027,7 @@ function renderVyplatyDetail(){
       '<td><button class="btn btn-sm btn-danger" onclick="adminDeleteTimeEntry('+wId+',\''+d+'\')">🗑️</button></td>'+
       '</tr>';
   });
-  html+='<tr style="font-weight:600;background:#f0f8fc;"><td colspan="4">Nevyplaceno (od poslední výplaty)</td><td>'+totalH+'h</td><td>'+Math.round(totalKc)+' Kč</td><td></td></tr>';
+  html+='<tr style="font-weight:600;background:#f0f8fc;"><td colspan="4">Nevyplaceno (od poslední výplaty)</td><td>'+roundH(totalH)+'h</td><td>'+Math.round(totalKc)+' Kč</td><td></td></tr>';
   el.innerHTML=html+'</tbody></table>';
 }
 
@@ -1304,7 +1308,7 @@ function renderStatHodiny(){
       if(seen[pd.datum]) return; seen[pd.datum]=true;
       hodiny += calcHodiny(pd.prichod, pd.odchod);
     });
-    return { jmeno:w.jmeno.split(' ')[0], hodiny:hodiny };
+    return { jmeno:w.jmeno.split(' ')[0], hodiny:roundH(hodiny) };
   }).filter(function(r){return r.hodiny>0;}).sort(function(a,b){return b.hodiny-a.hodiny;});
   var ctx = document.getElementById('chart-hodiny').getContext('2d');
   if (chartHodiny) chartHodiny.destroy();

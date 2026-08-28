@@ -1,5 +1,30 @@
 // ui.js – sdílené UI pomůcky (Kosatka 2026+)
 
+// ===================== TLAČÍTKO "NAHORU" (scroll-to-top) =====================
+// Na dlouhých strankách (hlavně admin.html/podnik-admin.html se spoustou tabulek)
+// se dřív dalo nahoru dostat jen ručním scrollováním. Tohle přidá plovoucí
+// tlačítko vpravo dole, co se objeví po odscrollování kousek dolů a klikem
+// hladce vyjede zpátky nahoru - funguje samo na každé stránce, co načte ui.js.
+(function initScrollTopBtn(){
+  function setup(){
+    if (document.getElementById('scroll-top-btn')) return;
+    var btn = document.createElement('button');
+    btn.id = 'scroll-top-btn';
+    btn.className = 'scroll-top-btn';
+    btn.type = 'button';
+    btn.title = 'Nahoru';
+    btn.setAttribute('aria-label', 'Přejít nahoru');
+    btn.textContent = '↑';
+    btn.onclick = function(){ window.scrollTo({ top:0, behavior:'smooth' }); };
+    document.body.appendChild(btn);
+    function toggle(){ btn.classList.toggle('show', (window.scrollY||window.pageYOffset||0) > 320); }
+    window.addEventListener('scroll', toggle, { passive:true });
+    toggle();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
+
 // Hledatelný výběr (combobox) pro dlouhé seznamy - místo scrollování v <select>
 // se dá rovnou napsat pár písmen a vybrat z filtrovaného seznamu.
 //
