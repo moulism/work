@@ -972,11 +972,20 @@ function renderStatistikyAdmin(){
 
   var z = getZiskVenueMonth(venue.id, 2026, statMonth);
   var workers = getWorkersForVenue(venue.id);
-  var totalHodiny=0, totalHruby=0, totalDluh=0;
+  var totalDluh=0;
   var rows = workers.map(function(w){
     var v = getVydelekVenue(w.id, venue.id);
-    totalHodiny += v.hodiny; totalHruby += v.hruby; totalDluh += v.uctyDluh;
+    totalDluh += v.uctyDluh;
     return { w:w, v:v };
+  });
+  // Odpracované hodiny a hrubé mzdy pro KPI přehled se počítají jen za
+  // vybraný měsíc (ne od začátku), ať sedí s tím, co je nadepsané nahoře -
+  // dřív se tu sčítalo přes getVydelekVenue (celá historie), takže i u
+  // měsíce bez jediné odpracované hodiny ukazovalo hodiny/mzdy z jiných měsíců.
+  var totalHodinyMesic=0, totalHrubyMesic=0;
+  workers.forEach(function(w){
+    var vm = getVydelekVenueMonth(w.id, venue.id, 2026, statMonth);
+    totalHodinyMesic += vm.hodiny; totalHrubyMesic += vm.hruby;
   });
 
   // Zůstatky pokladny/online peněženky jsou aktuální stav (ne za měsíc) - jde
@@ -987,8 +996,8 @@ function renderStatistikyAdmin(){
     {lbl:'Náklady ('+mesicLabel+')', val: z.naklady.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Vyplacené mzdy ('+mesicLabel+')', val: z.vyplaty.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Čistý zisk ('+mesicLabel+')', val: z.zisk.toLocaleString('cs-CZ')+' Kč'},
-    {lbl:'Odprac. hodin celkem', val: Math.round(totalHodiny)+'h'},
-    {lbl:'Hrubé mzdy celkem', val: totalHruby.toLocaleString('cs-CZ')+' Kč'},
+    {lbl:'Odprac. hodin ('+mesicLabel+')', val: Math.round(totalHodinyMesic)+'h'},
+    {lbl:'Hrubé mzdy ('+mesicLabel+')', val: totalHrubyMesic.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Dluh na účtech celkem', val: totalDluh.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Počet brigádníků', val: workers.length},
     {lbl:'Zůstatek v pokladně (aktuálně)', val: pokladnaZ.toLocaleString('cs-CZ')+' Kč'},
@@ -1155,7 +1164,7 @@ async function confirmVyplatitVenue(){
   var err = document.getElementById('vypl-v-err');
   err.style.display = 'none';
   if (isNaN(castka) || castka<=0) { err.style.display='block'; err.textContent='Zadej platnou částku.'; return; }
-  if (!confirm('Vyplatit '+castka.toLocaleString('cs-CZ')+' Kč? Položky na účtu tomuhle brigádníkovi po vyplacení zmizí (admin je pořád uvidí v historii).')) return;
+  if (!confirm('Vyplatit '+castka.toLocaleString('cs-CZ')+' Kč?')) return;
   await addVyplataVenue(venue.id, vyplVWorkerId, castka, poznamka, [], currentAdmin.id);
   document.getElementById('vypl-v-poznamka').value = '';
   renderVyplHistorieVenue(vyplVWorkerId);

@@ -1222,6 +1222,24 @@ function getVydelekVenue(workerId, venueId) {
   PENALIZACE.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId) pen+=p.castka; });
   return { hodiny:roundH(hodiny), hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, cisty:hruby-ucty-pen };
 }
+// Stejné jako getVydelekVenue (odpracované hodiny × sazba), ale jen za
+// konkrétní měsíc (nebo 'all' = celá sezóna) - pro Statistiky, ať se do
+// přehledu vybraného měsíce nemíchají hodiny/mzdy z jiných měsíců.
+function getVydelekVenueMonth(workerId, venueId, year, month) {
+  var hodiny=0;
+  var today = todayStr();
+  var venue = getVenueById(venueId);
+  var sazba = (venue && venue.sazba_hodinova) || 180;
+  var prefix = month==='all' ? String(year)+'-' : year+'-'+String(month).padStart(2,'0');
+  var seen = {};
+  PRACOVNI_DNY.forEach(function(pd){
+    if (pd.workerId!==workerId || pd.venue_id!==venueId || pd.datum>today) return;
+    if (pd.datum.indexOf(prefix)!==0) return;
+    if (seen[pd.datum]) return; seen[pd.datum]=true;
+    if (pd.prichod && pd.odchod) hodiny += calcHodiny(pd.prichod, pd.odchod);
+  });
+  return { hodiny:roundH(hodiny), hruby:Math.round(hodiny*sazba) };
+}
 
 async function addUcetPolozkaVenue(workerId, venueId, stanovisteId, popis, castka) {
   var row = { id:getNextId(UCTY_POLOZKY), workerId:workerId, datum:todayStr(), mistoId:stanovisteId, popis:popis, castka:castka, smazano:false, produktId:null, mnozstvi:null, venue_id:venueId };
@@ -1286,7 +1304,9 @@ async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId
   VYPLATY.push(row);
   var res = await saveVyplaty();
   if (!res.ok) { VYPLATY = VYPLATY.filter(function(v){return v.id!==row.id;}); return res; }
-  await clearUctyForWorkerVenue(venueId, workerId, adminId); // po výplatě zmizí brigádníkovi účty (audit zůstává, jen smazano=true)
+  // Účty (dluhy na útratu) se výplatou NEmažou - ty se řeší zvlášť, admin je
+  // označí jako zaplacené, až brigádník fakticky přijde svůj účet zaplatit
+  // (viz oznacitUcetZaplaceno v ucetModal), ne automaticky při vyplacení mzdy.
   return { ok:true, row:row };
 }
 
