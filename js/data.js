@@ -284,6 +284,14 @@ function getSmenyVenue(workerId, venueId) {
   var row = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
   return row ? (row.smeny || {}) : {};
 }
+// Hodnota u jednoho dne může být buď starší formát (jeden text - brigádník
+// mohl zvolit jen 1 směnu), nebo pole víc textů (nový formát - může zvolit
+// víc směn, když mu nezáleží, kterou dostane, včetně "můžu celý den"). Tahle
+// funkce z obojího udělá jeden čitelný text pro zobrazení adminovi.
+function smenyLabel(v) {
+  if (Array.isArray(v)) return v.filter(Boolean).join(', ');
+  return v || '';
+}
 async function saveMyDostupnostVenue(workerId, venueId, dates, poznamka, smeny) {
   var existing = WORKER_DOSTUPNOST.find(function(d){ return d.worker_id===workerId && d.venue_id===venueId; });
   try {
@@ -324,7 +332,8 @@ var ANDEL_SMENY_PRESETY_VENUE = {
     { text:'brigádníci 17:00–00:00',  dny:[1,2,3,4] },
     { text:'brigádníci 17:00–01:00',  dny:[5,6] },
     { text:'hlavní směna 16:00–22:00', dny:[0] },
-    { text:'brigáda 16:00–22:00',      dny:[0] }
+    { text:'brigáda 16:00–22:00',      dny:[0] },
+    { text:'11:00–22:00',              dny:[0] }
   ],
   // Anděl Music Club - konec směny se neurčuje předem (končí se podle toho,
   // kolik lidí zrovna je), proto jen čas "od", bez konce. Stejné každý den.
@@ -334,6 +343,10 @@ var ANDEL_SMENY_PRESETY_VENUE = {
     { text:'pomoc 2 - 19:00', dny:[0,1,2,3,4,5,6] }
   ]
 };
+// Speciální volba navíc ke konkrétním směnám u KAŽDÉHO dne (bez ohledu na
+// "dny" filtr) - brigádník tím řekne, že mu nevadí, jakou přesně směnu ten
+// den dostane, klidně celý den.
+var ANDEL_SMENA_CELY_DEN = 'můžu celý den (nezáleží mi, jakou směnu dostanu)';
 function getAndelSmenyPresety(venue) {
   if (!venue) return [];
   return ANDEL_SMENY_PRESETY_VENUE[venue.slug] || ANDEL_SMENY_PRESETY_VENUE['andel-cafe'];

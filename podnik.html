@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="css/style.css"/>
   <link rel="manifest" href="manifest.json"/>
   <meta name="theme-color" content="#2b7a9e"/>
+  <link rel="icon" href="icons/icon-192.png" type="image/png"/>
+  <link rel="apple-touch-icon" href="icons/icon-180.png"/>
 </head>
 <body>
 
@@ -592,6 +594,11 @@ function renderProfil(){
   buildProfCal();
   profSel = new Set(getDostupnostVenue(currentUser.id, currentVenue.id));
   profSmeny = Object.assign({}, getSmenyVenue(currentUser.id, currentVenue.id));
+  // Starší uložené dny mají u smeny jeden text (string) - normalizuj na pole,
+  // ať se dál pracuje jen s jedním formátem (teď může brigádník vybrat víc).
+  Object.keys(profSmeny).forEach(function(k){
+    if (!Array.isArray(profSmeny[k])) profSmeny[k] = profSmeny[k] ? [profSmeny[k]] : [];
+  });
   document.querySelectorAll('#prof-cal .cal-day').forEach(function(b){
     b.classList.toggle('sel', profSel.has(b.dataset.key));
   });
@@ -617,21 +624,26 @@ function renderProfSmenyList(){
     var d = new Date(key+'T00:00:00');
     var dow = d.getDay();
     var lbl = PROF_DOW_LABELS[dow]+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
-    var picked = profSmeny[key] || '';
-    var presety = getAndelSmenyPresety(currentVenue).filter(function(p){ return p.dny.indexOf(dow)!==-1; });
+    var picked = profSmeny[key] || [];
+    // Konkrétní časy pro ten den + navíc vždycky "můžu celý den" - klidně
+    // jde vybrat víc možností najednou, když brigádníkovi nezáleží, kterou z nich dostane.
+    var presety = getAndelSmenyPresety(currentVenue).filter(function(p){ return p.dny.indexOf(dow)!==-1; })
+      .concat([{ text: ANDEL_SMENA_CELY_DEN }]);
     var btns = presety.map(function(p){
-      var sel = p.text===picked;
+      var sel = picked.indexOf(p.text)!==-1;
       return '<button type="button" class="btn btn-sm '+(sel?'btn-primary':'btn-secondary')+'" style="font-size:11px;padding:4px 8px;" '+
         'onclick="profVyberSmenu(\''+key+'\',\''+p.text.replace(/'/g,"\\'")+'\')">'+p.text+'</button>';
     }).join('');
     return '<div style="padding:6px 0;border-bottom:0.5px solid var(--sand-dark);">'+
-      '<div style="font-weight:600;font-size:12px;margin-bottom:4px;">'+lbl+(picked?'':' <span style="color:var(--orange);font-weight:400;">– vyber směnu</span>')+'</div>'+
+      '<div style="font-weight:600;font-size:12px;margin-bottom:4px;">'+lbl+(picked.length?'':' <span style="color:var(--orange);font-weight:400;">– vyber směnu</span>')+'</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px;">'+btns+'</div></div>';
   }).join('');
 }
 function profVyberSmenu(datum, preset){
-  if (profSmeny[datum]===preset) delete profSmeny[datum]; // druhý klik na stejnou = zrušit výběr
-  else profSmeny[datum] = preset;
+  var arr = profSmeny[datum] || [];
+  var i = arr.indexOf(preset);
+  if (i!==-1) arr.splice(i,1); else arr.push(preset); // klik znovu na stejnou = zrušit jen tu jednu
+  if (arr.length) profSmeny[datum] = arr; else delete profSmeny[datum];
   renderProfSmenyList();
 }
 function renderProfFoto(w){
@@ -723,8 +735,8 @@ async function profSaveDostupnost(){
   var poznamka = document.getElementById('prof-dost-poznamka').value.trim();
   // Pošli jen výběry pro dny, které jsou pořád označené (kdyby se den zrušil, poklidí se i jeho směna).
   var smeny = {};
-  dates.forEach(function(d){ if (profSmeny[d]) smeny[d] = profSmeny[d]; });
-  if (isAndelBusiness(currentVenue) && dates.some(function(d){ return !smeny[d]; })) {
+  dates.forEach(function(d){ if (profSmeny[d] && profSmeny[d].length) smeny[d] = profSmeny[d]; });
+  if (isAndelBusiness(currentVenue) && dates.some(function(d){ return !smeny[d] || !smeny[d].length; })) {
     if (!confirm('U některých vybraných dnů jsi nezvolil/a konkrétní směnu. Uložit i tak?')) return;
   }
   var res = await saveMyDostupnostVenue(currentUser.id, currentVenue.id, dates, poznamka, smeny);
