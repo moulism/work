@@ -483,6 +483,9 @@ function editWorkerModal(workerId){
   if (!w) return;
   var venueOptions = VENUES.map(function(v){ return '<option value="'+v.id+'"'+(v.id===w.venue_id?' selected':'')+'>'+v.ikona+' '+v.nazev+'</option>'; }).join('');
   var html = '<div class="modal-title">✏️ '+w.jmeno+'</div>'+
+    '<div class="form-group"><label class="form-label">Jméno</label>'+
+    '<div style="display:flex;gap:8px;"><input class="form-input" id="ewm-jmeno" value="'+w.jmeno.replace(/"/g,'&quot;')+'" placeholder="Jméno a příjmení"/>'+
+    '<button class="btn btn-sm btn-primary" onclick="ewmSaveJmeno('+w.id+')">Uložit</button></div></div>'+
     '<div class="form-group"><label class="form-label">Kód (PIN)</label>'+
     '<div style="display:flex;gap:8px;"><input class="form-input" id="ewm-pin" maxlength="4" value="'+(w.pin||'')+'" placeholder="1234"/>'+
     '<button class="btn btn-sm btn-primary" onclick="ewmSavePin('+w.id+')">Uložit</button></div></div>'+
@@ -498,6 +501,15 @@ function editWorkerModal(workerId){
 function ewmFlash(){
   var m = document.getElementById('ewm-msg');
   if (m) { m.style.display='block'; setTimeout(function(){ m.style.display='none'; }, 2000); }
+}
+async function ewmSaveJmeno(workerId){
+  var jmeno = document.getElementById('ewm-jmeno').value.trim();
+  if (!jmeno) { alert('Jméno nemůže být prázdné.'); return; }
+  var res = await updateWorkerJmeno(workerId, jmeno);
+  if (!res.ok) { alert('Nepovedlo se uložit jméno.'); return; }
+  renderAllWorkersTable();
+  editWorkerModal(workerId);
+  ewmFlash();
 }
 async function ewmSavePin(workerId){
   var pin = document.getElementById('ewm-pin').value.trim();

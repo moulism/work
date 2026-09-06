@@ -1342,6 +1342,14 @@ async function updateWorkerHomeVenue(workerId, venueId) {
   var w = getWorkerById(workerId); if (w) w.venue_id = venueId;
   return { ok:true };
 }
+async function updateWorkerJmeno(workerId, jmeno) {
+  try {
+    var res = await db.from('workers').update({ jmeno:jmeno }).eq('id', workerId);
+    if (res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  var w = getWorkerById(workerId); if (w) w.jmeno = jmeno;
+  return { ok:true };
+}
 // "Odebrání" brigádníka = měkké smazání (aktivni=false). Historie směn/mezd/tržeb
 // zůstává zachovaná pro účetnictví, jen zmizí ze seznamů aktivních lidí a nejde se jím přihlásit.
 async function removeWorkerSoft(workerId) {
