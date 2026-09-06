@@ -597,34 +597,40 @@ function setRzMonth(m, btn){
   buildRzMonthBtns();
   renderRzMesic();
 }
+// Stejný styl jako Kosatka má u svého Rozpisu (admin.html renderSched) -
+// den po dni, seskupené přes rowspan, dnešek zvýrazněný, víkend červeně,
+// místo "stanoviště" tady barevná "pilulka" se směnou/poznámkou.
 function renderRzMesic(){
   var days = getMonthDaysAny(2026, rzMonth);
-  var vsechnySmeny = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(2026+'-'+String(rzMonth).padStart(2,'0'))===0; });
-  // Sloupce = brigádníci, co mají tenhle měsíc aspoň jednu směnu (řazeno podle jména).
-  var workerIds = Array.from(new Set(vsechnySmeny.map(function(s){return s.workerId;})));
-  var workers = workerIds.map(getWorkerById).filter(Boolean).sort(function(a,b){return a.jmeno.localeCompare(b.jmeno,'cs');});
+  var prefix = 2026+'-'+String(rzMonth).padStart(2,'0');
+  var vsechnySmeny = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(prefix)===0; });
   var el = document.getElementById('rz-mesic-table');
-  if (!workers.length) { el.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">V tomhle měsíci zatím nejsou žádné směny.</td></tr></tbody>'; return; }
-  // Sloupce jen s křestním jménem se pletou, když je stejné jméno vícekrát
-  // (dva "Tomáš" atd.) - takovým lidem ukaž rovnou celé jméno, ať je jasné,
-  // čí sloupec je čí. Kdo je v měsíci jediný se svým křestním jménem, tomu
-  // pro přehlednost necháme jen to křestní.
-  var jmenaPocet = {};
-  workers.forEach(function(w){ var prvni = w.jmeno.split(' ')[0]; jmenaPocet[prvni] = (jmenaPocet[prvni]||0)+1; });
-  var html = '<thead><tr><th>Datum</th>'+workers.map(function(w){
-    var prvni = w.jmeno.split(' ')[0];
-    var label = jmenaPocet[prvni] > 1 ? w.jmeno : prvni;
-    return '<th>'+label+'</th>';
-  }).join('')+'</tr></thead><tbody>';
+  if (!vsechnySmeny.length) { el.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">V tomhle měsíci zatím nejsou žádné směny.</td></tr></tbody>'; return; }
+  var byDate = {}; days.forEach(function(d){ byDate[d] = []; });
+  vsechnySmeny.forEach(function(s){ if (byDate[s.datum]) byDate[s.datum].push(s); });
+  var html = '<thead><tr><th>Datum</th><th>Brigádník</th><th>Směna</th><th></th></tr></thead><tbody>';
+  var maZaznam = false;
   days.forEach(function(d){
-    html += '<tr'+(d===todayStr()?' style="background:#f0f8fc;"':'')+'>'+
-      '<td style="font-weight:500;'+(isWeekend(d)?'color:var(--red);':'')+'">'+formatDate(d)+'</td>';
-    workers.forEach(function(w){
-      var s = vsechnySmeny.find(function(x){return x.workerId===w.id && x.datum===d;});
-      html += '<td style="text-align:center;">'+(s ? ('<span class="smena-pill">'+(s.poznamka?s.poznamka:'✓')+'</span>') : '')+'</td>';
+    var shifts = byDate[d].slice().sort(function(a,b){
+      var wa=getWorkerById(a.workerId), wb=getWorkerById(b.workerId);
+      return (wa?wa.jmeno:'').localeCompare(wb?wb.jmeno:'', 'cs');
     });
-    html += '</tr>';
+    if (!shifts.length) return;
+    maZaznam = true;
+    var we = isWeekend(d), dnes = d===todayStr();
+    shifts.forEach(function(s, i){
+      var w = getWorkerById(s.workerId);
+      html += '<tr'+(dnes?' style="background:#f0f8fc;"':'')+'>';
+      if (i===0) html += '<td rowspan="'+shifts.length+'" style="font-weight:'+(dnes?700:500)+';vertical-align:top;padding-top:10px;'+(we?'color:var(--red);':'')+'">'+formatDate(d)+(dnes?' <span class="badge badge-info" style="font-size:9px;">DNES</span>':'')+'</td>';
+      html += '<td>'+(w?w.jmeno:'?')+'</td>';
+      html += '<td><span class="smena-pill">'+(s.poznamka?s.poznamka:'✓')+'</span></td>';
+      html += '<td style="white-space:nowrap;">'+
+        '<button class="btn btn-sm btn-secondary" style="margin-right:4px;" onclick="editShiftPoznamka('+s.id+',\''+(s.poznamka||'').replace(/'/g,"\\'")+'\')">✏️</button>'+
+        '<button class="btn btn-sm btn-danger" onclick="removeShift('+s.id+')">🗑️</button></td>';
+      html += '</tr>';
+    });
   });
+  if (!maZaznam) { el.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">V tomhle měsíci zatím nejsou žádné směny.</td></tr></tbody>'; return; }
   html += '</tbody>';
   el.innerHTML = html;
 }
