@@ -66,6 +66,10 @@
       <div class="card-title">🗓️ Hromadný přehled – celý měsíc</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Kdo je na směně který den v celém měsíci, na jeden pohled - místo klikání den po dni.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="rz-mesic-btns"></div>
+      <div style="margin-bottom:1rem;">
+        <div class="card-title" style="font-size:13px;">🔎 Chybí doplnit do rozpisu</div>
+        <div id="rz-chybi-wrap"></div>
+      </div>
       <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="rz-mesic-table"></table></div>
     </div>
   </div>
@@ -207,6 +211,13 @@
       </div>
       <button class="btn btn-primary" onclick="pridatNovehoBrigadnika()">Založit</button>
       <div class="form-error" id="nwb-err" style="display:none;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">➕ Hromadně přidat brigádníky</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Jeden brigádník na řádek, ve formátu "Jméno, PIN" (PIN musí mít přesně 4 číslice a být unikátní).</p>
+      <textarea class="form-input" id="bulk-brig-text" rows="5" placeholder="Jana Nováková, 1234&#10;Petr Svoboda, 5678"></textarea>
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="pridatBrigadnikyHromadne()">Založit všechny</button>
+      <div id="bulk-brig-result" style="margin-top:10px;font-size:13px;"></div>
     </div>
     <div class="card">
       <div class="card-title">➕ Přidat brigádníka z jiné provozovny</div>
@@ -600,7 +611,32 @@ function setRzMonth(m, btn){
 // Stejný styl jako Kosatka má u svého Rozpisu (admin.html renderSched) -
 // den po dni, seskupené přes rowspan, dnešek zvýrazněný, víkend červeně,
 // místo "stanoviště" tady barevná "pilulka" se směnou/poznámkou.
+// Dny v měsíci, kde ještě vůbec nikdo nemá naplánovanou směnu - ať admin
+// hned vidí, co ještě musí do rozpisu doplnit, místo aby to hledal ručně
+// den po dni.
+function renderRzChybi(){
+  var days = getMonthDaysAny(2026, rzMonth);
+  var prefix = 2026+'-'+String(rzMonth).padStart(2,'0');
+  var obsazeno = {};
+  getScheduleForVenue(venue.id).forEach(function(s){ if (s.datum.indexOf(prefix)===0) obsazeno[s.datum] = true; });
+  var chybi = days.filter(function(d){ return !obsazeno[d]; });
+  var el = document.getElementById('rz-chybi-wrap');
+  if (!chybi.length) { el.innerHTML = '<div style="color:#3B6D11;font-size:13px;padding:6px 0;">✓ Každý den v měsíci má aspoň jednu naplánovanou směnu.</div>'; return; }
+  el.innerHTML = chybi.map(function(d){
+    var we = isWeekend(d), dnes = d===todayStr();
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
+      '<span style="'+(we?'color:var(--red);':'')+'font-weight:'+(dnes?700:500)+';">'+formatDate(d)+(dnes?' <span class="badge badge-info" style="font-size:9px;">DNES</span>':'')+'</span>'+
+      '<button class="btn btn-sm btn-primary" onclick="rzSkokNaDen(\''+d+'\')">+ Přidat</button></div>';
+  }).join('');
+}
+function rzSkokNaDen(datum){
+  document.getElementById('rz-datum').value = datum;
+  renderRzDostupni();
+  renderRzPresetyManual();
+  document.getElementById('rz-datum').scrollIntoView({behavior:'smooth', block:'center'});
+}
 function renderRzMesic(){
+  renderRzChybi();
   var days = getMonthDaysAny(2026, rzMonth);
   var prefix = 2026+'-'+String(rzMonth).padStart(2,'0');
   var vsechnySmeny = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(prefix)===0; });
@@ -940,6 +976,25 @@ async function pridatNovehoBrigadnika(){
   if (!res.ok) { err.style.display='block'; err.textContent = res.error && res.error.message ? res.error.message : (typeof res.error === 'string' ? res.error : 'Nepovedlo se to založit.'); return; }
   document.getElementById('nwb-jmeno').value = '';
   document.getElementById('nwb-pin').value = '';
+  renderBrigadnici();
+}
+async function pridatBrigadnikyHromadne(){
+  var raw = document.getElementById('bulk-brig-text').value;
+  var lines = raw.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  var resultEl = document.getElementById('bulk-brig-result');
+  if (!lines.length) { resultEl.innerHTML = '<span style="color:var(--red);">Vlož aspoň jednoho brigádníka.</span>'; return; }
+  var vysledky = [];
+  for (var i=0;i<lines.length;i++){
+    var parts = lines[i].split(',');
+    var jmeno = (parts[0]||'').trim();
+    var pin = (parts[1]||'').trim();
+    if (!jmeno || !pin) { vysledky.push('❌ "'+lines[i]+'" – chybí jméno nebo PIN (odděl čárkou)'); continue; }
+    var res = await createWorkerDirect(jmeno, pin, venue.id);
+    if (!res.ok) vysledky.push('❌ '+jmeno+' – '+(res.error && res.error.message ? res.error.message : (typeof res.error==='string'?res.error:'nepovedlo se založit')));
+    else vysledky.push('✅ '+jmeno+' založen/a');
+  }
+  resultEl.innerHTML = vysledky.map(function(v){return '<div>'+v+'</div>';}).join('');
+  document.getElementById('bulk-brig-text').value = '';
   renderBrigadnici();
 }
 async function addBrigadnikSem(){
