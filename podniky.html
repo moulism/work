@@ -66,19 +66,26 @@
     <div class="dash-grid" id="dash-grid"></div>
 
     <div class="dash-card" id="hp-pokladna-card" style="margin-top:14px;display:none;">
-      <div class="dc-name">💵 Zůstatek pokladních knih</div>
+      <div class="dc-name">💵 Zůstatek pokladních knih (hotovost)</div>
       <div style="font-size:26px;font-weight:700;" id="hp-pokladna-total"></div>
       <div id="hp-pokladna-breakdown" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
     </div>
 
+    <div class="dash-card" id="hp-online-card" style="margin-top:14px;display:none;">
+      <div class="dc-name">🌐 Online peněženky (platby kartou)</div>
+      <div style="font-size:26px;font-weight:700;" id="hp-online-total"></div>
+      <div id="hp-online-breakdown" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+    </div>
+
     <div class="dash-card" style="margin-top:14px;">
       <div class="dc-name">🧾 Zapsat náklad / fakturu</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Makro, CocaCola, rozvoz, elektřina... - cokoliv, co jde do nákladů podniku.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Makro, CocaCola, rozvoz, elektřina... - cokoliv, co jde do nákladů podniku. Vyber kategorii, ať se to propíše do Statistik.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;">
         <div class="form-group" style="margin:0;"><label class="form-label">Provozovna</label><select class="form-select" id="hp-nakl-venue"></select></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Co to bylo</label><input class="form-input" id="hp-nakl-popis" placeholder="např. Makro - pivo a limo"/></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Kolik to stálo</label><input type="number" class="form-input" id="hp-nakl-castka" placeholder="Kč"/></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Datum</label><input type="date" class="form-input" id="hp-nakl-datum"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Kategorie</label><select class="form-select" id="hp-nakl-kategorie"><option value="">Ostatní</option><option value="mzdy">Mzdy</option><option value="odvody">Odvody</option><option value="teplo">Teplo</option><option value="elektro">Elektřina</option><option value="telefon">Telefon</option><option value="internet">Internet</option><option value="dph">DPH</option></select></div>
       </div>
       <button class="btn btn-primary" style="margin-top:10px;" onclick="hpZapsatNaklad()">Uložit</button>
       <div id="hp-nakl-msg" style="display:none;margin-top:8px;" class="form-error"></div>
@@ -86,12 +93,13 @@
 
     <div class="dash-card" style="margin-top:14px;">
       <div class="dc-name">🔁 Přidat automatickou platbu</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Elektřina, voda, internet... appka to sama každý měsíc zapíše do nákladů dané provozovny.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Elektřina, voda, internet... appka to sama každý měsíc zapíše do nákladů dané provozovny. Vyber kategorii, ať se to propíše do Statistik.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;">
         <div class="form-group" style="margin:0;"><label class="form-label">Provozovna</label><select class="form-select" id="hp-op-venue"></select></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Co to je</label><input class="form-input" id="hp-op-popis" placeholder="např. Elektřina ČEZ"/></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Kč / měsíc</label><input type="number" class="form-input" id="hp-op-castka" placeholder="Kč"/></div>
         <div class="form-group" style="margin:0;"><label class="form-label">Den v měsíci</label><input type="number" min="1" max="28" class="form-input" id="hp-op-den" value="1"/></div>
+        <div class="form-group" style="margin:0;"><label class="form-label">Kategorie</label><select class="form-select" id="hp-op-kategorie"><option value="">Ostatní</option><option value="mzdy">Mzdy</option><option value="odvody">Odvody</option><option value="teplo">Teplo</option><option value="elektro">Elektřina</option><option value="telefon">Telefon</option><option value="internet">Internet</option><option value="dph">DPH</option></select></div>
       </div>
       <button class="btn btn-primary" style="margin-top:10px;" onclick="hpPridatOpakovanou()">Uložit</button>
       <div id="hp-op-msg" style="display:none;margin-top:8px;" class="form-error"></div>
@@ -218,15 +226,17 @@ async function hpZapsatNaklad(){
   var popis = document.getElementById('hp-nakl-popis').value.trim();
   var castka = parseFloat(document.getElementById('hp-nakl-castka').value);
   var datum = document.getElementById('hp-nakl-datum').value || todayStr();
+  var kategorie = document.getElementById('hp-nakl-kategorie').value || null;
   var msg = document.getElementById('hp-nakl-msg');
   msg.style.display = 'none';
   if (!venueId) { msg.style.display='block'; msg.textContent='Vyber provozovnu.'; return; }
   if (!popis || isNaN(castka) || castka<=0) { msg.style.display='block'; msg.textContent='Vyplň popis a částku.'; return; }
-  var res = await submitNaklad(venueId, currentUser.id, datum, popis, castka);
+  var res = await submitNaklad(venueId, currentUser.id, datum, popis, castka, kategorie);
   if (!res.ok) { msg.style.display='block'; msg.textContent = 'Nepovedlo se to uložit: '+(res.error && res.error.message ? res.error.message : (typeof res.error==='string'?res.error:'zkus to znovu.')); console.error('hpZapsatNaklad selhalo:', res.error); return; }
   document.getElementById('hp-nakl-popis').value = '';
   document.getElementById('hp-nakl-castka').value = '';
   document.getElementById('hp-nakl-datum').value = todayStr();
+  document.getElementById('hp-nakl-kategorie').value = '';
   msg.style.display='block'; msg.style.color='var(--green)'; msg.textContent='✅ Uloženo.';
   setTimeout(function(){ msg.style.display='none'; msg.style.color=''; }, 2500);
   renderDash();
@@ -653,20 +663,38 @@ function toggleDcBreakdown(id, btn){
   btn.textContent = open ? '▸ Po provozovnách' : '▾ Skrýt provozovny';
 }
 
-// Přehled hotovosti v pokladnách - jen provozovny s pokladní knihou (byty), sečtené přes všechny, které vidí.
+// Přehled hotovosti v pokladnách - Kosatka žádnou pokladní knihu nemá (jiný
+// režim provozu), ale byty i ostatní provozovny (Anděl, Republika...) ano,
+// takže se sem počítají všechny KROMĚ Kosatky. (Dřív se sem počítaly jen
+// "byty" provozovny, takže se na hlavním panelu neukazoval pravdivý
+// zůstatek pokladny z Anděl/Republiky - tohle to opravuje.)
 function renderPokladnaPrehled(){
-  var bytoveVenues = myVenues.filter(function(v){ return v.rezim==='byty'; });
+  var pokladnoveVenues = myVenues.filter(function(v){ return v.rezim!=='kosatka'; });
   var card = document.getElementById('hp-pokladna-card');
-  if (!bytoveVenues.length) { card.style.display='none'; return; }
-  var ids = bytoveVenues.map(function(v){return v.id;});
-  var celkem = getPokladnaZustatekCelkem(ids);
-  document.getElementById('hp-pokladna-total').textContent = celkem.toLocaleString('cs-CZ')+' Kč';
-  document.getElementById('hp-pokladna-total').style.color = celkem<0 ? 'var(--red)' : 'var(--water-dark)';
-  document.getElementById('hp-pokladna-breakdown').innerHTML = bytoveVenues.map(function(v){
-    var z = getPokladnaZustatek(v.id);
+  if (!pokladnoveVenues.length) { card.style.display='none'; } else {
+    var ids = pokladnoveVenues.map(function(v){return v.id;});
+    var celkem = getPokladnaZustatekCelkem(ids);
+    document.getElementById('hp-pokladna-total').textContent = celkem.toLocaleString('cs-CZ')+' Kč';
+    document.getElementById('hp-pokladna-total').style.color = celkem<0 ? 'var(--red)' : 'var(--water-dark)';
+    document.getElementById('hp-pokladna-breakdown').innerHTML = pokladnoveVenues.map(function(v){
+      var z = getPokladnaZustatek(v.id);
+      return v.ikona+' '+v.nazev+': <strong>'+z.toLocaleString('cs-CZ')+' Kč</strong>';
+    }).join(' &nbsp;·&nbsp; ');
+    card.style.display = 'block';
+  }
+
+  var onlineVenues = myVenues.filter(isOnlinePenezenkaVenue);
+  var onlineCard = document.getElementById('hp-online-card');
+  if (!onlineVenues.length) { onlineCard.style.display='none'; return; }
+  var onlineIds = onlineVenues.map(function(v){return v.id;});
+  var onlineCelkem = getPokladnaZustatekCelkem(onlineIds, 'online');
+  document.getElementById('hp-online-total').textContent = onlineCelkem.toLocaleString('cs-CZ')+' Kč';
+  document.getElementById('hp-online-total').style.color = onlineCelkem<0 ? 'var(--red)' : 'var(--water-dark)';
+  document.getElementById('hp-online-breakdown').innerHTML = onlineVenues.map(function(v){
+    var z = getPokladnaZustatek(v.id, 'online');
     return v.ikona+' '+v.nazev+': <strong>'+z.toLocaleString('cs-CZ')+' Kč</strong>';
   }).join(' &nbsp;·&nbsp; ');
-  card.style.display = 'block';
+  onlineCard.style.display = 'block';
 }
 
 async function hpPridatOpakovanou(){
@@ -674,14 +702,16 @@ async function hpPridatOpakovanou(){
   var popis = document.getElementById('hp-op-popis').value.trim();
   var castka = parseFloat(document.getElementById('hp-op-castka').value);
   var den = parseInt(document.getElementById('hp-op-den').value)||1;
+  var kategorie = document.getElementById('hp-op-kategorie').value || null;
   var msg = document.getElementById('hp-op-msg');
   msg.style.display = 'none';
   if (!venueId) { msg.style.display='block'; msg.textContent='Vyber provozovnu.'; return; }
   if (!popis || isNaN(castka) || castka<=0) { msg.style.display='block'; msg.textContent='Vyplň popis a částku.'; return; }
-  var res = await addOpakovanyNaklad(venueId, popis, castka, den);
+  var res = await addOpakovanyNaklad(venueId, popis, castka, den, kategorie);
   if (!res.ok) { msg.style.display='block'; msg.textContent = 'Nepovedlo se to uložit: '+(res.error && res.error.message ? res.error.message : (typeof res.error==='string'?res.error:'zkus to znovu.')); return; }
   document.getElementById('hp-op-popis').value = '';
   document.getElementById('hp-op-castka').value = '';
+  document.getElementById('hp-op-kategorie').value = '';
   msg.style.display='block'; msg.style.color='var(--green)'; msg.textContent='✅ Uloženo. Appka ji od zadaného dne bude sama zapisovat do nákladů.';
   setTimeout(function(){ msg.style.display='none'; msg.style.color=''; }, 3500);
 }

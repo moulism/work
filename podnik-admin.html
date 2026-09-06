@@ -265,6 +265,30 @@
       <div class="card-title">Historie pokladny</div>
       <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="pk-table"></table></div>
     </div>
+
+    <div id="op-wrap" style="display:none;">
+      <div class="card">
+        <div class="card-title">🌐 Online peněženka (platby kartou)</div>
+        <div style="font-size:32px;font-weight:700;" id="op-zustatek"></div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Karetní část tržby (položka "Kartou"), co brigádníci zapisují, se sem propisuje automaticky. Ruční zápisy použij na ostatní online příjmy/výdaje.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">➕ Ruční zápis</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Typ</label>
+            <select class="form-select" id="op-typ"><option value="prijem">Příjem</option><option value="vydaj">Výdej</option></select>
+          </div>
+          <div class="form-group" style="margin:0;"><label class="form-label">Částka (Kč)</label><input class="form-input" type="number" id="op-castka" min="0"/></div>
+          <button class="btn btn-primary" onclick="opZapsat()">Uložit</button>
+        </div>
+        <div class="form-group" style="margin-top:10px;"><label class="form-label">Popis</label><input class="form-input" id="op-popis" placeholder="např. výběr na účet, vrácená platba..."/></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Historie online peněženky</div>
+        <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="op-table"></table></div>
+      </div>
+    </div>
   </div>
 
   <!-- DOCHÁZKA -->
@@ -311,7 +335,14 @@
   <div class="page" id="tab-statistiky">
     <div class="card">
       <div class="card-title">📊 Přehled – <span id="stat-month-label"></span></div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Vyber si libovolný měsíc (nemusí to být zrovna tenhle) - nebo celou sezónu.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="stat-month-btns"></div>
       <div id="stat-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🧾 Náklady podle kategorie – <span id="stat-kat-month-label"></span></div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Když se náklad/faktura zapíše s vybranou kategorií (v Hlavním panelu), sečte se to tady samo.</p>
+      <div id="stat-kat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;"></div>
     </div>
     <div class="card">
       <div class="card-title">Podle brigádníka (celkem od začátku)</div>
@@ -351,6 +382,7 @@
 var venue = null;
 var stanoviste = [];
 var trzbyMonth = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
+var statMonth = trzbyMonth;
 var currentAdmin = null;
 
 loadAll().then(function(){
@@ -369,6 +401,7 @@ loadAll().then(function(){
   stanoviste = getStanovisteZaklad(venue.id);
   document.getElementById('tb-brand').textContent = venue.ikona+' '+venue.nazev+' – Admin';
   document.getElementById('admin-name').textContent = user.jmeno.split(' ')[0];
+  document.getElementById('op-wrap').style.display = isOnlinePenezenkaVenue(venue) ? 'block' : 'none';
 
   initSelects();
   renderShiftTable();
@@ -403,7 +436,7 @@ function showTab(id,btn){
   if(id==='dostupnost') { renderAvailAdmin(); renderAvailPoznamky(); }
   if(id==='brigadnici') renderBrigadnici();
   if(id==='dochazka') renderDochazkaAdmin();
-  if(id==='pokladna') renderPokladnaAdmin();
+  if(id==='pokladna') { renderPokladnaAdmin(); renderOnlinePenezenkaAdmin(); }
   if(id==='statistiky') renderStatistikyAdmin();
   if(id==='nastaveni') renderNastaveni();
 }
@@ -482,6 +515,45 @@ async function pkSmazat(id){
   if (!confirm('Smazat tenhle zápis z pokladny?')) return;
   await deletePokladnaZapisAdmin(id);
   renderPokladnaAdmin();
+}
+
+// ── ONLINE PENĚŽENKA (Anděl Café, Anděl Music Club - platby kartou) ──
+function renderOnlinePenezenkaAdmin(){
+  if (!isOnlinePenezenkaVenue(venue)) return;
+  var z = getPokladnaZustatek(venue.id, 'online');
+  var elZ = document.getElementById('op-zustatek');
+  elZ.textContent = z.toLocaleString('cs-CZ')+' Kč';
+  elZ.style.color = z<0 ? 'var(--red)' : 'var(--water-dark)';
+  var rows = getPokladnaForVenue(venue.id, 'online');
+  var html = '<thead><tr><th>Datum</th><th>Typ</th><th>Popis</th><th>Kdo</th><th>Částka</th><th></th></tr></thead><tbody>';
+  if (!rows.length) html += '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím žádné zápisy.</td></tr>';
+  rows.forEach(function(p){
+    var w = p.worker_id ? getWorkerById(p.worker_id) : null;
+    var auto = (p.popis||'').indexOf(POKLADNA_AUTO_PREFIX)===0;
+    html += '<tr><td>'+formatDate(p.datum)+'</td>'+
+      '<td>'+(p.typ==='prijem'?'⬆️ Příjem':'⬇️ Výdej')+'</td>'+
+      '<td style="font-size:12px;'+(auto?'color:var(--text-muted);':'')+'">'+(auto?'💳 Tržba (automaticky)':(p.popis||'–'))+'</td>'+
+      '<td>'+(w?w.jmeno.split(' ')[0]:'–')+'</td>'+
+      '<td style="font-weight:600;color:'+(p.typ==='prijem'?'var(--green)':'var(--red)')+';">'+(p.typ==='prijem'?'+':'−')+p.castka.toLocaleString('cs-CZ')+' Kč</td>'+
+      '<td>'+(auto?'':'<button class="btn btn-sm btn-danger" onclick="opSmazat('+p.id+')">🗑️</button>')+'</td></tr>';
+  });
+  html += '</tbody>';
+  document.getElementById('op-table').innerHTML = html;
+}
+async function opZapsat(){
+  var typ = document.getElementById('op-typ').value;
+  var castka = parseFloat(document.getElementById('op-castka').value);
+  var popis = document.getElementById('op-popis').value.trim();
+  if (isNaN(castka) || castka<=0) { alert('Zadej platnou částku.'); return; }
+  if (!popis) { alert('Napiš, o co jde.'); return; }
+  await addPokladnaZapis(venue.id, typ, castka, popis, currentAdmin.id, 'online');
+  document.getElementById('op-castka').value=''; document.getElementById('op-popis').value='';
+  renderOnlinePenezenkaAdmin();
+}
+async function opSmazat(id){
+  if (!confirm('Smazat tenhle zápis z online peněženky?')) return;
+  await deletePokladnaZapisAdmin(id);
+  renderOnlinePenezenkaAdmin();
 }
 
 function initSelects(){
@@ -791,8 +863,10 @@ function renderNakladyAdmin(){
   if (!rows.length) { el.innerHTML = '<div class="empty-state" style="padding:1rem;color:var(--text-muted);">Zatím žádné náklady tenhle měsíc.</div>'; return; }
   el.innerHTML = rows.map(function(n){
     var w = getWorkerById(n.workerId);
+    var katLabel = getNakladKategorieLabel(n.kategorie);
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
-      '<span>'+formatDate(n.datum)+' · '+n.popis+' <span style="color:var(--text-muted);">('+(w?w.jmeno.split(' ')[0]:'?')+')</span></span>'+
+      '<span>'+formatDate(n.datum)+' · '+n.popis+' <span style="color:var(--text-muted);">('+(w?w.jmeno.split(' ')[0]:'?')+')</span>'+
+      (katLabel?' <span class="smena-pill">'+katLabel+'</span>':'')+'</span>'+
       '<span style="display:flex;align-items:center;gap:10px;"><strong>'+n.castka.toLocaleString('cs-CZ')+' Kč</strong>'+
       '<button class="btn btn-sm btn-danger" onclick="mazNaklad('+n.id+')">🗑️</button></span></div>';
   }).join('');
@@ -878,12 +952,25 @@ function renderBrigadnici(){
     return '<option value="'+w.id+'">'+w.jmeno+'</option>';
   }).join('') || '<option value="">– nikdo další k dispozici –</option>';
 }
+function buildStatMonthBtns(){
+  var el = document.getElementById('stat-month-btns');
+  var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
+  el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===statMonth?'btn-primary':'btn-secondary')+'" onclick="setStatMonth('+x.m+')">'+x.l+'</button>';}).join('')+
+    '<button type="button" class="btn btn-sm '+(statMonth==='all'?'btn-primary':'btn-secondary')+'" onclick="setStatMonth(\'all\')">📊 Celá sezóna</button>';
+}
+function setStatMonth(m){
+  statMonth = m;
+  buildStatMonthBtns();
+  renderStatistikyAdmin();
+}
 function renderStatistikyAdmin(){
+  buildStatMonthBtns();
   var monthNames=['','leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
-  var mesicLabel = trzbyMonth==='all' ? 'celá sezóna' : monthNames[trzbyMonth];
-  document.getElementById('stat-month-label').textContent = trzbyMonth==='all' ? 'Celá sezóna' : (mesicLabel+' 2026');
+  var mesicLabel = statMonth==='all' ? 'celá sezóna' : monthNames[statMonth];
+  document.getElementById('stat-month-label').textContent = statMonth==='all' ? 'Celá sezóna' : (mesicLabel+' 2026');
+  document.getElementById('stat-kat-month-label').textContent = statMonth==='all' ? 'celá sezóna' : (mesicLabel+' 2026');
 
-  var z = getZiskVenueMonth(venue.id, 2026, trzbyMonth);
+  var z = getZiskVenueMonth(venue.id, 2026, statMonth);
   var workers = getWorkersForVenue(venue.id);
   var totalHodiny=0, totalHruby=0, totalDluh=0;
   var rows = workers.map(function(w){
@@ -892,17 +979,31 @@ function renderStatistikyAdmin(){
     return { w:w, v:v };
   });
 
+  // Zůstatky pokladny/online peněženky jsou aktuální stav (ne za měsíc) - jde
+  // o to, kolik v nich reálně teď je, ne kolik jimi za měsíc prošlo.
+  var pokladnaZ = getPokladnaZustatek(venue.id);
   var kpi = [
     {lbl:'Tržby ('+mesicLabel+')', val: z.trzby.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Náklady ('+mesicLabel+')', val: z.naklady.toLocaleString('cs-CZ')+' Kč'},
+    {lbl:'Vyplacené mzdy ('+mesicLabel+')', val: z.vyplaty.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Čistý zisk ('+mesicLabel+')', val: z.zisk.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Odprac. hodin celkem', val: Math.round(totalHodiny)+'h'},
     {lbl:'Hrubé mzdy celkem', val: totalHruby.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Dluh na účtech celkem', val: totalDluh.toLocaleString('cs-CZ')+' Kč'},
     {lbl:'Počet brigádníků', val: workers.length},
+    {lbl:'Zůstatek v pokladně (aktuálně)', val: pokladnaZ.toLocaleString('cs-CZ')+' Kč'},
   ];
+  if (isOnlinePenezenkaVenue(venue)) {
+    var onlineZ = getPokladnaZustatek(venue.id, 'online');
+    kpi.push({lbl:'Zůstatek online peněženky (aktuálně)', val: onlineZ.toLocaleString('cs-CZ')+' Kč'});
+  }
   document.getElementById('stat-kpi-grid').innerHTML = kpi.map(function(i){
     return '<div class="stat-box"><div class="stat-lbl">'+i.lbl+'</div><div class="stat-val" style="font-size:16px;">'+i.val+'</div></div>';
+  }).join('');
+
+  var kat = getNakladyKategorieSoucty(venue.id, 2026, statMonth);
+  document.getElementById('stat-kat-grid').innerHTML = NAKLAD_KATEGORIE.map(function(k){
+    return '<div class="stat-box"><div class="stat-lbl">'+k.label+'</div><div class="stat-val" style="font-size:16px;">'+kat[k.key].toLocaleString('cs-CZ')+' Kč</div></div>';
   }).join('');
 
   var el = document.getElementById('stat-workers-tbody');

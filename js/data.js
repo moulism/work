@@ -1432,12 +1432,32 @@ async function submitTrzbaVenue(venueId, stanovisteId, datum, castka, workerId, 
     await db.from('trzby').upsert([row]);
   }
   if (hotove!==undefined && hotove!==null) {
-    await syncPokladnaZTrzby(venueId, stanovisteId, datum, hotove, workerId);
+    await syncPokladnaZTrzby(venueId, stanovisteId, datum, hotove, workerId, 'hotovost');
+  }
+  if (kartou!==undefined && kartou!==null) {
+    await syncPokladnaZTrzby(venueId, stanovisteId, datum, kartou, workerId, 'online');
   }
   return row;
 }
 
 // ===================== NÁKLADY (Makro, pivo, zásoby...) =====================
+// Pevné kategorie pro pravidelné/opakující se náklady - když se faktura při
+// zápisu zařadí pod jednu z nich, propíše se to rovnou do Statistik (viz
+// getNakladyKategorieSoucty), ať admin hned vidí, kolik ho co stálo tenhle
+// měsíc (internet, elektřina...), bez ručního součítání.
+var NAKLAD_KATEGORIE = [
+  { key:'mzdy',     label:'Mzdy' },
+  { key:'odvody',   label:'Odvody' },
+  { key:'teplo',    label:'Teplo' },
+  { key:'elektro',  label:'Elektřina' },
+  { key:'telefon',  label:'Telefon' },
+  { key:'internet', label:'Internet' },
+  { key:'dph',      label:'DPH' }
+];
+function getNakladKategorieLabel(key) {
+  var k = NAKLAD_KATEGORIE.find(function(x){ return x.key===key; });
+  return k ? k.label : null;
+}
 function getNakladyForVenue(venueId) {
   return NAKLADY.filter(function(n){ return n.venue_id===venueId; }).sort(function(a,b){ return a.datum<b.datum?1:-1; });
 }
@@ -1446,9 +1466,17 @@ function getNakladyForVenueMonth(venueId, year, month) {
   var prefix = year+'-'+String(month).padStart(2,'0');
   return getNakladyForVenue(venueId).filter(function(n){ return (n.datum||'').indexOf(prefix)===0; });
 }
-async function submitNaklad(venueId, workerId, datum, popis, castka) {
+// Součet nákladů podle kategorie za daný měsíc (nebo 'all' = celá sezóna) - pro Statistiky.
+function getNakladyKategorieSoucty(venueId, year, month) {
+  var rows = getNakladyForVenueMonth(venueId, year, month);
+  var soucty = {};
+  NAKLAD_KATEGORIE.forEach(function(k){ soucty[k.key] = 0; });
+  rows.forEach(function(n){ if (n.kategorie && soucty.hasOwnProperty(n.kategorie)) soucty[n.kategorie] += (n.castka||0); });
+  return soucty;
+}
+async function submitNaklad(venueId, workerId, datum, popis, castka, kategorie) {
   var blocked = requireLoadOk('naklady'); if (blocked) return blocked;
-  var row = { id:getNextId(NAKLADY), venue_id:venueId, workerId:workerId||null, datum:datum, popis:popis, castka:castka };
+  var row = { id:getNextId(NAKLADY), venue_id:venueId, workerId:workerId||null, datum:datum, popis:popis, castka:castka, kategorie:kategorie||null };
   NAKLADY.push(row);
   var res = await dbUpsert('naklady', [row]);
   if (!res.ok) { NAKLADY = NAKLADY.filter(function(n){return n.id!==row.id;}); }
@@ -1705,40 +1733,54 @@ function getBytyPlatbyForVenue(venueId) {
 }
 
 // ===================== POKLADNÍ KNIHA =====================
-function getPokladnaForVenue(venueId) {
-  return POKLADNA.filter(function(p){ return p.venue_id===venueId; }).sort(function(a,b){ return b.datum.localeCompare(a.datum) || b.id-a.id; });
+// "ucet" rozlišuje hotovostní pokladnu (výchozí, staré řádky bez "ucet" se
+// berou jako 'hotovost') od "online peněženky" (karetní platby/příjmy) -
+// stejná tabulka a stejná logika, jen se navíc filtruje podle typu účtu.
+function getPokladnaForVenue(venueId, ucet) {
+  ucet = ucet || 'hotovost';
+  return POKLADNA.filter(function(p){ return p.venue_id===venueId && (p.ucet||'hotovost')===ucet; }).sort(function(a,b){ return b.datum.localeCompare(a.datum) || b.id-a.id; });
 }
-function getPokladnaZustatek(venueId) {
-  return POKLADNA.filter(function(p){ return p.venue_id===venueId; })
+function getPokladnaZustatek(venueId, ucet) {
+  ucet = ucet || 'hotovost';
+  return POKLADNA.filter(function(p){ return p.venue_id===venueId && (p.ucet||'hotovost')===ucet; })
     .reduce(function(s,p){ return s + (p.typ==='prijem' ? p.castka : -p.castka); }, 0);
 }
 // Součet zůstatků přes VŠECHNY provozovny, které vidí daný uživatel (pro přehled na hlavním panelu).
-function getPokladnaZustatekCelkem(venueIds) {
-  return POKLADNA.filter(function(p){ return venueIds.indexOf(p.venue_id)!==-1; })
+function getPokladnaZustatekCelkem(venueIds, ucet) {
+  ucet = ucet || 'hotovost';
+  return POKLADNA.filter(function(p){ return venueIds.indexOf(p.venue_id)!==-1 && (p.ucet||'hotovost')===ucet; })
     .reduce(function(s,p){ return s + (p.typ==='prijem' ? p.castka : -p.castka); }, 0);
 }
-async function addPokladnaZapis(venueId, typ, castka, popis, workerId) {
-  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:todayStr(), typ:typ, castka:Math.abs(castka), popis:popis, worker_id:workerId||null };
+async function addPokladnaZapis(venueId, typ, castka, popis, workerId, ucet) {
+  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:todayStr(), typ:typ, castka:Math.abs(castka), popis:popis, worker_id:workerId||null, ucet:ucet||'hotovost' };
   var res = await dbUpsert('pokladna', [row]);
   if (!res.ok) return res;
   POKLADNA.push(row);
   return { ok:true, row:row };
 }
-// Automatický propis hotovostní části tržby do pokladní knihy (safu) provozovny -
-// brigádník zapíše kolik bylo z tržby hotově/kartou/celkem, hotová část se sama
-// objeví jako "příjem" v pokladně, ať tam správce jen kouká, kolik má v safu.
+// Anděl Café a Anděl Music Club navíc přijímají platby kartou na "online
+// peněženku" (např. přes platební terminál/aplikaci) - odlišit od klasické
+// hotovostní pokladny (safu), ale se stejným ovládáním.
+function isOnlinePenezenkaVenue(venue) {
+  return !!(venue && (venue.slug==='andel-cafe' || venue.slug==='andel-music-club'));
+}
+// Automatický propis tržby do pokladní knihy provozovny - brigádník zapíše
+// kolik bylo z tržby hotově/kartou/celkem, hotová část se propíše do
+// hotovostní pokladny (safu) a kartová část do online peněženky, ať tam
+// správce jen kouká, kolik reálně má/dostane, bez ručního přepisování.
 var POKLADNA_AUTO_PREFIX = 'Tržba (auto)';
-async function syncPokladnaZTrzby(venueId, stanovisteId, datum, hotove, workerId) {
+async function syncPokladnaZTrzby(venueId, stanovisteId, datum, castka, workerId, ucet) {
+  ucet = ucet || 'hotovost';
   var marker = POKLADNA_AUTO_PREFIX+' · '+stanovisteId+' · '+datum;
-  var existing = POKLADNA.find(function(p){ return p.venue_id===venueId && p.popis===marker; });
+  var existing = POKLADNA.find(function(p){ return p.venue_id===venueId && p.popis===marker && (p.ucet||'hotovost')===ucet; });
   if (existing) {
-    existing.castka = hotove;
+    existing.castka = castka;
     if (workerId) existing.worker_id = workerId;
-    try { await db.from('pokladna').update({ castka:hotove, worker_id:existing.worker_id||null }).eq('id', existing.id); } catch(e) {}
+    try { await db.from('pokladna').update({ castka:castka, worker_id:existing.worker_id||null }).eq('id', existing.id); } catch(e) {}
     return;
   }
-  if (!hotove) return; // nula hotovosti = není co zapisovat
-  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:datum, typ:'prijem', castka:hotove, popis:marker, worker_id:workerId||null };
+  if (!castka) return; // nula = není co zapisovat
+  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:datum, typ:'prijem', castka:castka, popis:marker, worker_id:workerId||null, ucet:ucet };
   POKLADNA.push(row);
   try { await dbUpsert('pokladna', [row]); } catch(e) {}
 }
@@ -1756,8 +1798,8 @@ async function deletePokladnaZapisAdmin(id) {
 function getOpakovaneForVenue(venueId) {
   return NAKLADY_OPAKOVANE.filter(function(n){ return n.venue_id===venueId && n.aktivni!==false; });
 }
-async function addOpakovanyNaklad(venueId, popis, castka, denVMesici) {
-  var row = { id:getNextId(NAKLADY_OPAKOVANE), venue_id:venueId, popis:popis, castka:castka, den_v_mesici:denVMesici||1, aktivni:true };
+async function addOpakovanyNaklad(venueId, popis, castka, denVMesici, kategorie) {
+  var row = { id:getNextId(NAKLADY_OPAKOVANE), venue_id:venueId, popis:popis, castka:castka, den_v_mesici:denVMesici||1, aktivni:true, kategorie:kategorie||null };
   var res = await dbUpsert('naklady_opakovane', [row]);
   if (!res.ok) return res;
   NAKLADY_OPAKOVANE.push(row);
@@ -1785,7 +1827,7 @@ async function ensureOpakovaneNaklady() {
     if (dnesDen < (n.den_v_mesici||1)) return;
     var jiz = NAKLADY.some(function(x){ return x.opakovany_id===n.id && x.mesic===mesic; });
     if (jiz) return;
-    var row = { id:getNextId(NAKLADY.concat(toInsert)), venue_id:n.venue_id, workerId:null, datum:todayStr(), popis:'🔁 '+n.popis, castka:n.castka, opakovany_id:n.id, mesic:mesic };
+    var row = { id:getNextId(NAKLADY.concat(toInsert)), venue_id:n.venue_id, workerId:null, datum:todayStr(), popis:'🔁 '+n.popis, castka:n.castka, opakovany_id:n.id, mesic:mesic, kategorie:n.kategorie||null };
     toInsert.push(row);
   });
   if (!toInsert.length) return;
