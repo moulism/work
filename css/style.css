@@ -262,6 +262,18 @@ textarea.form-input {
   border-radius: 20px;
   white-space: nowrap;
 }
+/* Podobný "pill" vzhled pro směny v podnicích bez pevných stanovišť (Anděl,
+   Republika) - ať to vypadá stejně hezky jako barevné misto-pill u Kosatky. */
+.smena-pill {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  background: var(--green-light);
+  color: var(--green);
+}
 
 /* ── PIN PAD ── */
 .pin-dots {

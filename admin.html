@@ -666,7 +666,7 @@ function setAdminRozpisSub(sub){
 function renderChybejici(){
   var days=getMonthDays(2026,schedMonth), ST_KEYS=STANOVISTE.map(function(s){return s.id;}), el=document.getElementById('chybejici-wrap'), problemy=[];
   days.forEach(function(d){
-    var assigned=SCHEDULE.filter(function(s){return s.datum===d;}).map(function(s){return s.mistoId;});
+    var assigned=SCHEDULE.filter(function(s){return !s.venue_id && s.datum===d;}).map(function(s){return s.mistoId;});
     var chybi=ST_KEYS.filter(function(st){return !assigned.includes(st);});
     if(chybi.length) problemy.push({datum:d,chybi:chybi});
   });
@@ -685,7 +685,9 @@ function renderSched(){
   var days=getMonthDays(2026,schedMonth), prefix='2026-'+String(schedMonth).padStart(2,'0');
   var wf=document.getElementById('sched-worker-filter');
   var workerFilter=wf?parseInt(wf.value)||null:null;
-  var filtered=SCHEDULE.filter(function(s){return s.datum.startsWith(prefix) && (!workerFilter||s.workerId===workerFilter);});
+  // Jen Kosatčiny vlastní směny (venue_id=null) - jinak by se sem motaly i
+  // směny z ostatních podniků (Republika/Anděl), co je stejná tabulka SCHEDULE sdílí.
+  var filtered=SCHEDULE.filter(function(s){return !s.venue_id && s.datum.startsWith(prefix) && (!workerFilter||s.workerId===workerFilter);});
   var table=document.getElementById('sched-table');
   if(!filtered.length){table.innerHTML='<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted);">Žádné směny.</td></tr>';return;}
   var byDate={};days.forEach(function(d){byDate[d]=[];});
@@ -719,7 +721,7 @@ function checkAvail(dateStr){
   if(!dateStr)return;
   var el=document.getElementById('check-result');
   var avail=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w) && w.dostupnost&&w.dostupnost.includes(dateStr);});
-  var assigned=SCHEDULE.filter(function(s){return s.datum===dateStr;}).map(function(s){return s.workerId;});
+  var assigned=SCHEDULE.filter(function(s){return !s.venue_id && s.datum===dateStr;}).map(function(s){return s.workerId;});
   if(!avail.length){el.innerHTML='<p style="color:var(--text-muted);font-size:13px;">Nikdo není dostupný.</p>';return;}
   el.innerHTML=avail.map(function(w){
     var isA=assigned.includes(w.id);

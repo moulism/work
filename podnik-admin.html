@@ -621,7 +621,7 @@ function renderRzMesic(){
       '<td style="font-weight:500;'+(isWeekend(d)?'color:var(--red);':'')+'">'+formatDate(d)+'</td>';
     workers.forEach(function(w){
       var s = vsechnySmeny.find(function(x){return x.workerId===w.id && x.datum===d;});
-      html += '<td style="text-align:center;">'+(s ? ('✅'+(s.poznamka?'<div style="font-size:10px;color:var(--water-dark);">'+s.poznamka+'</div>':'')) : '')+'</td>';
+      html += '<td style="text-align:center;">'+(s ? ('<span class="smena-pill">'+(s.poznamka?s.poznamka:'✓')+'</span>') : '')+'</td>';
     });
     html += '</tr>';
   });

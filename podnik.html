@@ -83,6 +83,12 @@
       <div class="card-title">Moje směny</div>
       <div id="my-shifts"></div>
     </div>
+    <div class="card">
+      <div class="card-title">🗓️ Rozpis – celý tým</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Kdo je na směně který den v celém měsíci, na jeden pohled.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="tym-mesic-btns"></div>
+      <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="tym-mesic-table"></table></div>
+    </div>
   </div>
 
   <!-- ÚKLID -->
@@ -229,7 +235,7 @@ function showTab(id, btn){
   document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
   document.getElementById('tab-'+id).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (id==='rozpis') renderShifts();
+  if (id==='rozpis') { renderShifts(); buildTymMonthBtns(); renderTymMesic(); }
   if (id==='ucty') renderUcty();
   if (id==='uklid') renderUklid();
   if (id==='objednavky') renderObjednavky();
@@ -242,6 +248,8 @@ function init(){
   renderTrzbaSetup();
   renderVydelek();
   renderShifts();
+  buildTymMonthBtns();
+  renderTymMesic();
   var d = document.getElementById('pd-datum');
   if (!d.value) d.value = todayStr();
   var nd = document.getElementById('nakl-datum');
@@ -577,6 +585,49 @@ async function ulozitInventuru(){
     await submitInventura(skladId(), currentUser.id, pid, val, tyden);
   }
   var msg = document.getElementById('inv-msg'); msg.style.display='block'; setTimeout(function(){msg.style.display='none';},2500);
+}
+
+// ===================== ROZPIS - CELÝ TÝM (měsíční přehled pro brigádníky) =====================
+// Stejný pohled jako admin má v "Hromadný přehled", jen čistě na čtení - ať
+// brigádník vidí, kdo je na směně který den, bez nutnosti chodit do administrace.
+var tymMesic = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
+function buildTymMonthBtns(){
+  var el = document.getElementById('tym-mesic-btns');
+  var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
+  el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===tymMesic?'btn-primary':'btn-secondary')+'" onclick="setTymMesic('+x.m+',this)">'+x.l+'</button>';}).join('');
+}
+function setTymMesic(m,btn){
+  tymMesic = m;
+  buildTymMonthBtns();
+  renderTymMesic();
+}
+function renderTymMesic(){
+  var days = getMonthDaysAny(2026, tymMesic);
+  var vsechnySmeny = getScheduleForVenue(currentVenue.id).filter(function(s){ return s.datum.indexOf(2026+'-'+String(tymMesic).padStart(2,'0'))===0; });
+  var workerIds = Array.from(new Set(vsechnySmeny.map(function(s){return s.workerId;})));
+  var workers = workerIds.map(getWorkerById).filter(Boolean).sort(function(a,b){return a.jmeno.localeCompare(b.jmeno,'cs');});
+  var el = document.getElementById('tym-mesic-table');
+  if (!workers.length) { el.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">V tomhle měsíci zatím nejsou žádné směny.</td></tr></tbody>'; return; }
+  // Stejné jméno vícekrát (dva "Tomáš" apod.) by se v hlavičce pletlo - takovým
+  // lidem ukaž rovnou celé jméno.
+  var jmenaPocet = {};
+  workers.forEach(function(w){ var prvni = w.jmeno.split(' ')[0]; jmenaPocet[prvni] = (jmenaPocet[prvni]||0)+1; });
+  var html = '<thead><tr><th>Datum</th>'+workers.map(function(w){
+    var prvni = w.jmeno.split(' ')[0];
+    var label = jmenaPocet[prvni] > 1 ? w.jmeno : prvni;
+    return '<th>'+label+'</th>';
+  }).join('')+'</tr></thead><tbody>';
+  days.forEach(function(d){
+    html += '<tr'+(d===todayStr()?' style="background:#f0f8fc;"':'')+'>'+
+      '<td style="font-weight:500;'+(isWeekend(d)?'color:var(--red);':'')+'">'+formatDate(d)+'</td>';
+    workers.forEach(function(w){
+      var s = vsechnySmeny.find(function(x){return x.workerId===w.id && x.datum===d;});
+      html += '<td style="text-align:center;">'+(s ? ('<span class="smena-pill">'+(s.poznamka?s.poznamka:'✓')+'</span>') : '')+'</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  el.innerHTML = html;
 }
 
 // ===================== PROFIL / MOJE DOSTUPNOST =====================
