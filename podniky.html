@@ -197,7 +197,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=4"></script>
+<script src="js/data.js?v=5"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -464,9 +464,9 @@ function renderAllWorkersTable(){
   var bezVenue = workers.filter(function(w){ return !myVenues.some(function(v){return v.id===w.venue_id;}); });
   if (bezVenue.length) groups.push({ venue:null, workers:bezVenue });
 
-  wrap.innerHTML = groups.map(function(g, i){
+  wrap.innerHTML = groups.map(function(g){
     var label = g.venue ? (g.venue.ikona+' '+g.venue.nazev) : '❔ Nezařazení';
-    return '<details style="margin-bottom:8px;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:var(--radius-sm);padding:10px 14px;"'+(i===0?' open':'')+'>'+
+    return '<details style="margin-bottom:8px;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:var(--radius-sm);padding:10px 14px;">'+
       '<summary style="cursor:pointer;font-weight:600;font-size:13px;">'+label+' <span style="font-weight:400;color:var(--text-muted);">('+g.workers.length+')</span></summary>'+
       '<div class="schedule-wrap" style="margin-top:10px;">'+groupTable(g.workers)+'</div>'+
       '</details>';
