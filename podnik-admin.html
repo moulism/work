@@ -1102,23 +1102,48 @@ async function saveVyplatyDetailDenVenue(){
   document.getElementById('vd-datum').value=''; document.getElementById('vd-prichod').value=''; document.getElementById('vd-odchod').value='';
 }
 
-// ── ÚČET brigádníka (položky) - jednotlivé mazání smí jen admin/správce ──
+// ── ÚČET brigádníka (položky) - admin může nový účet rovnou zapsat (např.
+// brigádník si tu udělal účet a zaplatí ho jindy), brigádník ho pak vidí u
+// sebe jako nezaplacený, a když přijde zaplatit, admin ho tady označí jako
+// zaplacený - zmizí z jeho účtu (nesmaže se, jen se skryje, kvůli auditu). ──
 function ucetModal(workerId){
   var w = getWorkerById(workerId);
   var polozky = getUctyForWorkerVenue(workerId, venue.id);
+  var total = 0; polozky.forEach(function(p){ total += p.castka; });
   var html = '<div class="modal-title">🧾 Účet – '+(w?w.jmeno:'?')+'</div>';
-  if (!polozky.length) html += '<p style="color:var(--text-muted);font-size:13px;">Žádné nesmazané položky.</p>';
+  html += '<div class="form-group" style="margin-bottom:6px;"><label class="form-label">Datum účtenky</label><input class="form-input" type="date" id="ucm-datum" value="'+todayStr()+'"/></div>'+
+    '<div class="form-group" style="margin-bottom:6px;"><label class="form-label">Popis (nepovinné)</label><input class="form-input" id="ucm-popis" placeholder="např. účet z baru"/></div>'+
+    '<div class="form-group" style="margin-bottom:10px;"><label class="form-label">Částka (Kč)</label>'+
+    '<div style="display:flex;gap:8px;"><input class="form-input" type="number" id="ucm-castka" placeholder="250"/>'+
+    '<button class="btn btn-primary" onclick="ucmPridatUcet('+workerId+')">+ Přidat</button></div></div>'+
+    '<div id="ucm-err" style="color:var(--red);font-size:12px;display:none;margin-bottom:8px;"></div>'+
+    '<div style="border-top:1px solid var(--sand-dark);padding-top:8px;margin-top:4px;">'+
+    '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px;"><span>Nezaplaceno celkem</span><strong style="color:var(--red);">'+total+' Kč</strong></div>';
+  if (!polozky.length) html += '<p style="color:var(--text-muted);font-size:13px;">Žádné nezaplacené položky.</p>';
   else html += polozky.slice().sort(function(a,b){return b.datum.localeCompare(a.datum)||b.id-a.id;}).map(function(p){
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
       '<span>'+p.popis+' <span style="color:var(--text-muted);">· '+formatDate(p.datum)+'</span></span>'+
       '<span style="display:flex;align-items:center;gap:8px;"><strong>'+p.castka+' Kč</strong>'+
-      '<button class="btn btn-sm btn-danger" onclick="smazatUcetPolozkuAdmin('+p.id+','+workerId+')">🗑️</button></span></div>';
+      '<button class="btn btn-sm btn-primary" onclick="oznacitUcetZaplaceno('+p.id+','+workerId+')">✅ Zaplaceno</button></span></div>';
   }).join('');
-  html += '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Zavřít</button></div>';
+  html += '</div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Zavřít</button></div>';
   showModal(html);
 }
-async function smazatUcetPolozkuAdmin(id, workerId){
-  if (!confirm('Trvale skrýt tuhle položku z účtu brigádníka?')) return;
+async function ucmPridatUcet(workerId){
+  var datum = document.getElementById('ucm-datum').value || todayStr();
+  var popis = document.getElementById('ucm-popis').value.trim() || 'Účet';
+  var castka = parseFloat(document.getElementById('ucm-castka').value);
+  var err = document.getElementById('ucm-err');
+  err.style.display = 'none';
+  if (isNaN(castka) || castka<=0) { err.style.display='block'; err.textContent='Zadej platnou částku.'; return; }
+  var res = await addUcetPolozkaAdmin(workerId, venue.id, datum, popis, castka);
+  if (!res.ok) { err.style.display='block'; err.textContent='Nepovedlo se to uložit, zkus to znovu.'; return; }
+  ucetModal(workerId);
+  renderVyplaty();
+  renderBrigadnici();
+}
+async function oznacitUcetZaplaceno(id, workerId){
+  if (!confirm('Označit tuhle položku jako zaplacenou? Zmizí z účtu brigádníka.')) return;
   await deleteUcetPolozkaAdmin(id, currentAdmin.id);
   ucetModal(workerId);
   renderVyplaty();

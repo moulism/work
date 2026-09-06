@@ -164,6 +164,14 @@
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Zapni si push notifikace do telefonu - dáme ti vědět, když si zapomeneš dopsat tržbu nebo směnu. Na iPhonu nejdřív appku přidej na plochu (Sdílet → Přidat na plochu), pak teprve jde zapnout.</p>
       <button class="btn btn-primary" id="btn-push" style="width:100%">🔔 Povolit oznámení</button>
     </div>
+    <div class="card" id="moje-ucty-card" style="display:none;">
+      <div class="card-title">🧾 Moje účty</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Tohle jsou účty, co sis udělal/a v podniku a ještě je nemáš zaplacené.</p>
+      <div id="moje-ucty-list"></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:8px;padding-top:8px;border-top:1px solid var(--sand-dark);">
+        <span>Celkem nezaplaceno</span><strong id="moje-ucty-total" style="color:var(--red);"></strong>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">📅 Moje dostupnost</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Klikni na dny, kdy můžeš pracovat. Podle tohohle ti admin doplňuje rozpis.</p>
@@ -250,6 +258,7 @@ function init(){
   renderShifts();
   buildTymMonthBtns();
   renderTymMesic();
+  renderMojeUcty();
   var d = document.getElementById('pd-datum');
   if (!d.value) d.value = todayStr();
   var nd = document.getElementById('nakl-datum');
@@ -257,6 +266,21 @@ function init(){
   renderPracovniHistorie();
 }
 
+function renderMojeUcty(){
+  var wrap = document.getElementById('moje-ucty-card');
+  var polozky = getUctyForWorkerVenue(currentUser.id, currentVenue.id);
+  if (!polozky.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  var total = 0;
+  var list = polozky.slice().sort(function(a,b){return b.datum.localeCompare(a.datum)||b.id-a.id;}).map(function(p){
+    total += p.castka;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
+      '<span>'+p.popis+' <span style="color:var(--text-muted);">· '+formatDate(p.datum)+'</span></span>'+
+      '<strong>'+p.castka+' Kč</strong></div>';
+  }).join('');
+  document.getElementById('moje-ucty-list').innerHTML = list;
+  document.getElementById('moje-ucty-total').textContent = total + ' Kč';
+}
 function renderClockToday(){
   var today = todayStr();
   var pd = getPracovniDen(currentUser.id, today);

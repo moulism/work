@@ -1232,6 +1232,19 @@ async function addUcetPolozkaVenue(workerId, venueId, stanovisteId, popis, castk
   UCTY_POLOZKY.push(row);
   return { ok:true, row:row };
 }
+// Účet, co rovnou zapisuje ADMIN za brigádníka (např. si tady udělal účet a
+// zaplatí ho až jindy) - na rozdíl od addUcetPolozkaVenue (to je brigádníkovo
+// vlastní zapsání nákupu s 50% slevou) tady jde o libovolné datum a přesnou
+// částku, kterou má brigádník doplatit, beze slevy.
+async function addUcetPolozkaAdmin(workerId, venueId, datum, popis, castka) {
+  var row = { id:getNextId(UCTY_POLOZKY), workerId:workerId, datum:datum||todayStr(), mistoId:null, popis:popis||'Účet', castka:castka, smazano:false, produktId:null, mnozstvi:null, venue_id:venueId };
+  try {
+    var res = await db.from('ucty').upsert([row]);
+    if (res && res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  UCTY_POLOZKY.push(row);
+  return { ok:true, row:row };
+}
 // ── PENALIZACE (venue-scoped) ──
 function getPenalizaceForVenue(venueId) {
   return PENALIZACE.filter(function(p){return p.venue_id===venueId;});
