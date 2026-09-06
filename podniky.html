@@ -42,6 +42,11 @@
     </div>
   </div>
 
+  <div class="dash-wrap" id="my-shifts-wrap" style="display:none;">
+    <div class="dash-title">📅 Moje nejbližší směny</div>
+    <div id="my-shifts-list"></div>
+  </div>
+
   <div class="venue-back" id="back-wrap" style="display:none;">
     <button class="btn btn-sm btn-secondary" onclick="showBusinesses()">← Zpět na podniky</button>
   </div>
@@ -200,6 +205,7 @@ loadAll().then(function(){
   document.getElementById('t-name').textContent = p[0];
 
   if (u.role==='admin' || u.role==='spravce') { renderDash(); renderHlavniAdmin(); }
+  if (u.role==='user') { renderMyShiftsHome(); }
 
   showBusinesses();
   document.getElementById('app').style.display='block';
@@ -682,6 +688,29 @@ function houseSvg() {
 // člověk zatím nemá přístup) - to je schválně, ať appka pořád funguje podle
 // "otevřu appku a vidím všechny podniky". Vstoupit ale jde jen tam, kam má
 // člověk opravdu přiřazení - jinde se ukáže hláška, ne tichý zákaz.
+// Brigádník ať vidí svoje nejbližší směny (ze všech podniků najednou) rovnou
+// na hlavní stránce po přihlášení - nemusí kvůli tomu otevírat každý podnik
+// zvlášť. SCHEDULE je společná tabulka pro Kosatku i ostatní "zaklad" podniky.
+function renderMyShiftsHome(){
+  var wrap = document.getElementById('my-shifts-wrap');
+  var list = document.getElementById('my-shifts-list');
+  var today = todayStr();
+  var moje = SCHEDULE.filter(function(s){ return s.workerId===currentUser.id && s.datum>=today; })
+    .sort(function(a,b){ return a.datum.localeCompare(b.datum); })
+    .slice(0, 12);
+  if (!moje.length) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  var kosatkaVenue = getVenueBySlug('kosatka');
+  list.innerHTML = '<div class="dash-grid">' + moje.map(function(s){
+    var v = s.venue_id ? getVenueById(s.venue_id) : kosatkaVenue;
+    var label = v ? (v.ikona+' '+v.nazev) : '🏠 Kosatka';
+    return '<div class="dash-card">'+
+      '<div class="dc-name">'+formatDate(s.datum)+'</div>'+
+      '<div class="dc-row"><span>'+label+'</span></div>'+
+      (s.poznamka ? '<div class="dc-row" style="color:var(--water-dark);">🕒 '+s.poznamka+'</div>' : '')+
+      '</div>';
+  }).join('') + '</div>';
+}
 function showBusinesses() {
   document.getElementById('back-wrap').style.display='none';
   var html = BUSINESSES.map(function(b){

@@ -351,6 +351,14 @@ function getAndelSmenyPresety(venue) {
   if (!venue) return [];
   return ANDEL_SMENY_PRESETY_VENUE[venue.slug] || ANDEL_SMENY_PRESETY_VENUE['andel-cafe'];
 }
+// Totéž, ale rovnou vyfiltrované na možnosti pro konkrétní datum (podle dne v
+// týdnu) - používá admin při ručním přidávání směny, ať vidí stejnou nabídku
+// jako brigádník na svém profilu.
+function getAndelSmenyPresetyProDatum(venue, datum) {
+  if (!datum) return [];
+  var dow = new Date(datum+'T00:00:00').getDay();
+  return getAndelSmenyPresety(venue).filter(function(p){ return p.dny.indexOf(dow)!==-1; });
+}
 function isAndelBusiness(venue) {
   if (!venue) return false;
   var b = BUSINESSES.find(function(x){ return x.id===venue.business_id; });
