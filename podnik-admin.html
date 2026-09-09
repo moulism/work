@@ -250,6 +250,13 @@
       <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Hotovost z tržeb, které brigádníci zapisují (položka "Hotové"), se sem propisuje automaticky. Ruční zápisy použij na ostatní příjmy/výdaje (např. vklad, výběr, nákup drobností z hotovosti).</p>
     </div>
     <div class="card">
+      <div class="card-title">📅 Měsíční uzávěrka pokladny</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Na začátku měsíce sem zapiš, kolik je v pokladně reálně (fyzicky spočítáno), na konci měsíce totéž. Appka to porovná s tím, co jí vyšlo z pokladní knihy níže, ať víš, jestli to sedí.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;" id="pk-uz-month-btns"></div>
+      <div id="pk-uz-content" style="display:grid;gap:10px;"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">➕ Ruční zápis</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
         <div class="form-group" style="margin:0;">
@@ -272,6 +279,13 @@
         <div style="font-size:32px;font-weight:700;" id="op-zustatek"></div>
         <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Karetní část tržby (položka "Kartou"), co brigádníci zapisují, se sem propisuje automaticky. Ruční zápisy použij na ostatní online příjmy/výdaje.</p>
       </div>
+      <div class="card">
+        <div class="card-title">📅 Měsíční uzávěrka online peněženky</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Stejně jako u hotovostní pokladny - na začátku a na konci měsíce zapiš skutečný zůstatek, appka ho porovná s tím, co vyšlo z pohybů níže.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;" id="op-uz-month-btns"></div>
+        <div id="op-uz-content" style="display:grid;gap:10px;"></div>
+      </div>
+
       <div class="card">
         <div class="card-title">➕ Ruční zápis</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
@@ -375,7 +389,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=5"></script>
+<script src="js/data.js?v=6"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -436,7 +450,7 @@ function showTab(id,btn){
   if(id==='dostupnost') { renderAvailAdmin(); renderAvailPoznamky(); }
   if(id==='brigadnici') renderBrigadnici();
   if(id==='dochazka') renderDochazkaAdmin();
-  if(id==='pokladna') { renderPokladnaAdmin(); renderOnlinePenezenkaAdmin(); }
+  if(id==='pokladna') { renderPokladnaAdmin(); renderOnlinePenezenkaAdmin(); buildPkUzMonthBtns(); renderPkUzaverka(); if (isOnlinePenezenkaVenue(venue)) { buildOpUzMonthBtns(); renderOpUzaverka(); } }
   if(id==='statistiky') renderStatistikyAdmin();
   if(id==='nastaveni') renderNastaveni();
 }
@@ -554,6 +568,77 @@ async function opSmazat(id){
   if (!confirm('Smazat tenhle zápis z online peněženky?')) return;
   await deletePokladnaZapisAdmin(id);
   renderOnlinePenezenkaAdmin();
+}
+
+// ── MĚSÍČNÍ UZÁVĚRKA POKLADNY (počáteční/konečný stav) ──
+var UZ_MONTHS = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
+var pkUzMonth = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
+var opUzMonth = pkUzMonth;
+
+function buildPkUzMonthBtns(){
+  document.getElementById('pk-uz-month-btns').innerHTML = UZ_MONTHS.map(function(x){
+    return '<button type="button" class="btn btn-sm '+(x.m===pkUzMonth?'btn-primary':'btn-secondary')+'" onclick="setPkUzMonth('+x.m+')">'+x.l+'</button>';
+  }).join('');
+}
+function setPkUzMonth(m){ pkUzMonth=m; buildPkUzMonthBtns(); renderPkUzaverka(); }
+function renderPkUzaverka(){ renderUzaverkaCard('pk-uz-content', 'hotovost', pkUzMonth); }
+
+function buildOpUzMonthBtns(){
+  document.getElementById('op-uz-month-btns').innerHTML = UZ_MONTHS.map(function(x){
+    return '<button type="button" class="btn btn-sm '+(x.m===opUzMonth?'btn-primary':'btn-secondary')+'" onclick="setOpUzMonth('+x.m+')">'+x.l+'</button>';
+  }).join('');
+}
+function setOpUzMonth(m){ opUzMonth=m; buildOpUzMonthBtns(); renderOpUzaverka(); }
+function renderOpUzaverka(){ renderUzaverkaCard('op-uz-content', 'online', opUzMonth); }
+
+function renderUzaverkaCard(elId, ucet, mesic){
+  var rok = 2026;
+  var pocatecni = getPokladnaUzaverka(venue.id, ucet, rok, mesic, 'pocatecni');
+  var konecny = getPokladnaUzaverka(venue.id, ucet, rok, mesic, 'konecny');
+  var html = uzRadek('Počáteční stav', pocatecni, getOcekavanyPocatecniStav(venue.id, ucet, rok, mesic), elId, ucet, rok, mesic, 'pocatecni')
+           + uzRadek('Konečný stav', konecny, getOcekavanyKonecnyStav(venue.id, ucet, rok, mesic), elId, ucet, rok, mesic, 'konecny');
+  document.getElementById(elId).innerHTML = html;
+}
+function uzRadek(label, saved, ocekavano, elId, ucet, rok, mesic, typ){
+  if (saved) {
+    var diff = saved.castka - ocekavano;
+    var sedi = Math.abs(diff) < 0.5;
+    return '<div style="border:1px solid var(--sand-dark);border-radius:8px;padding:10px;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;"><strong>'+label+'</strong><span style="font-size:11px;color:var(--text-muted);">zapsáno '+formatDate(saved.datum)+'</span></div>'+
+      '<div style="font-size:20px;font-weight:700;margin-top:4px;">'+saved.castka.toLocaleString('cs-CZ')+' Kč</div>'+
+      '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Podle pokladní knihy: '+ocekavano.toLocaleString('cs-CZ')+' Kč</div>'+
+      '<div style="font-size:13px;font-weight:600;margin-top:4px;color:'+(sedi?'var(--green)':'var(--red)')+';">'+(sedi?'✅ Sedí':'⚠️ Nesedí – rozdíl '+(diff>0?'+':'')+diff.toLocaleString('cs-CZ')+' Kč')+'</div>'+
+      (saved.poznamka?'<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">„'+saved.poznamka+'"</div>':'')+
+      '<button class="btn btn-sm btn-secondary" style="margin-top:8px;" onclick="uzOprav(\''+elId+'\',\''+ucet+'\','+rok+','+mesic+',\''+typ+'\')">✏️ Opravit</button>'+
+      '</div>';
+  }
+  return '<div style="border:1px dashed var(--sand-dark);border-radius:8px;padding:10px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;"><strong>'+label+'</strong><span style="font-size:12px;color:var(--text-muted);">podle knihy: '+ocekavano.toLocaleString('cs-CZ')+' Kč</span></div>'+
+    '<div style="display:flex;gap:8px;margin-top:8px;align-items:end;flex-wrap:wrap;">'+
+    '<div class="form-group" style="margin:0;flex:1;min-width:140px;"><label class="form-label">Skutečně napočítáno (Kč)</label><input class="form-input" type="number" id="uz-inp-'+elId+'-'+typ+'"/></div>'+
+    '<button class="btn btn-primary" onclick="uzUlozit(\''+elId+'\',\''+ucet+'\','+rok+','+mesic+',\''+typ+'\')">💾 Uložit</button>'+
+    '</div></div>';
+}
+async function uzUlozit(elId, ucet, rok, mesic, typ){
+  var inp = document.getElementById('uz-inp-'+elId+'-'+typ);
+  var castka = parseFloat(inp.value);
+  if (isNaN(castka) || castka<0) { alert('Zadej platnou částku.'); return; }
+  var res = await savePokladnaUzaverka(venue.id, ucet, rok, mesic, typ, castka, '', currentAdmin.id);
+  if (!res.ok) { alert('Nepovedlo se to uložit, zkus to znovu.'); return; }
+  renderUzaverkaCard(elId, ucet, mesic);
+}
+function uzOprav(elId, ucet, rok, mesic, typ){
+  var existing = getPokladnaUzaverka(venue.id, ucet, rok, mesic, typ);
+  var castkaStr = prompt('Skutečně napočítaná částka (Kč):', existing?existing.castka:'');
+  if (castkaStr===null) return;
+  var castka = parseFloat(castkaStr);
+  if (isNaN(castka) || castka<0) { alert('Neplatná částka.'); return; }
+  var poznamka = prompt('Poznámka (nepovinné):', existing?(existing.poznamka||''):'');
+  if (poznamka===null) poznamka = existing?(existing.poznamka||''):'';
+  savePokladnaUzaverka(venue.id, ucet, rok, mesic, typ, castka, poznamka, currentAdmin.id).then(function(res){
+    if (!res.ok) { alert('Nepovedlo se to uložit, zkus to znovu.'); return; }
+    renderUzaverkaCard(elId, ucet, mesic);
+  });
 }
 
 function initSelects(){
