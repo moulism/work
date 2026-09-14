@@ -320,6 +320,14 @@
         </table>
       </div>
     </div>
+    <div class="card">
+      <div class="card-title">➕ Přidat brigádníka z jiné provozovny</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Někdo, kdo je zapsaný jinde (Republika, Anděl...), ale pracuje i na Kosatce - nezmění se mu tím jeho domovská provozovna, jen k ní přibude tahle.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select class="form-select" id="brig-add-select" style="max-width:260px;"></select>
+        <button class="btn btn-primary" onclick="addBrigadnikSem()">Přidat sem</button>
+      </div>
+    </div>
   </div>
 
   <!-- DOCHÁZKA -->
@@ -535,7 +543,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="js/data.js?v=6"></script>
+<script src="js/data.js?v=7"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -614,6 +622,13 @@ function kosatkaVenueId(){
 }
 function isKosatkaWorker(w){
   if (w.schvaleno===false) return false; // ještě neschválená registrace, může být pro jiný podnik
+  var kid = kosatkaVenueId();
+  if (w.venue_id===kid || w.venue_id==null) return true;
+  // Brigádník má domovskou provozovnu jinde, ale byl na Kosatku přidán jako
+  // vedlejší (viz addWorkerVenue / karta "Přidat brigádníka z jiné provozovny").
+  return WORKER_VENUES.some(function(wv){ return wv.worker_id===w.id && wv.venue_id===kid; });
+}
+function isKosatkaHomeWorker(w){
   var kid = kosatkaVenueId();
   return w.venue_id===kid || w.venue_id==null;
 }
@@ -1834,16 +1849,43 @@ function renderBrigadnici(){
   tbody.innerHTML=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).map(function(w,i){
     var st=w.misto?getStanoviste(w.misto):null;
     var v=getVydelek(w.id);
+    var jeDomovska=isKosatkaHomeWorker(w);
+    var akce='<button class="btn btn-sm btn-secondary" onclick="openEditBrigadnik('+w.id+')">✏️</button> '+
+      (jeDomovska
+        ? '<button class="btn btn-sm btn-danger" onclick="openDelBrigadnik('+w.id+')">🗑️</button>'
+        : '<button class="btn btn-sm btn-danger" onclick="odebratKosatkaBrigadnika('+w.id+')">Odebrat odsud</button>');
     return '<tr><td style="color:var(--text-muted)">'+(i+1)+'</td>'+
-      '<td style="font-weight:500">'+w.jmeno+'</td>'+
+      '<td style="font-weight:500">'+w.jmeno+(jeDomovska?'':' <span style="font-size:11px;color:var(--text-muted);">(hostuje)</span>')+'</td>'+
       '<td><code style="background:var(--sand);padding:2px 8px;border-radius:4px;">'+w.pin+'</code></td>'+
       '<td>'+(st?'<span class="misto-pill" style="background:'+st.color+';color:'+st.text+'">'+st.label+'</span>':'–')+'</td>'+
       '<td>'+(w.dostupnost||[]).length+' dní</td>'+
       '<td style="font-weight:500;color:var(--water-dark)">'+v.hodiny+'h</td>'+
       '<td>'+(w.sazba?Math.round(w.sazba)+' Kč/h':'<span style="color:var(--text-muted);">výchozí</span>')+'</td>'+
-      '<td style="white-space:nowrap;"><button class="btn btn-sm btn-secondary" onclick="openEditBrigadnik('+w.id+')">✏️</button> '+
-      '<button class="btn btn-sm btn-danger" onclick="openDelBrigadnik('+w.id+')">🗑️</button></td></tr>';
+      '<td style="white-space:nowrap;">'+akce+'</td></tr>';
   }).join('');
+
+  var kid=kosatkaVenueId();
+  var jineWorkers=WORKERS.filter(function(w){return w.role==='user' && !isKosatkaWorker(w);});
+  var selEl=document.getElementById('brig-add-select');
+  if (selEl) {
+    selEl.innerHTML = jineWorkers.map(function(w){
+      return '<option value="'+w.id+'">'+w.jmeno+'</option>';
+    }).join('') || '<option value="">– nikdo další k dispozici –</option>';
+  }
+}
+async function addBrigadnikSem(){
+  var id = parseInt(document.getElementById('brig-add-select').value);
+  if (!id) return;
+  var kid = kosatkaVenueId();
+  if (!kid) { alert('Nepovedlo se najít ID provozovny Kosatka, zkus obnovit stránku.'); return; }
+  var res = await addWorkerVenue(id, kid);
+  if (!res.ok) { alert('Nepovedlo se to přidat, zkus to znovu.'); return; }
+  renderBrigadnici();
+}
+async function odebratKosatkaBrigadnika(workerId){
+  if (!confirm('Odebrat tohohle brigádníka z Kosatky? (Jeho domovská provozovna se tím nezmění.)')) return;
+  await removeWorkerVenue(workerId, kosatkaVenueId());
+  renderBrigadnici();
 }
 
 // ── ÚPRAVA BRIGÁDNÍKA (PIN, sazba, jméno, stanoviště) ──

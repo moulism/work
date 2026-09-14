@@ -741,6 +741,11 @@ async function delVyplata(id) {
     if (res && res.error) return { ok:false, error:res.error };
   } catch(e) { return { ok:false, error:e }; }
   VYPLATY = VYPLATY.filter(function(v){return v.id!==id;});
+  // Smaž i odpovídající automatický výdaj v pokladní knize (viz addVyplataVenue),
+  // ať po smazání výplaty zůstane pokladna v pořádku.
+  var marker = '(výplata #'+id+')';
+  var pkRows = POKLADNA.filter(function(p){ return (p.popis||'').indexOf(marker)!==-1; });
+  for (var i=0; i<pkRows.length; i++) { await deletePokladnaZapisAdmin(pkRows[i].id); }
   return { ok:true };
 }
 
@@ -755,6 +760,14 @@ async function updateVyplata(id, castka, poznamka) {
   } catch(e) { return { ok:false, error:e }; }
   var v = VYPLATY.find(function(x){return x.id===id;});
   if (v) { v.castka = castka; if (poznamka!==undefined) v.poznamka = poznamka; }
+  // Oprav i částku odpovídajícího automatického výdaje v pokladní knize
+  // (viz addVyplataVenue) - ať oprava výplaty opraví i pokladnu.
+  var marker = '(výplata #'+id+')';
+  var pk = POKLADNA.find(function(p){ return (p.popis||'').indexOf(marker)!==-1; });
+  if (pk) {
+    pk.castka = castka;
+    try { await db.from('pokladna').update({ castka:castka }).eq('id', pk.id); } catch(e) {}
+  }
   return { ok:true };
 }
 
@@ -1306,6 +1319,14 @@ async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId
   VYPLATY.push(row);
   var res = await saveVyplaty();
   if (!res.ok) { VYPLATY = VYPLATY.filter(function(v){return v.id!==row.id;}); return res; }
+  // Výplata jde z hotovostní pokladny (safu) ven - propiš ji tam automaticky
+  // jako výdaj, ať je v pokladní knize vidět úplně každý pohyb peněz na
+  // podniku (příjmy i výdaje), ne jen tržby. Marker "(výplata #ID)" v popisu
+  // spojuje pokladní zápis s touhle výplatou - viz updateVyplata/delVyplata,
+  // které stejný marker hledají, aby oprava/smazání výplaty opravily/smazaly
+  // i odpovídající zápis v pokladně.
+  var w = getWorkerById(workerId);
+  try { await addPokladnaZapis(venueId, 'vydaj', castka, 'Výplata mzdy – '+(w?w.jmeno:'?')+' (výplata #'+row.id+')', adminId, 'hotovost'); } catch(e) {}
   // Účty (dluhy na útratu) se výplatou NEmažou - ty se řeší zvlášť, admin je
   // označí jako zaplacené, až brigádník fakticky přijde svůj účet zaplatit
   // (viz oznacitUcetZaplaceno v ucetModal), ne automaticky při vyplacení mzdy.

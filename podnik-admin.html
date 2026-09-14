@@ -247,7 +247,7 @@
     <div class="card">
       <div class="card-title">💵 Zůstatek v pokladně (safu)</div>
       <div style="font-size:32px;font-weight:700;" id="pk-zustatek"></div>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Hotovost z tržeb, které brigádníci zapisují (položka "Hotové"), se sem propisuje automaticky. Ruční zápisy použij na ostatní příjmy/výdaje (např. vklad, výběr, nákup drobností z hotovosti).</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Hotovost z tržeb (položka "Hotové"), zaplacené účty brigádníků a výplaty mezd se sem propisují automaticky. Ruční zápisy použij na ostatní příjmy/výdaje (např. vklad, výběr, nákup drobností z hotovosti).</p>
     </div>
     <div class="card">
       <div class="card-title">📅 Měsíční uzávěrka pokladny</div>
@@ -277,7 +277,7 @@
       <div class="card">
         <div class="card-title">🌐 Online peněženka (platby kartou)</div>
         <div style="font-size:32px;font-weight:700;" id="op-zustatek"></div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Karetní část tržby (položka "Kartou"), co brigádníci zapisují, se sem propisuje automaticky. Ruční zápisy použij na ostatní online příjmy/výdaje.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Karetní část tržby (položka "Kartou") a účty brigádníků zaplacené online se sem propisují automaticky. Ruční zápisy použij na ostatní online příjmy/výdaje.</p>
       </div>
       <div class="card">
         <div class="card-title">📅 Měsíční uzávěrka online peněženky</div>
@@ -389,7 +389,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=6"></script>
+<script src="js/data.js?v=7"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1371,10 +1371,13 @@ function ucetModal(workerId){
     '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px;"><span>Nezaplaceno celkem</span><strong style="color:var(--red);">'+total+' Kč</strong></div>';
   if (!polozky.length) html += '<p style="color:var(--text-muted);font-size:13px;">Žádné nezaplacené položky.</p>';
   else html += polozky.slice().sort(function(a,b){return b.datum.localeCompare(a.datum)||b.id-a.id;}).map(function(p){
+    var placeniBtns = isOnlinePenezenkaVenue(venue)
+      ? '<button class="btn btn-sm btn-primary" onclick="oznacitUcetZaplaceno('+p.id+','+workerId+',\'hotovost\')">✅ Hotově</button>'+
+        '<button class="btn btn-sm btn-secondary" onclick="oznacitUcetZaplaceno('+p.id+','+workerId+',\'online\')">✅ Online</button>'
+      : '<button class="btn btn-sm btn-primary" onclick="oznacitUcetZaplaceno('+p.id+','+workerId+',\'hotovost\')">✅ Zaplaceno</button>';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
       '<span>'+p.popis+' <span style="color:var(--text-muted);">· '+formatDate(p.datum)+'</span></span>'+
-      '<span style="display:flex;align-items:center;gap:8px;"><strong>'+p.castka+' Kč</strong>'+
-      '<button class="btn btn-sm btn-primary" onclick="oznacitUcetZaplaceno('+p.id+','+workerId+')">✅ Zaplaceno</button></span></div>';
+      '<span style="display:flex;align-items:center;gap:8px;"><strong>'+p.castka+' Kč</strong>'+placeniBtns+'</span></div>';
   }).join('');
   html += '</div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Zavřít</button></div>';
   showModal(html);
@@ -1392,9 +1395,17 @@ async function ucmPridatUcet(workerId){
   renderVyplaty();
   renderBrigadnici();
 }
-async function oznacitUcetZaplaceno(id, workerId){
-  if (!confirm('Označit tuhle položku jako zaplacenou? Zmizí z účtu brigádníka.')) return;
+async function oznacitUcetZaplaceno(id, workerId, ucet){
+  ucet = ucet || 'hotovost';
+  var polozka = UCTY_POLOZKY.find(function(p){ return p.id===id; });
+  if (!confirm('Označit tuhle položku jako zaplacenou? Zmizí z účtu brigádníka a částka se zapíše do pokladny jako příjem.')) return;
   await deleteUcetPolozkaAdmin(id, currentAdmin.id);
+  // Peníze, co brigádník fyzicky zaplatil za svůj účet, propiš rovnou do
+  // pokladní knihy jako příjem - ať je v pokladně vidět každý pohyb peněz.
+  if (polozka) {
+    var w = getWorkerById(workerId);
+    try { await addPokladnaZapis(venue.id, 'prijem', polozka.castka, 'Zaplacený účet – '+(w?w.jmeno:'?'), currentAdmin.id, ucet); } catch(e) {}
+  }
   ucetModal(workerId);
   renderVyplaty();
   renderBrigadnici();

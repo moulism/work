@@ -543,7 +543,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=6"></script>
+<script src="js/data.js?v=7"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -568,10 +568,17 @@ loadAll().then(function() {
   var u = authGetCurrent();
   if (!u) { window.location.href='index.html'; return; }
   if (u.role==='admin' || u.role==='spravce') { window.location.href='admin.html'; return; }
-  // Tahle stránka je pro Kosatku - kdo patří jinam, přesměrujeme do jeho podniku.
+  // Tahle stránka je pro Kosatku - kdo na ni nemá přístup vůbec (ani jako
+  // domovskou provozovnu, ani jako vedlejší přes "Přidat brigádníka z jiné
+  // provozovny" v adminu), přesměrujeme do jeho vlastního podniku. Brigádník
+  // s Kosatkou jako vedlejší provozovnou (viz worker_venues) tu ale zůstává.
   var w = WORKERS.find(function(x){return x.id===u.id;});
-  var venue = w ? getVenueById(w.venue_id) : null;
-  if (venue && venue.rezim !== 'kosatka') { window.location.href = venueAppUrl(venue); return; }
+  var kv = (typeof getVenueBySlug==='function') ? getVenueBySlug('kosatka') : null;
+  var maAccessNaKosatku = kv && getAccessibleVenues(u).some(function(v){return v.id===kv.id;});
+  if (!maAccessNaKosatku) {
+    var venue = w ? getVenueById(w.venue_id) : null;
+    if (venue) { window.location.href = venueAppUrl(venue); return; }
+  }
   currentUser = u;
   document.getElementById('app').style.display='block';
   appInit();
