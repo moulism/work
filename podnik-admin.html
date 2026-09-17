@@ -145,10 +145,10 @@
   <div class="page" id="tab-vyplaty">
     <div class="card">
       <div class="card-title">Přehled výdělků</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se účty od té chvíle počítají znovu od nuly.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny, hrubá mzda i účet od té chvíle počítají znovu od nuly - "Zbývá" je vždycky jen to, co je dlužné od poslední výplaty.</p>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
-          <thead><tr><th>Brigádník</th><th>Hodin</th><th>Hrubý</th><th>Účty</th><th>Vyplaceno</th><th>Zbývá</th><th></th></tr></thead>
+          <thead><tr><th>Brigádník</th><th>Hodin (od výplaty)</th><th>Hrubý (od výplaty)</th><th>Účty</th><th>Vyplaceno celkem</th><th>Zbývá</th><th></th></tr></thead>
           <tbody id="vyplaty-tbody"></tbody>
         </table>
       </div>
@@ -330,8 +330,11 @@
   <!-- DOCHÁZKA -->
   <div class="page" id="tab-dochazka">
     <div class="card">
-      <div class="card-title">⏱️ Docházka – všichni brigádníci</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Co si kdo zapsal za příchod/odchod, nejnovější první.</p>
+      <div class="card-title">⏱️ Docházka</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Co si kdo zapsal za příchod/odchod, nejnovější první. Vyber brigádníka, ať snadno najdeš jen jeho historii a vidíš součet hodin i výdělku.</p>
+      <div class="form-group" style="max-width:280px;margin-bottom:10px;"><label class="form-label">Brigádník</label><select class="form-select" id="doch-worker" onchange="renderDochazkaAdmin()"></select></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;" id="doch-month-btns"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1rem;" id="doch-summary"></div>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
           <thead><tr><th>Datum</th><th>Brigádník</th><th>Příchod</th><th>Odchod</th><th>Hodin</th><th></th></tr></thead>
@@ -411,7 +414,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=8"></script>
+<script src="js/data.js?v=9"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1228,13 +1231,52 @@ function renderAvailAdmin(){
   document.getElementById('pa-avail-wrap').innerHTML = html + '</tbody></table>';
 }
 
+var dochMonth = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 'all';
+function buildDochWorkerSelect(){
+  var sel = document.getElementById('doch-worker');
+  var cur = sel.value;
+  var workers = getWorkersForVenue(venue.id);
+  sel.innerHTML = '<option value="">– všichni –</option>'+workers.map(function(w){return '<option value="'+w.id+'">'+w.jmeno+'</option>';}).join('');
+  sel.value = cur;
+}
+function buildDochMonthBtns(){
+  var el = document.getElementById('doch-month-btns');
+  var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
+  el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===dochMonth?'btn-primary':'btn-secondary')+'" onclick="setDochMonth('+x.m+')">'+x.l+'</button>';}).join('')+
+    '<button type="button" class="btn btn-sm '+(dochMonth==='all'?'btn-primary':'btn-secondary')+'" onclick="setDochMonth(\'all\')">📊 Celá sezóna</button>';
+}
+function setDochMonth(m){
+  dochMonth = m;
+  renderDochazkaAdmin();
+}
 function renderDochazkaAdmin(){
+  buildDochWorkerSelect();
+  buildDochMonthBtns();
+  var workerIdSel = parseInt(document.getElementById('doch-worker').value) || null;
   var workers = getWorkersForVenue(venue.id);
   var workerIds = workers.map(function(w){return w.id;});
-  var rows = PRACOVNI_DNY.filter(function(p){ return p.venue_id===venue.id && workerIds.indexOf(p.workerId)!==-1; })
-    .slice().sort(function(a,b){ return b.datum.localeCompare(a.datum); });
+  var prefix = dochMonth==='all' ? '2026-' : ('2026-'+String(dochMonth).padStart(2,'0'));
+  var rows = PRACOVNI_DNY.filter(function(p){
+    if (p.venue_id!==venue.id || workerIds.indexOf(p.workerId)===-1) return false;
+    if (workerIdSel && p.workerId!==workerIdSel) return false;
+    return (p.datum||'').indexOf(prefix)===0;
+  }).slice().sort(function(a,b){ return b.datum.localeCompare(a.datum); });
+
+  var totalHodiny=0, totalVydelek=0;
+  rows.forEach(function(p){
+    if (p.prichod && p.odchod) {
+      var h = calcHodiny(p.prichod, p.odchod);
+      totalHodiny += h;
+      totalVydelek += h * getSazbaVenue(p.workerId, venue.id);
+    }
+  });
+  document.getElementById('doch-summary').innerHTML =
+    '<div class="stat-box"><div class="stat-lbl">Odprac. hodin</div><div class="stat-val">'+roundH(totalHodiny)+'h</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Výdělek (hrubý)</div><div class="stat-val">'+Math.round(totalVydelek).toLocaleString('cs-CZ')+' Kč</div></div>'+
+    '<div class="stat-box"><div class="stat-lbl">Počet dní</div><div class="stat-val">'+rows.length+'</div></div>';
+
   var el = document.getElementById('dochazka-tbody');
-  if (!rows.length) { el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím nic zapsáno.</td></tr>'; return; }
+  if (!rows.length) { el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Za tohle období nic zapsáno.</td></tr>'; return; }
   el.innerHTML = rows.map(function(p){
     var w = getWorkerById(p.workerId);
     var hod = (p.prichod && p.odchod) ? calcHodiny(p.prichod, p.odchod)+'h' : '<span style="color:var(--text-muted);">neúplné</span>';
@@ -1308,7 +1350,7 @@ function renderVyplaty(){
   el.innerHTML = workers.map(function(w){
     var v = getVydelekVenue(w.id, venue.id);
     var vyplaceno = getVyplacenoVenue(venue.id, w.id);
-    var zbyva = v.cisty - vyplaceno;
+    var zbyva = v.cisty;
     return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td>'+(v.uctyDluh?'−'+v.uctyDluh:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td style="font-weight:600;">'+zbyva.toLocaleString('cs-CZ')+' Kč</td>'+

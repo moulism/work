@@ -38,6 +38,11 @@
 
   <!-- DNES -->
   <div class="page active" id="tab-dnes">
+    <div class="card" id="card-chybi-cas" style="display:none;border:2px solid var(--orange);">
+      <div class="card-title" style="color:var(--orange);">⚠️ Chybí ti dopsat čas</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:0.75rem;">Měl/a jsi tyhle směny v rozpisu, ale nezapsal/a sis k nim příchod/odchod - dopiš to, ať ti to sedí ve výplatě.</p>
+      <div id="chybi-cas-list"></div>
+    </div>
     <div class="card">
       <div class="card-title">⏱️ Docházka</div>
       <div id="clock-current" style="font-size:13px;color:var(--text-muted);margin-bottom:10px;"></div>
@@ -59,6 +64,10 @@
       <div class="card-title">💰 Tržba</div>
       <div class="form-group"><label class="form-label">Za jaký den</label><input type="date" class="form-input" id="trzba-datum" style="max-width:200px;" onchange="renderTrzba()"/></div>
       <div id="trzba-content"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--sand-dark);">
+        <div class="card-title" style="font-size:13px;">📋 Naposledy zapsané tržby</div>
+        <div id="trzba-historie-list"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -199,7 +208,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=8"></script>
+<script src="js/data.js?v=9"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -268,6 +277,7 @@ function init(){
   var nd = document.getElementById('nakl-datum');
   if (nd && !nd.value) nd.value = todayStr();
   renderPracovniHistorie();
+  renderChybiCas();
 }
 
 function renderClockToday(){
@@ -292,8 +302,20 @@ async function saveTimeToday(){
   document.getElementById('inp-odchod').value = '';
   renderVydelek();
   renderPracovniHistorie();
+  renderChybiCas();
 }
 
+function renderChybiCas(){
+  var chybi = getChybejiciCasyVenue(currentUser.id, currentVenue.id);
+  var card = document.getElementById('card-chybi-cas');
+  if (!chybi.length) { card.style.display='none'; return; }
+  card.style.display='block';
+  document.getElementById('chybi-cas-list').innerHTML = chybi.map(function(d){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
+      '<span>'+formatDate(d)+'</span>'+
+      '<button class="btn btn-sm btn-primary" onclick="editPracovniDen(\''+d+'\')">✏️ Dopsat čas</button></div>';
+  }).join('');
+}
 function renderPracovniHistorie(){
   var rows = PRACOVNI_DNY.filter(function(p){ return p.workerId===currentUser.id && p.venue_id===currentVenue.id; })
     .slice().sort(function(a,b){ return b.datum.localeCompare(a.datum); }).slice(0, 30);
@@ -316,6 +338,7 @@ async function mazPracovniDen(id){
   if (!res.ok) { alert('Nepovedlo se to smazat, zkus to znovu.'); return; }
   renderPracovniHistorie();
   renderVydelek();
+  renderChybiCas();
 }
 function editPracovniDen(datum){
   document.getElementById('pd-datum').value = datum;
@@ -329,6 +352,7 @@ function renderTrzbaSetup(){
   var d = document.getElementById('trzba-datum');
   if (!d.value) d.value = todayStr();
   renderTrzba();
+  renderTrzbaHistorie();
 }
 function renderTrzba(){
   var datum = document.getElementById('trzba-datum').value || todayStr();
@@ -362,6 +386,21 @@ async function saveTrzba(mistoId, datum){
   if (isNaN(val) || val<0) { alert('Zadej platnou částku (aspoň celkem).'); return; }
   await submitTrzbaVenue(currentVenue.id, mistoId, datum, val, currentUser.id, '', hotove, kartou);
   renderTrzba();
+  renderTrzbaHistorie();
+}
+// Krátká historie naposledy zapsaných tržeb - jen datum a částka (bez nákladů,
+// zisku a dalších admin informací), ať si brigádník po uložení může snadno
+// ověřit, že se mu to fakt uložilo a sedí to.
+function renderTrzbaHistorie(){
+  var rows = TRZBY.filter(function(t){ return t.venue_id===currentVenue.id && t.mistoId==='hlavni'; })
+    .slice().sort(function(a,b){ return b.datum.localeCompare(a.datum); }).slice(0, 14);
+  var el = document.getElementById('trzba-historie-list');
+  if (!rows.length) { el.innerHTML = '<div class="empty-state" style="padding:0.5rem 0;color:var(--text-muted);font-size:13px;">Zatím nic zapsáno.</div>'; return; }
+  el.innerHTML = rows.map(function(t){
+    var detail = (t.hotove!=null || t.kartou!=null) ? ' <span style="color:var(--text-muted);">(hotově '+(t.hotove||0)+' Kč, kartou '+(t.kartou||0)+' Kč)</span>' : '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;flex-wrap:wrap;gap:4px;">'+
+      '<span>'+formatDate(t.datum)+detail+'</span><strong>'+t.castka.toLocaleString('cs-CZ')+' Kč</strong></div>';
+  }).join('');
 }
 
 function renderVydelek(){

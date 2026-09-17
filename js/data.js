@@ -1181,6 +1181,19 @@ async function loadVenues() {
 function getMyShiftsVenue(workerId, venueId) {
   return SCHEDULE.filter(function(s){return s.workerId===workerId && s.venue_id===venueId;});
 }
+// Minulé směny z rozpisu, ke kterým si brigádník ještě nezapsal (nebo nedopsal
+// do konce) čas příchodu/odchodu - použito na hlavním panelu jako připomínka
+// "dopiš si čas", ať mu to sedí ve výplatě.
+function getChybejiciCasyVenue(workerId, venueId) {
+  var today = todayStr();
+  var mel = {};
+  SCHEDULE.forEach(function(s){ if (s.workerId===workerId && s.venue_id===venueId && s.datum<today) mel[s.datum]=true; });
+  var ma = {};
+  PRACOVNI_DNY.forEach(function(p){ if (p.workerId===workerId && p.venue_id===venueId && p.prichod && p.odchod) ma[p.datum]=true; });
+  var chybi = Object.keys(mel).filter(function(d){ return !ma[d]; });
+  chybi.sort();
+  return chybi;
+}
 function getScheduleForVenue(venueId) {
   return SCHEDULE.filter(function(s){return s.venue_id===venueId;});
 }
@@ -1229,19 +1242,36 @@ function getSazbaVenue(workerId, venueId) {
   var venue = getVenueById(venueId);
   return (venue && venue.sazba_hodinova) || 180;
 }
+// Datum poslední zapsané výplaty brigádníka na téhle provozovně (nebo null,
+// pokud mu ještě nikdy nebylo vyplaceno) - viz getVydelekVenue níže.
+function getPosledniVyplataDatumVenue(venueId, workerId) {
+  var posledni = null;
+  VYPLATY.forEach(function(v){
+    if (v.venue_id===venueId && v.workerId===workerId && (!posledni || v.datum>posledni)) posledni = v.datum;
+  });
+  return posledni;
+}
+// DŮLEŽITÉ: hodiny/hrubá mzda/penalizace se počítají jen ode dneška zpátky k
+// datu POSLEDNÍ výplaty (ne od začátku sezóny) - jakmile admin brigádníka
+// vyplatí, "Odprac. hodin"/"Hrubý výdělek" se od té chvíle počítají znovu od
+// nuly (stejně jako se po výplatě smažou i jeho účty - viz addVyplataVenue).
+// Díky tomu je "cisty" přímo částka, která mu aktuálně zbývá k vyplacení -
+// není potřeba ji dál srážet o součet všech výplat v historii.
 function getVydelekVenue(workerId, venueId) {
   var hodiny=0, ucty=0, pen=0;
   var today = todayStr();
   var sazba = getSazbaVenue(workerId, venueId);
+  var odDatumu = getPosledniVyplataDatumVenue(venueId, workerId);
   var seen = {};
   PRACOVNI_DNY.forEach(function(pd){
     if (pd.workerId!==workerId || pd.venue_id!==venueId || pd.datum>today) return;
+    if (odDatumu && pd.datum<=odDatumu) return;
     if (seen[pd.datum]) return; seen[pd.datum]=true;
     if (pd.prichod && pd.odchod) hodiny += calcHodiny(pd.prichod, pd.odchod);
   });
   var hruby = Math.round(hodiny*sazba);
   UCTY_POLOZKY.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId && !p.smazano) ucty+=p.castka; });
-  PENALIZACE.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId) pen+=p.castka; });
+  PENALIZACE.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId && (!odDatumu || p.datum>odDatumu)) pen+=p.castka; });
   return { hodiny:roundH(hodiny), hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, cisty:hruby-ucty-pen };
 }
 // Stejné jako getVydelekVenue (odpracované hodiny × sazba), ale jen za
@@ -1333,9 +1363,13 @@ async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId
   // i odpovídající zápis v pokladně.
   var w = getWorkerById(workerId);
   try { await addPokladnaZapis(venueId, 'vydaj', castka, 'Výplata mzdy – '+(w?w.jmeno:'?')+' (výplata #'+row.id+')', adminId, 'hotovost'); } catch(e) {}
-  // Účty (dluhy na útratu) se výplatou NEmažou - ty se řeší zvlášť, admin je
-  // označí jako zaplacené, až brigádník fakticky přijde svůj účet zaplatit
-  // (viz oznacitUcetZaplaceno v ucetModal), ne automaticky při vyplacení mzdy.
+  // Vyplacená částka je "cisty" = hrubá mzda MINUS dluh na účtu (viz getVydelekVenue),
+  // takže účet je tímhle fakticky vyrovnaný (strhl se z mzdy, ne že by ho brigádník
+  // zaplatil zvlášť v hotovosti) - proto ho po výplatě smaž (soft-delete, audit
+  // zůstává), stejně jako to dělá Kosatka (clearUctyForWorkerLegacy). Bez tohohle
+  // by položky na účtu zůstaly navěky "nezaplacené" i po tom, co za ně brigádník
+  // fakticky dostal méně vyplaceno.
+  try { await clearUctyForWorkerVenue(venueId, workerId, adminId); } catch(e) {}
   return { ok:true, row:row };
 }
 
