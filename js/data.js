@@ -1221,11 +1221,18 @@ async function saveTimeVenue(workerId, venueId, datum, prichod, odchod) {
   return await savePracovniDny();
 }
 
+// Individuální sazba na brigádníkovi (workers.sazba - stejný sloupec, jaký
+// už používá Kosatka) má vždycky přednost před výchozí sazbou provozovny.
+function getSazbaVenue(workerId, venueId) {
+  var w = getWorkerById(workerId);
+  if (w && w.sazba != null && w.sazba !== '' && !isNaN(w.sazba) && Number(w.sazba) > 0) return Number(w.sazba);
+  var venue = getVenueById(venueId);
+  return (venue && venue.sazba_hodinova) || 180;
+}
 function getVydelekVenue(workerId, venueId) {
   var hodiny=0, ucty=0, pen=0;
   var today = todayStr();
-  var venue = getVenueById(venueId);
-  var sazba = (venue && venue.sazba_hodinova) || 180;
+  var sazba = getSazbaVenue(workerId, venueId);
   var seen = {};
   PRACOVNI_DNY.forEach(function(pd){
     if (pd.workerId!==workerId || pd.venue_id!==venueId || pd.datum>today) return;
@@ -1243,8 +1250,7 @@ function getVydelekVenue(workerId, venueId) {
 function getVydelekVenueMonth(workerId, venueId, year, month) {
   var hodiny=0;
   var today = todayStr();
-  var venue = getVenueById(venueId);
-  var sazba = (venue && venue.sazba_hodinova) || 180;
+  var sazba = getSazbaVenue(workerId, venueId);
   var prefix = month==='all' ? String(year)+'-' : year+'-'+String(month).padStart(2,'0');
   var seen = {};
   PRACOVNI_DNY.forEach(function(pd){
@@ -1404,6 +1410,17 @@ async function updateWorkerJmeno(workerId, jmeno) {
     if (res.error) return { ok:false, error:res.error };
   } catch(e) { return { ok:false, error:e }; }
   var w = getWorkerById(workerId); if (w) w.jmeno = jmeno;
+  return { ok:true };
+}
+// Individuální hodinová sazba brigádníka (workers.sazba) - přebíjí sazbu
+// stanoviště/provozovny, viz getSazbaVenue výš. null/prázdné = zpátky na výchozí sazbu.
+async function updateWorkerSazba(workerId, sazba) {
+  var hodnota = (sazba===null || sazba==='' || isNaN(sazba)) ? null : Number(sazba);
+  try {
+    var res = await db.from('workers').update({ sazba:hodnota }).eq('id', workerId);
+    if (res.error) return { ok:false, error:res.error };
+  } catch(e) { return { ok:false, error:e }; }
+  var w = getWorkerById(workerId); if (w) w.sazba = hodnota;
   return { ok:true };
 }
 // "Odebrání" brigádníka = měkké smazání (aktivni=false). Historie směn/mezd/tržeb
@@ -1794,18 +1811,42 @@ function getPokladnaZustatekCelkem(venueIds, ucet) {
   return POKLADNA.filter(function(p){ return venueIds.indexOf(p.venue_id)!==-1 && (p.ucet||'hotovost')===ucet; })
     .reduce(function(s,p){ return s + (p.typ==='prijem' ? p.castka : -p.castka); }, 0);
 }
-async function addPokladnaZapis(venueId, typ, castka, popis, workerId, ucet) {
-  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:todayStr(), typ:typ, castka:Math.abs(castka), popis:popis, worker_id:workerId||null, ucet:ucet||'hotovost' };
+async function addPokladnaZapis(venueId, typ, castka, popis, workerId, ucet, datum) {
+  var row = { id:getNextId(POKLADNA), venue_id:venueId, datum:datum||todayStr(), typ:typ, castka:Math.abs(castka), popis:popis, worker_id:workerId||null, ucet:ucet||'hotovost' };
   var res = await dbUpsert('pokladna', [row]);
   if (!res.ok) return res;
   POKLADNA.push(row);
   return { ok:true, row:row };
+}
+// Pokladní zápisy za konkrétní měsíc (nebo 'all' = celý rok) - pro filtrování
+// historie pokladny podle měsíce.
+function getPokladnaForVenueMonth(venueId, ucet, year, month) {
+  var rows = getPokladnaForVenue(venueId, ucet);
+  if (month === 'all') return rows.filter(function(p){ return (p.datum||'').indexOf(String(year)+'-')===0; });
+  var prefix = year+'-'+String(month).padStart(2,'0');
+  return rows.filter(function(p){ return (p.datum||'').indexOf(prefix)===0; });
 }
 // Anděl Café a Anděl Music Club navíc přijímají platby kartou na "online
 // peněženku" (např. přes platební terminál/aplikaci) - odlišit od klasické
 // hotovostní pokladny (safu), ale se stejným ovládáním.
 function isOnlinePenezenkaVenue(venue) {
   return !!(venue && (venue.slug==='andel-cafe' || venue.slug==='andel-music-club'));
+}
+// Souhrnný přehled VŠECH nákladů provozovny za daný měsíc (nebo 'all' = celý
+// rok) - spojuje faktury/náklady (NAKLADY) s výdaji zapsanými přímo z
+// pokladny (POKLADNA, typ='vydaj', hotovost i online). Jedno místo, kde je
+// vidět úplně všechno, co provozovnu za dané období stálo peníze.
+function getVsechnyNakladyVenueMonth(venueId, year, month) {
+  var faktury = getNakladyForVenueMonth(venueId, year, month).map(function(n){
+    return { id:n.id, datum:n.datum, popis:n.popis, castka:n.castka, zdroj:'faktura', kategorie:n.kategorie, workerId:n.workerId };
+  });
+  var pokladnaVydaje = getPokladnaForVenueMonth(venueId, 'hotovost', year, month)
+    .concat(getPokladnaForVenueMonth(venueId, 'online', year, month))
+    .filter(function(p){ return p.typ==='vydaj'; })
+    .map(function(p){
+      return { id:p.id, datum:p.datum, popis:p.popis, castka:p.castka, zdroj:(p.ucet==='online'?'online pokladna':'pokladna'), kategorie:null, workerId:p.worker_id };
+    });
+  return faktury.concat(pokladnaVydaje).sort(function(a,b){ return (b.datum||'').localeCompare(a.datum||'') || (b.id-a.id); });
 }
 // Automatický propis tržby do pokladní knihy provozovny - brigádník zapíše
 // kolik bylo z tržby hotově/kartou/celkem, hotová část se propíše do

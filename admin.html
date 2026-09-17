@@ -23,20 +23,27 @@
   </div>
 
   <div class="nav-tabs">
+    <span class="nav-group-label">Provoz</span>
     <button class="nav-tab active" onclick="showTab('rozpis',this)">📅 Rozpis</button>
+    <button class="nav-tab"        onclick="showTab('dostupnost',this)">📊 Dostupnost</button>
+    <button class="nav-tab"        onclick="showTab('dochazka',this)">⏱️ Docházka</button>
+    <span class="nav-sep"></span>
+    <span class="nav-group-label">Peníze</span>
     <button class="nav-tab"        onclick="showTab('vyplaty',this)">💰 Výplaty</button>
     <button class="nav-tab"        onclick="showTab('trzby',this)">💵 Tržby</button>
+    <button class="nav-tab"        onclick="showTab('ucty',this)">🧾 Účty</button>
+    <button class="nav-tab"        onclick="showTab('statistiky',this)">📊 Statistiky</button>
+    <span class="nav-sep"></span>
+    <span class="nav-group-label">Lidé</span>
+    <button class="nav-tab"        onclick="showTab('brigadnici',this)">👥 Brigádníci</button>
     <button class="nav-tab"        onclick="showTab('penalizace',this)">⚠️ Penalizace</button>
+    <span class="nav-sep"></span>
+    <span class="nav-group-label">Ostatní</span>
     <button class="nav-tab"        onclick="showTab('uklid',this)">🧹 Úklid</button>
     <button class="nav-tab"        onclick="showTab('jidlo',this)">🍽️ Jídlo</button>
-    <button class="nav-tab"        onclick="showTab('ucty',this)">🧾 Účty</button>
-    <button class="nav-tab"        onclick="showTab('dostupnost',this)">📊 Dostupnost</button>
-    <button class="nav-tab"        onclick="showTab('brigadnici',this)">👥 Brigádníci</button>
-    <button class="nav-tab"        onclick="showTab('dochazka',this)">⏱️ Docházka</button>
     <button class="nav-tab"        onclick="showTab('vlog',this)">📸 VLOG</button>
     <button class="nav-tab"        onclick="showTab('objednavky',this)">📦 Objednávky</button>
     <button class="nav-tab"        onclick="showTab('sklad',this)">🗄️ Sklad</button>
-    <button class="nav-tab"        onclick="showTab('statistiky',this)">📊 Statistiky</button>
     <button class="nav-tab"        onclick="showTab('nastaveni',this)">⚙️ Nastavení</button>
   </div>
 
@@ -543,7 +550,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="js/data.js?v=7"></script>
+<script src="js/data.js?v=8"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
