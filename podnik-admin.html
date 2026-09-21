@@ -145,7 +145,7 @@
   <div class="page" id="tab-vyplaty">
     <div class="card">
       <div class="card-title">Přehled výdělků</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny, hrubá mzda i účet od té chvíle počítají znovu od nuly - "Zbývá" je vždycky jen to, co je dlužné od poslední výplaty.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny i hrubá mzda od té chvíle počítají znovu od nuly - "Zbývá" je vždycky jen to, co je dlužné od poslední výplaty. Sloupec "Účty" je jen informativní dluh za odebrané zboží - výplata ho nijak nemění, brigádník si účet platí sám zvlášť v hotovosti.</p>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
           <thead><tr><th>Brigádník</th><th>Hodin (od výplaty)</th><th>Hrubý (od výplaty)</th><th>Účty</th><th>Zálohy</th><th>Vyplaceno celkem</th><th>Zbývá</th><th></th></tr></thead>
@@ -424,7 +424,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=10"></script>
+<script src="js/data.js?v=11"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1223,8 +1223,26 @@ function renderAvailAdmin(){
   var minDayBack = d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0')+'-'+String(d0.getDate()).padStart(2,'0');
   days = days.filter(function(d){ return d >= minDayBack; });
 
-  var html = '<table class="schedule-table" style="min-width:'+(130+days.length*20)+'px;"><thead><tr><th style="min-width:140px">Brigádník</th>';
-  days.forEach(function(d){ var we=isWeekend(d); html += '<th style="width:20px;text-align:center;font-size:10px;padding:2px 1px;'+(we?'color:var(--red)':'')+'">'+d.slice(8)+'</th>'; });
+  var monthNames = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  var monthGroups = [];
+  days.forEach(function(d){
+    var key = d.slice(0,7);
+    var last = monthGroups[monthGroups.length-1];
+    if (last && last.key===key) { last.count++; }
+    else { monthGroups.push({key:key, count:1, label: monthNames[parseInt(d.slice(5,7),10)-1]+' '+d.slice(0,4)}); }
+  });
+  function isMonthStart(idx){ return idx===0 || days[idx].slice(0,7)!==days[idx-1].slice(0,7); }
+
+  var html = '<table class="schedule-table" style="min-width:'+(130+days.length*20)+'px;"><thead>';
+  html += '<tr><th rowspan="2" style="min-width:140px;vertical-align:bottom;">Brigádník</th>';
+  monthGroups.forEach(function(g, i){
+    html += '<th colspan="'+g.count+'" style="text-align:center;font-size:11px;font-weight:600;padding:4px 2px;background:'+(i%2===0?'var(--sand)':'transparent')+';border-left:2px solid var(--border);">'+g.label+'</th>';
+  });
+  html += '</tr><tr>';
+  days.forEach(function(d, idx){
+    var we=isWeekend(d);
+    html += '<th style="width:20px;text-align:center;font-size:10px;padding:2px 1px;'+(we?'color:var(--red)':'')+(isMonthStart(idx)?';border-left:2px solid var(--border)':'')+'">'+d.slice(8)+'</th>';
+  });
   html += '</tr></thead><tbody>';
   if (!workers.length) {
     html += '<tr><td colspan="'+(days.length+1)+'" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím nikdo.</td></tr>';
@@ -1232,9 +1250,9 @@ function renderAvailAdmin(){
   workers.forEach(function(w){
     var wDays = new Set(getDostupnostVenue(w.id, venue.id));
     html += '<tr><td style="white-space:nowrap;font-size:12px;font-weight:500;">'+w.jmeno+'</td>';
-    days.forEach(function(d){
+    days.forEach(function(d, idx){
       var a = wDays.has(d), we = isWeekend(d);
-      html += '<td style="text-align:center;padding:2px 1px;"><div style="width:14px;height:14px;border-radius:2px;margin:0 auto;background:'+(a?(we?'#97C459':'#639922'):(we?'#fecaca':'#f3f4f6'))+'"></div></td>';
+      html += '<td style="text-align:center;padding:2px 1px;'+(isMonthStart(idx)?'border-left:2px solid var(--border);':'')+'"><div style="width:14px;height:14px;border-radius:2px;margin:0 auto;background:'+(a?(we?'#97C459':'#639922'):(we?'#fecaca':'#f3f4f6'))+'"></div></td>';
     });
     html += '</tr>';
   });
@@ -1362,7 +1380,7 @@ function renderVyplaty(){
     var vyplaceno = getVyplacenoVenue(venue.id, w.id);
     var zbyva = v.cisty;
     return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
-      '<td>'+(v.uctyDluh?'−'+v.uctyDluh:'0')+' Kč</td><td>'+(v.zalohy?'−'+v.zalohy:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
+      '<td style="color:var(--text-muted);">'+(v.uctyDluh?v.uctyDluh+' Kč':'0 Kč')+'</td><td>'+(v.zalohy?'−'+v.zalohy:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td style="font-weight:600;">'+zbyva.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td><button class="btn btn-sm btn-primary" onclick="openVyplatitModalVenue('+w.id+','+zbyva+')">💰 Vyplatit</button></td></tr>';
   }).join('');

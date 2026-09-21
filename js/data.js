@@ -563,7 +563,11 @@ function getVydelek(workerId) {
   }
   for (var i=0; i<PENALIZACE.length; i++) if(PENALIZACE[i].workerId===workerId) pen += PENALIZACE[i].castka;
   for (var i=0; i<UCTY_POLOZKY.length; i++) { var p=UCTY_POLOZKY[i]; if(p.workerId===workerId&&!p.smazano) ucty+=p.castka; }
-  return { hodiny:roundH(hodiny), hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, cisty:hruby-pen-ucty };
+  // Pozn.: tahle definice getVydelek je přepsaná novější verzí níže v souboru
+  // (poslední deklarace funkce se stejným jménem v JS vyhrává) - uctyDluh se
+  // ale i tady počítá jen informativně, ne do "cisty" (účty se od výplaty
+  // neodečítají, viz komentář u druhé definice).
+  return { hodiny:roundH(hodiny), hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, cisty:hruby-pen };
 }
 
 function getTotalVydelekFull(workerId) {
@@ -732,7 +736,8 @@ async function addVyplata(workerId, castka, poznamka, dny, adminId) {
   var res = await dbUpsert('vyplaty', [v]);
   if (!res.ok) return { ok:false, error:res.error };
   VYPLATY.push(v);
-  await clearUctyForWorkerLegacy(workerId, adminId); // po výplatě zmizí brigádníkovi účty (audit zůstává, jen smazano=true)
+  // Účty se výplatou už NEMAŽOU - brigádník si je platí sám zvlášť v hotovosti
+  // (admin je smaže/upraví ručně na kartě Účty, viz smazatUcetPolozkuLegacyAdmin).
   return { ok:true, row:v };
 }
 
@@ -804,7 +809,9 @@ function getNevyplaceneDny(workerId) {
     for (var j=0;j<PENALIZACE.length;j++) { var pn=PENALIZACE[j]; if (pn.workerId===workerId && pn.datum===pd.datum) pen+=pn.castka; }
     var ucty = 0;
     for (var k=0;k<UCTY_POLOZKY.length;k++) { var uc=UCTY_POLOZKY[k]; if (uc.workerId===workerId && !uc.smazano && uc.datum===pd.datum) ucty+=uc.castka; }
-    out.push({ datum:pd.datum, hodiny:h, hruby:hruby, penalizace:pen, ucty:ucty, cisty:hruby-pen-ucty });
+    // "ucty" tady zůstává jen informativně (kolik měl ten den na účtu) - do
+    // "cisty" (částky, co se doopravdy vyplatí) se účet NEODEČÍTÁ, viz níže.
+    out.push({ datum:pd.datum, hodiny:h, hruby:hruby, penalizace:pen, ucty:ucty, cisty:hruby-pen });
   }
   out.sort(function(a,b){return a.datum.localeCompare(b.datum);});
   return out;
@@ -823,7 +830,9 @@ function getVydelek(workerId) {
   var ucty = 0;
   UCTY_POLOZKY.forEach(function(p){ if (p.workerId===workerId && !p.smazano) ucty+=p.castka; });
   var vyplaceno = getVyplaceno(workerId);
-  return { hodiny:roundH(hodiny), hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, vyplaceno:vyplaceno, cisty:hruby-pen-ucty, nevyplaceneDny:dny };
+  // Účty (dluh za odebrané zboží) se od výplaty NEODEČÍTAJÍ - brigádník si je
+  // platí sám zvlášť. "uctyDluh" je tu jen pro informativní zobrazení.
+  return { hodiny:roundH(hodiny), hruby:hruby, penalizaceTotal:pen, uctyDluh:ucty, vyplaceno:vyplaceno, cisty:hruby-pen, nevyplaceneDny:dny };
 }
 
 function getTotalVydelekFull(workerId) {
@@ -1272,10 +1281,13 @@ function getVydelekVenue(workerId, venueId) {
     if (pd.prichod && pd.odchod) hodiny += calcHodiny(pd.prichod, pd.odchod);
   });
   var hruby = Math.round(hodiny*sazba);
+  // Účty (dluh za odebrané zboží/nákupy) se NEODEČÍTAJÍ od výplaty - brigádník
+  // si je platí sám zvlášť v hotovosti (viz oznacitUcetZaplaceno). "ucty" se
+  // tady pořád počítá jen pro informativní zobrazení (uctyDluh), ne do "cisty".
   UCTY_POLOZKY.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId && !p.smazano) ucty+=p.castka; });
   PENALIZACE.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId && (!odDatumu || p.datum>odDatumu)) pen+=p.castka; });
   ZALOHY.forEach(function(z){ if(z.workerId===workerId && z.venue_id===venueId && !z.smazano) zalohy+=z.castka; });
-  return { hodiny:roundH(hodiny), hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, zalohy:zalohy, cisty:hruby-ucty-pen-zalohy };
+  return { hodiny:roundH(hodiny), hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, zalohy:zalohy, cisty:hruby-pen-zalohy };
 }
 // Stejné jako getVydelekVenue (odpracované hodiny × sazba), ale jen za
 // konkrétní měsíc (nebo 'all' = celá sezóna) - pro Statistiky, ať se do
@@ -1366,13 +1378,11 @@ async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId
   // i odpovídající zápis v pokladně.
   var w = getWorkerById(workerId);
   try { await addPokladnaZapis(venueId, 'vydaj', castka, 'Výplata mzdy – '+(w?w.jmeno:'?')+' (výplata #'+row.id+')', adminId, 'hotovost'); } catch(e) {}
-  // Vyplacená částka je "cisty" = hrubá mzda MINUS dluh na účtu (viz getVydelekVenue),
-  // takže účet je tímhle fakticky vyrovnaný (strhl se z mzdy, ne že by ho brigádník
-  // zaplatil zvlášť v hotovosti) - proto ho po výplatě smaž (soft-delete, audit
-  // zůstává), stejně jako to dělá Kosatka (clearUctyForWorkerLegacy). Bez tohohle
-  // by položky na účtu zůstaly navěky "nezaplacené" i po tom, co za ně brigádník
-  // fakticky dostal méně vyplaceno.
-  try { await clearUctyForWorkerVenue(venueId, workerId, adminId); } catch(e) {}
+  // Účty (dluh za odebrané zboží) se výplatou NEVYROVNÁVAJÍ - brigádník si je
+  // platí sám zvlášť v hotovosti (viz oznacitUcetZaplaceno). Výplata je tedy
+  // čistě hrubá mzda minus penalizace a zálohy (viz getVydelekVenue), účet
+  // zůstává po výplatě nedotčený a dál se počítá jako otevřený, dokud ho
+  // brigádník sám nezaplatí.
   // Stejná logika jako u účtů platí i pro zálohy - "cisty" byl už snížený o
   // nevyrovnané zálohy (viz getVydelekVenue), takže se výplatou fakticky
   // vyrovnaly a je čas je smazat (soft-delete), ať se od dalšího výplatního

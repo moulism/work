@@ -76,7 +76,7 @@
   <div class="page" id="tab-vyplaty">
     <div class="card">
       <div class="card-title">Přehled výdělků (reálné hodiny z příchodu/odchodu)</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Restaurace = 200 Kč/h · ostatní 180 Kč/h · minus penalizace a účty. Po kliknutí na "Vyplatit" se vše resetuje – hodiny, penalizace i účty se od té chvíle počítají znovu od nuly.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Restaurace = 200 Kč/h · ostatní 180 Kč/h · minus penalizace. Po kliknutí na "Vyplatit" se hodiny i penalizace od té chvíle počítají znovu od nuly - "Účty" je jen informativní dluh, výplata ho nijak nemění, brigádník si účet platí sám zvlášť v hotovosti.</p>
       <div class="schedule-wrap">
       <table class="schedule-table" style="width:100%">
         <thead><tr><th>Brigádník</th><th>Hodin</th><th>Hrubý</th><th>Pen.</th><th>Účty</th><th>Vyplaceno celkem</th><th>Zbývá (od reset)</th><th></th></tr></thead>
@@ -550,7 +550,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="js/data.js?v=10"></script>
+<script src="js/data.js?v=11"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1003,7 +1003,7 @@ function renderVyplaty(){
       '<td>'+v.hodiny+'h</td>'+
       '<td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td style="color:'+(v.penalizaceTotal?'var(--red)':'var(--text-muted)')+'">'+(v.penalizaceTotal?'−'+v.penalizaceTotal+' Kč':'–')+'</td>'+
-      '<td style="color:'+(v.uctyDluh?'var(--red)':'var(--text-muted)')+'">'+(v.uctyDluh?'−'+v.uctyDluh+' Kč':'–')+'</td>'+
+      '<td style="color:var(--text-muted);">'+(v.uctyDluh?v.uctyDluh+' Kč':'–')+'</td>'+
       '<td style="color:'+(v.vyplaceno?'var(--water)':'var(--text-muted)')+'">'+(v.vyplaceno?v.vyplaceno.toLocaleString('cs-CZ')+' Kč':'–')+'</td>'+
       '<td style="font-weight:600;color:var(--water-dark)">'+v.cisty.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td><button class="btn btn-sm btn-primary" onclick="openVyplatitModal('+w.id+')">💸 Vyplatit</button></td></tr>';
@@ -1255,7 +1255,7 @@ function renderStatWorkerTable(){
   if (!rows.length) html += '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Nic nenalezeno.</td></tr>';
   rows.forEach(function(r){
     html += '<tr><td style="font-weight:500;">'+r.w.jmeno+'</td><td>'+r.v.hodiny+'h</td><td>'+r.v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
-      '<td>'+(r.v.penalizaceTotal?'−'+r.v.penalizaceTotal:'0')+' Kč</td><td>'+(r.v.uctyDluh?'−'+r.v.uctyDluh:'0')+' Kč</td>'+
+      '<td>'+(r.v.penalizaceTotal?'−'+r.v.penalizaceTotal:'0')+' Kč</td><td style="color:var(--text-muted);">'+(r.v.uctyDluh?r.v.uctyDluh:'0')+' Kč</td>'+
       '<td style="font-weight:600;">'+r.v.cisty.toLocaleString('cs-CZ')+' Kč</td></tr>';
   });
   html += '</tbody>';
@@ -1741,7 +1741,7 @@ function renderUcty(){
   if(!items.length){el.innerHTML=summary+'<p style="color:var(--text-muted);font-size:13px;padding:.5rem 0;">'+(w?w.jmeno:'?')+' nemá žádné položky na účtu.</p>';return;}
   var celkem=items.reduce(function(s,p){return s+p.castka;},0);
   el.innerHTML=summary+'<p style="font-size:13px;font-weight:600;margin-bottom:.5rem;">Celkový dluh na účtu: '+celkem.toLocaleString('cs-CZ')+' Kč</p>'+
-  '<p style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;">Brigádníkovi položky mažeš tím, že ho vyplatíš (pak mu zmizí z jeho účtu automaticky). Jednotlivé položky smíš mazat/opravovat jen ty jako admin - brigádník sám nikdy.</p>'+
+  '<p style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;">Výplata už účet nijak nemaže - brigádník si účet platí sám zvlášť v hotovosti. Jednotlivé položky smíš mazat/opravovat jen ty jako admin (🗑️/✏️ vpravo) - brigádník sám nikdy.</p>'+
   '<table class="schedule-table" style="width:100%"><thead><tr><th>Stanoviště</th><th>Položka</th><th>Cena</th><th>Datum</th><th></th></tr></thead><tbody>'+
   items.map(function(p){
     var st=getStanoviste(p.mistoId);
