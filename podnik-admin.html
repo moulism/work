@@ -148,7 +148,7 @@
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny, hrubá mzda i účet od té chvíle počítají znovu od nuly - "Zbývá" je vždycky jen to, co je dlužné od poslední výplaty.</p>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
-          <thead><tr><th>Brigádník</th><th>Hodin (od výplaty)</th><th>Hrubý (od výplaty)</th><th>Účty</th><th>Vyplaceno celkem</th><th>Zbývá</th><th></th></tr></thead>
+          <thead><tr><th>Brigádník</th><th>Hodin (od výplaty)</th><th>Hrubý (od výplaty)</th><th>Účty</th><th>Zálohy</th><th>Vyplaceno celkem</th><th>Zbývá</th><th></th></tr></thead>
           <tbody id="vyplaty-tbody"></tbody>
         </table>
       </div>
@@ -178,6 +178,16 @@
       <div class="form-group"><label class="form-label">Částka (Kč)</label><input class="form-input" type="number" id="vypl-v-castka"/></div>
       <div class="form-group"><label class="form-label">Poznámka</label><input class="form-input" id="vypl-v-poznamka" placeholder="volitelné"/></div>
       <div class="form-error" id="vypl-v-err" style="display:none;"></div>
+
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--sand-dark);">
+        <div class="card-title" style="font-size:13px;">💵 Zálohy (odečtou se od výplaty)</div>
+        <div style="display:flex;gap:8px;align-items:end;margin-bottom:8px;">
+          <div class="form-group" style="margin:0;flex:1;"><label class="form-label">Nová záloha (Kč)</label><input class="form-input" type="number" id="zal-v-castka" min="0"/></div>
+          <button class="btn btn-secondary" onclick="pridatZalohuVenue()">+ Přidat</button>
+        </div>
+        <div id="vypl-v-zalohy"></div>
+      </div>
+
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--sand-dark);" id="vypl-v-historie"></div>
       <div class="modal-actions">
         <button class="btn btn-primary" onclick="confirmVyplatitVenue()">✅ Zapsat výplatu</button>
@@ -414,7 +424,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=9"></script>
+<script src="js/data.js?v=10"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1346,13 +1356,13 @@ async function odebratBrigadnika(workerId, jeDomovska){
 function renderVyplaty(){
   var workers = getWorkersForVenue(venue.id);
   var el = document.getElementById('vyplaty-tbody');
-  if (!workers.length) { el.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím nikdo.</td></tr>'; return; }
+  if (!workers.length) { el.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím nikdo.</td></tr>'; return; }
   el.innerHTML = workers.map(function(w){
     var v = getVydelekVenue(w.id, venue.id);
     var vyplaceno = getVyplacenoVenue(venue.id, w.id);
     var zbyva = v.cisty;
     return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
-      '<td>'+(v.uctyDluh?'−'+v.uctyDluh:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
+      '<td>'+(v.uctyDluh?'−'+v.uctyDluh:'0')+' Kč</td><td>'+(v.zalohy?'−'+v.zalohy:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td style="font-weight:600;">'+zbyva.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td><button class="btn btn-sm btn-primary" onclick="openVyplatitModalVenue('+w.id+','+zbyva+')">💰 Vyplatit</button></td></tr>';
   }).join('');
@@ -1367,6 +1377,8 @@ function openVyplatitModalVenue(workerId, zbyva){
   document.getElementById('vypl-v-castka').value = Math.round(zbyva);
   document.getElementById('vypl-v-poznamka').value = '';
   document.getElementById('vypl-v-err').style.display = 'none';
+  document.getElementById('zal-v-castka').value = '';
+  renderVyplZalohyVenue(workerId);
   renderVyplHistorieVenue(workerId);
   document.getElementById('modal-vyplatit-v').classList.remove('hidden');
 }
@@ -1380,7 +1392,42 @@ async function confirmVyplatitVenue(){
   if (!confirm('Vyplatit '+castka.toLocaleString('cs-CZ')+' Kč?')) return;
   await addVyplataVenue(venue.id, vyplVWorkerId, castka, poznamka, [], currentAdmin.id);
   document.getElementById('vypl-v-poznamka').value = '';
+  renderVyplZalohyVenue(vyplVWorkerId);
   renderVyplHistorieVenue(vyplVWorkerId);
+  renderVyplaty();
+  renderBrigadnici();
+}
+// ── Zálohy uvnitř modálu Vyplatit - admin je tu může rovnou zapisovat i mazat ──
+function renderVyplZalohyVenue(workerId){
+  var rows = getZalohyForWorkerVenue(workerId, venue.id);
+  var el = document.getElementById('vypl-v-zalohy');
+  if (!rows.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Žádné nevyrovnané zálohy.</p>'; return; }
+  var total = 0; rows.forEach(function(z){ total += z.castka; });
+  el.innerHTML = rows.map(function(z){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;border-bottom:0.5px solid var(--sand-dark);">'+
+      '<span>'+formatDate(z.datum)+(z.poznamka?' – '+z.poznamka:'')+'</span>'+
+      '<span style="display:flex;align-items:center;gap:8px;"><strong>'+z.castka.toLocaleString('cs-CZ')+' Kč</strong>'+
+      '<button class="btn btn-sm btn-danger" onclick="smazatZalohuVenue('+z.id+')">🗑️</button></span></div>';
+  }).join('') + '<p style="font-size:12px;font-weight:600;margin-top:6px;">Celkem zálohy: '+total.toLocaleString('cs-CZ')+' Kč</p>';
+}
+async function pridatZalohuVenue(){
+  var castka = parseFloat(document.getElementById('zal-v-castka').value);
+  if (isNaN(castka) || castka<=0) { alert('Zadej platnou částku zálohy.'); return; }
+  var res = await addZalohaVenue(venue.id, vyplVWorkerId, castka, '', currentAdmin.id);
+  if (!res.ok) { alert('Nepovedlo se přidat zálohu, zkus to znovu.'); return; }
+  document.getElementById('zal-v-castka').value = '';
+  renderVyplZalohyVenue(vyplVWorkerId);
+  var v = getVydelekVenue(vyplVWorkerId, venue.id);
+  document.getElementById('vypl-v-castka').value = Math.round(v.cisty);
+  renderVyplaty();
+  renderBrigadnici();
+}
+async function smazatZalohuVenue(id){
+  if (!confirm('Smazat tuhle zálohu? (Použij jen když jsi ji zapsal/a omylem - peníze se tím vrátí zpátky do "Zbývá" a smaže se i odpovídající zápis v pokladně.)')) return;
+  await deleteZalohaAdmin(id, currentAdmin.id);
+  renderVyplZalohyVenue(vyplVWorkerId);
+  var v = getVydelekVenue(vyplVWorkerId, venue.id);
+  document.getElementById('vypl-v-castka').value = Math.round(v.cisty);
   renderVyplaty();
   renderBrigadnici();
 }

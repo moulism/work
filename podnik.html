@@ -188,7 +188,8 @@
     </div>
     <div class="card">
       <div class="card-title">📅 Moje dostupnost</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Klikni na dny, kdy můžeš pracovat. Podle tohohle ti admin doplňuje rozpis.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem;">Klikni na dny, kdy můžeš pracovat. Podle tohohle ti admin doplňuje rozpis.</p>
+      <div style="background:var(--sand);border-radius:8px;padding:8px 12px;margin-bottom:1rem;font-size:13px;">📍 Zapisuješ dostupnost pro: <strong id="prof-dost-venue"></strong>. Pracuješ na víc provozovnách? Přepni se přes "🏠 Podniky" nahoře a zapiš si dostupnost zvlášť pro každou.</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem;" id="prof-month-btns"></div>
       <div id="prof-cal"></div>
       <div style="font-size:12px;color:var(--text-muted);margin:8px 0;">Vybráno: <strong id="prof-sel-count">0</strong> dní</div>
@@ -208,7 +209,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=9"></script>
+<script src="js/data.js?v=10"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -700,6 +701,7 @@ function renderProfil(){
   var w = getWorkerById(currentUser.id);
   document.getElementById('prof-jmeno').textContent = w ? w.jmeno : currentUser.jmeno;
   document.getElementById('prof-venue').textContent = currentVenue ? (currentVenue.ikona+' '+currentVenue.nazev) : '–';
+  document.getElementById('prof-dost-venue').textContent = currentVenue ? (currentVenue.ikona+' '+currentVenue.nazev) : '–';
   renderProfFoto(w);
   buildProfCal();
   profSel = new Set(getDostupnostVenue(currentUser.id, currentVenue.id));
