@@ -328,8 +328,8 @@ var ANDEL_SMENY_PRESETY_VENUE = {
   // (Dvorek, Bistro, Station), dokud pro ně nikdo nezaloží vlastní sadu níž.
   'andel-cafe': [
     { text:'9:00–17:00',              dny:[1,2,3,4,5,6] },
-    { text:'15:00–00:00',             dny:[1,2,3,4] },
-    { text:'15:00–01:00',             dny:[5,6] },
+    { text:'16:00–00:00',             dny:[1,2,3,4] },
+    { text:'16:00–01:00',             dny:[5,6] },
     { text:'výpomoc jen víkend 19:00–01:00', dny:[5,6] },
     { text:'brigádníci 17:00–00:00',  dny:[1,2,3,4] },
     { text:'brigádníci 17:00–01:00',  dny:[5,6] },
