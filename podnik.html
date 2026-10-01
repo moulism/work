@@ -72,8 +72,8 @@
 
     <div class="card">
       <div class="card-title">🧾 Zapsat náklad</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Přišlo Makro, pivo, zásoby...? Zapiš, kolik to stálo.</p>
-      <div class="form-group"><label class="form-label">Co to bylo</label><input type="text" class="form-input" id="nakl-popis" placeholder="např. Makro - pivo a limo"/></div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Přišlo Makro, pivo, zásoby, zaplatil/a jsi zvukaře nebo kapelu...? Zapiš, kolik to stálo.</p>
+      <div class="form-group"><label class="form-label">Co to bylo</label><input type="text" class="form-input" id="nakl-popis" placeholder="např. Makro - pivo a limo, nebo Zvukař"/></div>
       <div class="form-group"><label class="form-label">Kolik to stálo</label><input type="number" class="form-input" id="nakl-castka" placeholder="Kč" style="max-width:160px;"/></div>
       <div class="form-group"><label class="form-label">Datum</label><input type="date" class="form-input" id="nakl-datum" style="max-width:200px;"/></div>
       <button class="btn btn-primary" onclick="ulozitNaklad()">💾 Uložit náklad</button>
@@ -209,7 +209,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=12"></script>
+<script src="js/data.js?v=13"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -355,35 +355,47 @@ function renderTrzbaSetup(){
   renderTrzba();
   renderTrzbaHistorie();
 }
+// Většina provozoven má jen jedno místo, kde se tržba zapisuje ("hlavni").
+// Anděl Music Club jich má víc (bar/vstupy/šatna, viz getTrzbaMistaForVenue
+// v data.js) - appka pro ně prostě vykreslí víc stejných bloků pod sebou,
+// každý se svojí vlastní Hotové/Kartou/Celkem a tlačítkem Uložit.
 function renderTrzba(){
   var datum = document.getElementById('trzba-datum').value || todayStr();
-  var mistoId = 'hlavni';
-  var existing = getTrzbaVenue(currentVenue.id, mistoId, datum);
-  var zapsal = existing && existing.workerId ? getWorkerById(existing.workerId) : null;
-  var html =
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
-    '<div class="form-group" style="margin:0;"><label class="form-label">Hotové</label><input type="number" class="form-input" id="trzba-hotove" value="'+(existing&&existing.hotove!=null?existing.hotove:'')+'" placeholder="Kč" oninput="trzbaPrepocti()"/></div>'+
-    '<div class="form-group" style="margin:0;"><label class="form-label">Kartou</label><input type="number" class="form-input" id="trzba-kartou" value="'+(existing&&existing.kartou!=null?existing.kartou:'')+'" placeholder="Kč" oninput="trzbaPrepocti()"/></div>'+
-    '</div>'+
-    '<div class="form-group" style="margin-top:8px;"><label class="form-label">Celkem</label><input type="number" class="form-input" id="trzba-inp" value="'+(existing?existing.castka:'')+'" placeholder="Kč (dopočítá se samo)"/></div>'+
-    '<button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveTrzba(\''+mistoId+'\',\''+datum+'\')">Uložit</button>'+
-    (existing
-      ? '<p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Naposledy zapsal/a: '+(zapsal?zapsal.jmeno.split(' ')[0]:'?')+'</p>'
-      : '<p style="font-size:11px;color:var(--orange);margin-top:4px;">Ještě nikdo nezapsal.</p>');
+  var mista = getTrzbaMistaForVenue(currentVenue);
+  var html = mista.map(function(mi, idx){
+    var existing = getTrzbaVenue(currentVenue.id, mi.mistoId, datum);
+    var zapsal = existing && existing.workerId ? getWorkerById(existing.workerId) : null;
+    var sfx = '-'+mi.mistoId;
+    var nadpis = (mista.length>1)
+      ? '<p style="font-size:13px;font-weight:600;margin:'+(idx===0?'0':'16px')+' 0 8px;'+(idx>0?'border-top:1px solid var(--sand-dark);padding-top:12px;':'')+'">'+mi.label+'</p>'
+      : '';
+    return nadpis+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
+      '<div class="form-group" style="margin:0;"><label class="form-label">Hotové</label><input type="number" class="form-input" id="trzba-hotove'+sfx+'" value="'+(existing&&existing.hotove!=null?existing.hotove:'')+'" placeholder="Kč" oninput="trzbaPrepocti(\''+mi.mistoId+'\')"/></div>'+
+      '<div class="form-group" style="margin:0;"><label class="form-label">Kartou</label><input type="number" class="form-input" id="trzba-kartou'+sfx+'" value="'+(existing&&existing.kartou!=null?existing.kartou:'')+'" placeholder="Kč" oninput="trzbaPrepocti(\''+mi.mistoId+'\')"/></div>'+
+      '</div>'+
+      '<div class="form-group" style="margin-top:8px;"><label class="form-label">Celkem</label><input type="number" class="form-input" id="trzba-inp'+sfx+'" value="'+(existing?existing.castka:'')+'" placeholder="Kč (dopočítá se samo)"/></div>'+
+      '<button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveTrzba(\''+mi.mistoId+'\',\''+datum+'\')">Uložit'+(mista.length>1?' – '+mi.label:'')+'</button>'+
+      (existing
+        ? '<p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Naposledy zapsal/a: '+(zapsal?zapsal.jmeno.split(' ')[0]:'?')+'</p>'
+        : '<p style="font-size:11px;color:var(--orange);margin-top:4px;">Ještě nikdo nezapsal.</p>');
+  }).join('');
   document.getElementById('trzba-content').innerHTML = html;
 }
 // Hotové + kartou se automaticky sečtou do "Celkem" (jde ho pak i ručně přepsat,
 // kdyby něco nesedělo a chtělo se to opravit).
-function trzbaPrepocti(){
-  var h = parseFloat(document.getElementById('trzba-hotove').value) || 0;
-  var k = parseFloat(document.getElementById('trzba-kartou').value) || 0;
-  document.getElementById('trzba-inp').value = (h+k) || '';
+function trzbaPrepocti(mistoId){
+  var sfx = '-'+mistoId;
+  var h = parseFloat(document.getElementById('trzba-hotove'+sfx).value) || 0;
+  var k = parseFloat(document.getElementById('trzba-kartou'+sfx).value) || 0;
+  document.getElementById('trzba-inp'+sfx).value = (h+k) || '';
 }
 async function saveTrzba(mistoId, datum){
-  var hotoveEl = document.getElementById('trzba-hotove'), kartouEl = document.getElementById('trzba-kartou');
+  var sfx = '-'+mistoId;
+  var hotoveEl = document.getElementById('trzba-hotove'+sfx), kartouEl = document.getElementById('trzba-kartou'+sfx);
   var hotove = hotoveEl.value==='' ? null : parseFloat(hotoveEl.value);
   var kartou = kartouEl.value==='' ? null : parseFloat(kartouEl.value);
-  var val = parseFloat(document.getElementById('trzba-inp').value);
+  var val = parseFloat(document.getElementById('trzba-inp'+sfx).value);
   if (isNaN(val) || val<0) { alert('Zadej platnou částku (aspoň celkem).'); return; }
   await submitTrzbaVenue(currentVenue.id, mistoId, datum, val, currentUser.id, '', hotove, kartou);
   renderTrzba();
@@ -393,14 +405,18 @@ async function saveTrzba(mistoId, datum){
 // zisku a dalších admin informací), ať si brigádník po uložení může snadno
 // ověřit, že se mu to fakt uložilo a sedí to.
 function renderTrzbaHistorie(){
-  var rows = TRZBY.filter(function(t){ return t.venue_id===currentVenue.id && t.mistoId==='hlavni'; })
-    .slice().sort(function(a,b){ return b.datum.localeCompare(a.datum); }).slice(0, 14);
+  var mista = getTrzbaMistaForVenue(currentVenue);
+  var mistoLabel = {}; mista.forEach(function(m){ mistoLabel[m.mistoId]=m.label; });
+  var mistoIds = mista.map(function(m){ return m.mistoId; });
+  var rows = TRZBY.filter(function(t){ return t.venue_id===currentVenue.id && mistoIds.indexOf(t.mistoId)!==-1; })
+    .slice().sort(function(a,b){ return b.datum.localeCompare(a.datum) || b.id-a.id; }).slice(0, 14);
   var el = document.getElementById('trzba-historie-list');
   if (!rows.length) { el.innerHTML = '<div class="empty-state" style="padding:0.5rem 0;color:var(--text-muted);font-size:13px;">Zatím nic zapsáno.</div>'; return; }
   el.innerHTML = rows.map(function(t){
     var detail = (t.hotove!=null || t.kartou!=null) ? ' <span style="color:var(--text-muted);">(hotově '+(t.hotove||0)+' Kč, kartou '+(t.kartou||0)+' Kč)</span>' : '';
+    var mistoTag = (mista.length>1 && mistoLabel[t.mistoId]) ? ' <span style="color:var(--text-muted);">· '+mistoLabel[t.mistoId]+'</span>' : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;flex-wrap:wrap;gap:4px;">'+
-      '<span>'+formatDate(t.datum)+detail+'</span><strong>'+t.castka.toLocaleString('cs-CZ')+' Kč</strong></div>';
+      '<span>'+formatDate(t.datum)+mistoTag+detail+'</span><strong>'+t.castka.toLocaleString('cs-CZ')+' Kč</strong></div>';
   }).join('');
 }
 

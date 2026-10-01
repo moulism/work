@@ -1569,6 +1569,27 @@ function getUctyForWorkerVenue(workerId, venueId) {
   return UCTY_POLOZKY.filter(function(p){return p.workerId===workerId && p.venue_id===venueId && !p.smazano;});
 }
 
+// Pro provozovny, kde se tržba za den rozpadá na víc samostatných "míst" (Anděl
+// Music Club: bar + vstupy + šatna, každé se svojí hotovostí/kartou) - jinak
+// appka pořád používá jen jedno obecné místo "hlavni" jako dřív. Klíčované
+// podle slugu provozovny, stejně jako ANDEL_SMENY_PRESETY_VENUE. "mistoId" u
+// každé položky je to, co se ukládá do trzby.mistoId a propisuje se přes
+// syncPokladnaZTrzby do pokladny - při přidání nového místa sem appka
+// automaticky začne nabízet zápis pro něj, nic dalšího se měnit nemusí
+// (getZiskVenueMonth/getTrzbyForVenueMonth apod. sčítají přes VŠECHNA místa
+// dané provozovny bez ohledu na mistoId).
+var TRZBA_MISTA_VENUE = {
+  'andel-music-club': [
+    { mistoId:'hlavni', label:'Bar' },
+    { mistoId:'vstup',  label:'Vstupy' },
+    { mistoId:'satna',  label:'Šatna' }
+  ]
+};
+function getTrzbaMistaForVenue(venue) {
+  if (!venue) return [{ mistoId:'hlavni', label:null }];
+  return TRZBA_MISTA_VENUE[venue.slug] || [{ mistoId:'hlavni', label:null }];
+}
+
 function getTrzbaVenue(venueId, stanovisteId, datum) {
   return TRZBY.find(function(t){return t.venue_id===venueId && t.mistoId===stanovisteId && t.datum===datum;}) || null;
 }

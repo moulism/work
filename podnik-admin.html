@@ -424,7 +424,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=12"></script>
+<script src="js/data.js?v=13"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -903,37 +903,49 @@ function setTrzbyMonth(m,btn){
 }
 
 // ── Zápis/oprava tržby zpětně (hotové + kartou) ──
+// Stejně jako u brigádníka v podnik.html - většina provozoven má jen jedno
+// místo ("hlavni"), Anděl Music Club má víc (bar/vstupy/šatna, viz
+// getTrzbaMistaForVenue v data.js), tak se tu vykreslí víc bloků pod sebou.
 function renderTrzbaFormVenue(){
   var d = document.getElementById('tv-datum');
   if (!d.value) d.value = todayStr();
   var datum = d.value;
-  var existing = getTrzbaVenue(venue.id, 'hlavni', datum);
-  var zapsal = existing && existing.workerId ? getWorkerById(existing.workerId) : null;
-  var html =
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">'+
-    '<div class="form-group" style="margin:0;"><label class="form-label">Hotové</label><input type="number" class="form-input" id="tv-hotove" value="'+(existing&&existing.hotove!=null?existing.hotove:'')+'" placeholder="Kč" oninput="trzbaPrepoctiVenue()"/></div>'+
-    '<div class="form-group" style="margin:0;"><label class="form-label">Kartou</label><input type="number" class="form-input" id="tv-kartou" value="'+(existing&&existing.kartou!=null?existing.kartou:'')+'" placeholder="Kč" oninput="trzbaPrepoctiVenue()"/></div>'+
-    '<div class="form-group" style="margin:0;"><label class="form-label">Celkem</label><input type="number" class="form-input" id="tv-celkem" value="'+(existing?existing.castka:'')+'" placeholder="Kč (dopočítá se samo)"/></div>'+
-    '</div>'+
-    '<button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveTrzbaVenueForm()">💾 Uložit tržbu za '+formatDate(datum)+'</button>'+
-    (existing
-      ? '<p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Naposledy zapsal/a: '+(zapsal?zapsal.jmeno.split(' ')[0]:'?')+'</p>'
-      : '<p style="font-size:11px;color:var(--orange);margin-top:6px;">Ještě nikdo nezapsal.</p>');
+  var mista = getTrzbaMistaForVenue(venue);
+  var html = mista.map(function(mi, idx){
+    var existing = getTrzbaVenue(venue.id, mi.mistoId, datum);
+    var zapsal = existing && existing.workerId ? getWorkerById(existing.workerId) : null;
+    var sfx = '-'+mi.mistoId;
+    var nadpis = (mista.length>1)
+      ? '<p style="font-size:13px;font-weight:600;margin:'+(idx===0?'0':'14px')+' 0 8px;'+(idx>0?'border-top:1px solid var(--sand-dark);padding-top:12px;':'')+'">'+mi.label+'</p>'
+      : '';
+    return nadpis+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">'+
+      '<div class="form-group" style="margin:0;"><label class="form-label">Hotové</label><input type="number" class="form-input" id="tv-hotove'+sfx+'" value="'+(existing&&existing.hotove!=null?existing.hotove:'')+'" placeholder="Kč" oninput="trzbaPrepoctiVenue(\''+mi.mistoId+'\')"/></div>'+
+      '<div class="form-group" style="margin:0;"><label class="form-label">Kartou</label><input type="number" class="form-input" id="tv-kartou'+sfx+'" value="'+(existing&&existing.kartou!=null?existing.kartou:'')+'" placeholder="Kč" oninput="trzbaPrepoctiVenue(\''+mi.mistoId+'\')"/></div>'+
+      '<div class="form-group" style="margin:0;"><label class="form-label">Celkem</label><input type="number" class="form-input" id="tv-celkem'+sfx+'" value="'+(existing?existing.castka:'')+'" placeholder="Kč (dopočítá se samo)"/></div>'+
+      '</div>'+
+      '<button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveTrzbaVenueForm(\''+mi.mistoId+'\')">💾 Uložit'+(mista.length>1?' – '+mi.label:'')+' za '+formatDate(datum)+'</button>'+
+      (existing
+        ? '<p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Naposledy zapsal/a: '+(zapsal?zapsal.jmeno.split(' ')[0]:'?')+'</p>'
+        : '<p style="font-size:11px;color:var(--orange);margin-top:6px;">Ještě nikdo nezapsal.</p>');
+  }).join('');
   document.getElementById('trzba-form-v').innerHTML = html;
 }
-function trzbaPrepoctiVenue(){
-  var h = parseFloat(document.getElementById('tv-hotove').value) || 0;
-  var k = parseFloat(document.getElementById('tv-kartou').value) || 0;
-  document.getElementById('tv-celkem').value = (h+k) || '';
+function trzbaPrepoctiVenue(mistoId){
+  var sfx = '-'+mistoId;
+  var h = parseFloat(document.getElementById('tv-hotove'+sfx).value) || 0;
+  var k = parseFloat(document.getElementById('tv-kartou'+sfx).value) || 0;
+  document.getElementById('tv-celkem'+sfx).value = (h+k) || '';
 }
-async function saveTrzbaVenueForm(){
+async function saveTrzbaVenueForm(mistoId){
+  var sfx = '-'+mistoId;
   var datum = document.getElementById('tv-datum').value || todayStr();
-  var hotoveEl = document.getElementById('tv-hotove'), kartouEl = document.getElementById('tv-kartou');
+  var hotoveEl = document.getElementById('tv-hotove'+sfx), kartouEl = document.getElementById('tv-kartou'+sfx);
   var hotove = hotoveEl.value==='' ? null : parseFloat(hotoveEl.value);
   var kartou = kartouEl.value==='' ? null : parseFloat(kartouEl.value);
-  var val = parseFloat(document.getElementById('tv-celkem').value);
+  var val = parseFloat(document.getElementById('tv-celkem'+sfx).value);
   if (isNaN(val) || val<0) { alert('Zadej platnou částku (aspoň celkem).'); return; }
-  await submitTrzbaVenue(venue.id, 'hlavni', datum, val, currentAdmin.id, '', hotove, kartou);
+  await submitTrzbaVenue(venue.id, mistoId, datum, val, currentAdmin.id, '', hotove, kartou);
   renderTrzbaFormVenue();
   renderTrzbyTable();
   renderZisk();
@@ -1067,20 +1079,48 @@ function renderZisk(){
 }
 function renderTrzbyTable(){
   var days = getMonthDaysAny(2026, trzbyMonth);
-  var html = '<thead><tr><th>Datum</th><th>Hotově</th><th>Kartou</th><th>Celkem</th><th></th></tr></thead><tbody>';
+  var mista = getTrzbaMistaForVenue(venue);
   var total = 0, hotoveTotal = 0, kartouTotal = 0;
-  days.forEach(function(d){
-    var t = getTrzbaVenue(venue.id, 'hlavni', d);
-    if (t) { total += (t.castka||0); if (t.hotove!=null) hotoveTotal += t.hotove; if (t.kartou!=null) kartouTotal += t.kartou; }
-    html += '<tr'+(isWeekend(d)?' style="background:#fafafa;"':'')+'>'+
-      '<td>'+formatDate(d)+'</td>'+
-      '<td>'+(t&&t.hotove!=null?t.hotove.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
-      '<td>'+(t&&t.kartou!=null?t.kartou.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
-      '<td'+(t?' style="font-weight:600;"':'')+'>'+(t?t.castka.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
-      '<td><button class="btn btn-sm btn-secondary" onclick="trzbaFormJumpTo(\''+d+'\')">✏️</button></td>'+
-      '</tr>';
-  });
-  html += '</tbody>';
+  var html;
+  if (mista.length <= 1) {
+    html = '<thead><tr><th>Datum</th><th>Hotově</th><th>Kartou</th><th>Celkem</th><th></th></tr></thead><tbody>';
+    days.forEach(function(d){
+      var t = getTrzbaVenue(venue.id, 'hlavni', d);
+      if (t) { total += (t.castka||0); if (t.hotove!=null) hotoveTotal += t.hotove; if (t.kartou!=null) kartouTotal += t.kartou; }
+      html += '<tr'+(isWeekend(d)?' style="background:#fafafa;"':'')+'>'+
+        '<td>'+formatDate(d)+'</td>'+
+        '<td>'+(t&&t.hotove!=null?t.hotove.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
+        '<td>'+(t&&t.kartou!=null?t.kartou.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
+        '<td'+(t?' style="font-weight:600;"':'')+'>'+(t?t.castka.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
+        '<td><button class="btn btn-sm btn-secondary" onclick="trzbaFormJumpTo(\''+d+'\')">✏️</button></td>'+
+        '</tr>';
+    });
+    html += '</tbody>';
+  } else {
+    // Víc míst (Anděl Music Club: bar/vstupy/šatna) - sloupec s celkovou částkou
+    // za každé místo zvlášť (rozpad hotové/kartou je k dispozici ve formuláři
+    // "Zápis/oprava tržby" výš), na konci řádku součet za celý den.
+    html = '<thead><tr><th>Datum</th>'+mista.map(function(mi){ return '<th>'+mi.label+'</th>'; }).join('')+'<th>Celkem</th><th></th></tr></thead><tbody>';
+    days.forEach(function(d){
+      var denCelkem = 0;
+      var bunky = mista.map(function(mi){
+        var t = getTrzbaVenue(venue.id, mi.mistoId, d);
+        if (t) {
+          denCelkem += (t.castka||0);
+          if (t.hotove!=null) hotoveTotal += t.hotove;
+          if (t.kartou!=null) kartouTotal += t.kartou;
+        }
+        return '<td>'+(t?t.castka.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>';
+      }).join('');
+      total += denCelkem;
+      html += '<tr'+(isWeekend(d)?' style="background:#fafafa;"':'')+'>'+
+        '<td>'+formatDate(d)+'</td>'+bunky+
+        '<td'+(denCelkem?' style="font-weight:600;"':'')+'>'+(denCelkem?denCelkem.toLocaleString('cs-CZ')+' Kč':'<span style="color:#ccc">–</span>')+'</td>'+
+        '<td><button class="btn btn-sm btn-secondary" onclick="trzbaFormJumpTo(\''+d+'\')">✏️</button></td>'+
+        '</tr>';
+    });
+    html += '</tbody>';
+  }
   document.getElementById('trzby-table').innerHTML = html;
   document.getElementById('trzby-total').textContent = 'Celkem za měsíc: '+total.toLocaleString('cs-CZ')+' Kč (hotově '+hotoveTotal.toLocaleString('cs-CZ')+' Kč, kartou '+kartouTotal.toLocaleString('cs-CZ')+' Kč)';
 }
