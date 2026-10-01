@@ -550,7 +550,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="js/data.js?v=13"></script>
+<script src="js/data.js?v=14"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1111,14 +1111,32 @@ function renderVyplDnyList(){
     document.getElementById('vypl-castka').value=0;
     return;
   }
-  el.innerHTML=vyplNevyplacene.map(function(d,i){
-    return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--sand-dark);cursor:pointer;">'+
+  var vicMesicu = (function(){
+    var keys={}; vyplNevyplacene.forEach(function(d){keys[d.datum.slice(0,7)]=true;});
+    return Object.keys(keys).length > 1;
+  })();
+  var monthNames = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  var html = '';
+  var lastKey = null;
+  vyplNevyplacene.forEach(function(d,i){
+    if (vicMesicu) {
+      var key = d.datum.slice(0,7);
+      if (key !== lastKey) {
+        lastKey = key;
+        var label = monthNames[parseInt(key.slice(5,7),10)-1]+' '+key.slice(0,4);
+        var mesSuma = vyplNevyplacene.filter(function(x){return x.datum.slice(0,7)===key;}).reduce(function(s,x){return s+x.cisty;},0);
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;color:var(--text);margin:'+(i===0?'0':'10px')+' 0 2px;">'+
+          '<span>'+label+'</span><span style="color:var(--text-muted);">'+Math.round(mesSuma).toLocaleString('cs-CZ')+' Kč</span></div>';
+      }
+    }
+    html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--sand-dark);cursor:pointer;">'+
       '<input type="checkbox" class="vypl-day-cb" data-idx="'+i+'" checked onchange="vyplRecalc()"/>'+
       '<span style="flex:1;">'+formatDate(d.datum)+'</span>'+
       '<span style="color:var(--text-muted);">'+d.hodiny+'h</span>'+
       '<span style="font-weight:600;min-width:70px;text-align:right;">'+Math.round(d.cisty)+' Kč</span>'+
       '</label>';
-  }).join('');
+  });
+  el.innerHTML = html;
   vyplRecalc();
 }
 function vyplSelectAll(val){

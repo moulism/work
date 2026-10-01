@@ -176,6 +176,7 @@
   <div class="modal-overlay hidden" id="modal-vyplatit-v">
     <div class="modal-box">
       <div class="modal-title" id="vypl-v-title">Zapsat výplatu</div>
+      <div id="vypl-v-mesice" style="margin-bottom:10px;"></div>
       <div class="form-group"><label class="form-label">Částka (Kč)</label><input class="form-input" type="number" id="vypl-v-castka"/></div>
       <div class="form-group"><label class="form-label">Poznámka</label><input class="form-input" id="vypl-v-poznamka" placeholder="volitelné"/></div>
       <div class="form-error" id="vypl-v-err" style="display:none;"></div>
@@ -441,7 +442,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=13"></script>
+<script src="js/data.js?v=14"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1491,9 +1492,34 @@ function openVyplatitModalVenue(workerId, zbyva){
   document.getElementById('vypl-v-poznamka').value = '';
   document.getElementById('vypl-v-err').style.display = 'none';
   document.getElementById('zal-v-castka').value = '';
+  renderVyplMesicniRozpadVenue(workerId);
   renderVyplZalohyVenue(workerId);
   renderVyplHistorieVenue(workerId);
   document.getElementById('modal-vyplatit-v').classList.remove('hidden');
+}
+// Rozpad dlužné (nevyplacené) částky po měsících - ať je hned při vyplácení
+// vidět, kolik je za tenhle měsíc a kolik za předchozí (např. po delší době).
+function renderVyplMesicniRozpadVenue(workerId){
+  var dny = getNevyplaceneDnyVenue(workerId, venue.id);
+  var el = document.getElementById('vypl-v-mesice');
+  if (!dny.length) { el.innerHTML = ''; return; }
+  var monthNames = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  var mesice = {}, poradi = [];
+  dny.forEach(function(d){
+    var key = d.datum.slice(0,7);
+    if (!mesice[key]) { mesice[key] = { hodiny:0, hruby:0 }; poradi.push(key); }
+    mesice[key].hodiny += d.hodiny;
+    mesice[key].hruby += d.hruby;
+  });
+  if (poradi.length < 2) { el.innerHTML = ''; return; } // jen jeden měsíc - rozpad by nic nepřidal
+  el.innerHTML = '<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">ZA KTERÉ MĚSÍCE TOHLE JE</p>'+
+    poradi.map(function(key){
+      var label = monthNames[parseInt(key.slice(5,7),10)-1]+' '+key.slice(0,4);
+      var m = mesice[key];
+      return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">'+
+        '<span>'+label+' <span style="color:var(--text-muted);">('+m.hodiny+'h)</span></span>'+
+        '<span style="font-weight:600;">'+Math.round(m.hruby).toLocaleString('cs-CZ')+' Kč</span></div>';
+    }).join('');
 }
 function closeVyplatitModalVenue(){ document.getElementById('modal-vyplatit-v').classList.add('hidden'); vyplVWorkerId=null; }
 async function confirmVyplatitVenue(){

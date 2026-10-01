@@ -1289,6 +1289,26 @@ function getVydelekVenue(workerId, venueId) {
   ZALOHY.forEach(function(z){ if(z.workerId===workerId && z.venue_id===venueId && !z.smazano) zalohy+=z.castka; });
   return { hodiny:roundH(hodiny), hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, zalohy:zalohy, cisty:hruby-pen-zalohy };
 }
+// Jako getVydelekVenue, ale po jednotlivých (nevyplacených) dnech - používá se
+// v modálu "Vyplatit" na rozpad dlužné částky po měsících, ať je hned vidět,
+// kolik je za tenhle měsíc a kolik za předchozí.
+function getNevyplaceneDnyVenue(workerId, venueId) {
+  var today = todayStr();
+  var sazba = getSazbaVenue(workerId, venueId);
+  var odDatumu = getPosledniVyplataDatumVenue(venueId, workerId);
+  var seen = {};
+  var out = [];
+  PRACOVNI_DNY.forEach(function(pd){
+    if (pd.workerId!==workerId || pd.venue_id!==venueId || pd.datum>today) return;
+    if (odDatumu && pd.datum<=odDatumu) return;
+    if (seen[pd.datum]) return; seen[pd.datum]=true;
+    if (!pd.prichod || !pd.odchod) return;
+    var h = calcHodiny(pd.prichod, pd.odchod);
+    out.push({ datum:pd.datum, hodiny:roundH(h), hruby:Math.round(h*sazba) });
+  });
+  out.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
+  return out;
+}
 // Stejné jako getVydelekVenue (odpracované hodiny × sazba), ale jen za
 // konkrétní měsíc (nebo 'all' = celá sezóna) - pro Statistiky, ať se do
 // přehledu vybraného měsíce nemíchají hodiny/mzdy z jiných měsíců.

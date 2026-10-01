@@ -166,3 +166,34 @@ test('getPosledniVyplataDatumVenue - vrátí datum nejnovější výplaty', () =
   );
   assert.equal(ctx.getPosledniVyplataDatumVenue(VENUE_ID, WORKER_ID), '2026-07-15');
 });
+
+test('getNevyplaceneDnyVenue - vrátí dny po poslední výplatě, seřazené podle data, pro rozpad po měsících', () => {
+  const ctx = freshContext();
+  setupWorkerAndVenue(ctx);
+  ctx.PRACOVNI_DNY.push(
+    { id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-06-28', prichod: '10:00', odchod: '18:00' }, // 8h
+    { id: 2, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-07-02', prichod: '10:00', odchod: '14:00' }, // 4h
+  );
+  const dny = ctx.getNevyplaceneDnyVenue(WORKER_ID, VENUE_ID);
+  assert.equal(dny.length, 2);
+  assert.deepEqual(Array.from(dny.map((d) => d.datum)), ['2026-06-28', '2026-07-02'], 'seřazeno vzestupně podle data');
+  assert.equal(dny[0].hruby, 8 * 200);
+  assert.equal(dny[1].hruby, 4 * 200);
+  const cerven = dny.filter((d) => d.datum.slice(0, 7) === '2026-06').reduce((s, d) => s + d.hruby, 0);
+  const cervenec = dny.filter((d) => d.datum.slice(0, 7) === '2026-07').reduce((s, d) => s + d.hruby, 0);
+  assert.equal(cerven, 1600, 'červen 2026 odděleně od července');
+  assert.equal(cervenec, 800);
+});
+
+test('getNevyplaceneDnyVenue - počítá jen dny po poslední výplatě, dny bez příchodu/odchodu vynechá', () => {
+  const ctx = freshContext();
+  setupWorkerAndVenue(ctx);
+  ctx.PRACOVNI_DNY.push(
+    { id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-06-20', prichod: '10:00', odchod: '18:00' },
+    { id: 2, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-07-05', prichod: '10:00', odchod: '18:00' },
+    { id: 3, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-07-06', prichod: null, odchod: null },
+  );
+  ctx.VYPLATY.push({ id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-06-25', castka: 1600, dny: ['2026-06-20'] });
+  const dny = ctx.getNevyplaceneDnyVenue(WORKER_ID, VENUE_ID);
+  assert.deepEqual(Array.from(dny.map((d) => d.datum)), ['2026-07-05'], 'jen den po poslední výplatě a se zapsaným příchodem/odchodem');
+});
