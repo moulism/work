@@ -1136,13 +1136,23 @@ function renderVyplHistorie(workerId){
   var list=getVyplatyForWorker(workerId);
   var el=document.getElementById('vypl-historie');
   if(!list.length){el.innerHTML='<p style="font-size:12px;color:var(--text-muted);">Zatím žádné výplaty.</p>';return;}
-  el.innerHTML='<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">HISTORIE VÝPLAT</p>'+list.map(function(v){
+  var monthNames = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  var html = '<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">HISTORIE VÝPLAT</p>';
+  var lastKey = null;
+  list.forEach(function(v){
+    var key = v.datum.slice(0,7);
+    if (key !== lastKey) {
+      lastKey = key;
+      var label = monthNames[parseInt(v.datum.slice(5,7),10)-1]+' '+v.datum.slice(0,4);
+      html += '<div style="font-size:11px;font-weight:700;color:var(--text);margin:10px 0 2px;">'+label+'</div>';
+    }
     var pocetDni = (v.dny||[]).length;
-    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:0.5px solid var(--sand-dark);">'+
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:0.5px solid var(--sand-dark);">'+
       '<span style="flex:1;">'+formatDate(v.datum)+(pocetDni?' · '+pocetDni+' dní':'')+(v.poznamka?' – '+v.poznamka:'')+'</span>'+
       '<span style="font-weight:600;">'+v.castka.toLocaleString('cs-CZ')+' Kč</span>'+
       '<button class="btn btn-sm btn-danger" onclick="delVyplataConfirm('+v.id+','+workerId+')">🗑️</button></div>';
-  }).join('');
+  });
+  el.innerHTML = html;
 }
 function closeVyplatitModal(){document.getElementById('modal-vyplatit').classList.add('hidden');}
 async function confirmVyplatit(){
