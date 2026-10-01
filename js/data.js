@@ -1262,24 +1262,67 @@ function getPosledniVyplataDatumVenue(venueId, workerId) {
   });
   return posledni;
 }
-// DŮLEŽITÉ: hodiny/hrubá mzda/penalizace se počítají jen ode dneška zpátky k
-// datu POSLEDNÍ výplaty (ne od začátku sezóny) - jakmile admin brigádníka
-// vyplatí, "Odprac. hodin"/"Hrubý výdělek" se od té chvíle počítají znovu od
-// nuly (stejně jako se po výplatě smažou i jeho účty - viz addVyplataVenue).
-// Díky tomu je "cisty" přímo částka, která mu aktuálně zbývá k vyplacení -
-// není potřeba ji dál srážet o součet všech výplat v historii.
-function getVydelekVenue(workerId, venueId) {
-  var hodiny=0, ucty=0, pen=0, zalohy=0;
+// Množina dní, které už byly u týhle provozovny/brigádníka explicitně
+// vyznačené jako vyplacené (VYPLATY.dny) - umožňuje to vyplatit jen
+// VYBRANÉ měsíce (v modálu "Vyplatit") a ostatní nechat dál "k výplatě",
+// místo aby se jakoukoliv výplatou automaticky vyrovnalo úplně všechno
+// až po dnešek. Staré výplaty (zapsané ještě před touhle funkcí) mají
+// dny:[] a vyrovnávaly VŽDY úplně všechno až do svého data - pro ty se
+// proto dole pořád používá i prostý datumový "cutoff" (legacyCutoff),
+// ať se zpětně "neotevřou" dny, co byly tehdy vyplacené.
+function getVyplacenDnyVenue(workerId, venueId) {
+  var set = {};
+  var legacyCutoff = null;
+  var maxPaidDay = null;
+  VYPLATY.forEach(function(v){
+    if (v.workerId!==workerId || v.venue_id!==venueId) return;
+    if (v.dny && v.dny.length) {
+      v.dny.forEach(function(d){ set[d]=true; if (!maxPaidDay || d>maxPaidDay) maxPaidDay = d; });
+    } else if (!legacyCutoff || v.datum>legacyCutoff) {
+      legacyCutoff = v.datum;
+    }
+  });
+  if (legacyCutoff && (!maxPaidDay || legacyCutoff>maxPaidDay)) maxPaidDay = legacyCutoff;
+  return { set:set, legacyCutoff:legacyCutoff, maxPaidDay:maxPaidDay };
+}
+// Jako getVydelekVenue, ale po jednotlivých (nevyplacených) dnech - používá se
+// v modálu "Vyplatit" na rozpad dlužné částky po měsících, ať je hned vidět,
+// kolik je za tenhle měsíc a kolik za předchozí, a ať jde vyplatit jen
+// vybrané měsíce (viz getVyplacenDnyVenue výš).
+function getNevyplaceneDnyVenue(workerId, venueId) {
   var today = todayStr();
   var sazba = getSazbaVenue(workerId, venueId);
-  var odDatumu = getPosledniVyplataDatumVenue(venueId, workerId);
+  var vyplaceno = getVyplacenDnyVenue(workerId, venueId);
   var seen = {};
+  var out = [];
   PRACOVNI_DNY.forEach(function(pd){
     if (pd.workerId!==workerId || pd.venue_id!==venueId || pd.datum>today) return;
-    if (odDatumu && pd.datum<=odDatumu) return;
+    if (vyplaceno.legacyCutoff && pd.datum<=vyplaceno.legacyCutoff) return;
+    if (vyplaceno.set[pd.datum]) return;
     if (seen[pd.datum]) return; seen[pd.datum]=true;
-    if (pd.prichod && pd.odchod) hodiny += calcHodiny(pd.prichod, pd.odchod);
+    if (!pd.prichod || !pd.odchod) return;
+    var h = calcHodiny(pd.prichod, pd.odchod);
+    out.push({ datum:pd.datum, hodiny:roundH(h), hruby:Math.round(h*sazba) });
   });
+  out.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
+  return out;
+}
+// DŮLEŽITÉ: hrubá mzda se počítá z nevyplacených dní (getNevyplaceneDnyVenue) -
+// tedy dnů, co ještě nejsou v žádné zapsané výplatě (viz výš). Díky tomu jde
+// vyplatit jen VYBRANÉ měsíce (v modálu "Vyplatit") a zbylé měsíce se dál
+// správně počítají jako dlužné, místo aby je jakákoliv výplata rovnou smazala.
+// Penalizace/zálohy se počítají od nejpozdějšího SKUTEČNĚ vyplaceného dne
+// (getVyplacenDnyVenue.maxPaidDay), ne od data, kdy se poslední výplata
+// zapsala (to je vždycky dnešek) - jinak by se vyplacením jen jednoho měsíce
+// tiše "odbavily" i penalizace/zálohy z měsíce, co ještě vyplacený nebyl.
+function getVydelekVenue(workerId, venueId) {
+  var ucty=0, pen=0, zalohy=0;
+  var sazba = getSazbaVenue(workerId, venueId);
+  var vyplaceno = getVyplacenDnyVenue(workerId, venueId);
+  var odDatumu = vyplaceno.maxPaidDay;
+  var dny = getNevyplaceneDnyVenue(workerId, venueId);
+  var hodiny = 0;
+  dny.forEach(function(d){ hodiny += d.hodiny; });
   var hruby = Math.round(hodiny*sazba);
   // Účty (dluh za odebrané zboží/nákupy) se NEODEČÍTAJÍ od výplaty - brigádník
   // si je platí sám zvlášť v hotovosti (viz oznacitUcetZaplaceno). "ucty" se
@@ -1288,26 +1331,6 @@ function getVydelekVenue(workerId, venueId) {
   PENALIZACE.forEach(function(p){ if(p.workerId===workerId && p.venue_id===venueId && (!odDatumu || p.datum>odDatumu)) pen+=p.castka; });
   ZALOHY.forEach(function(z){ if(z.workerId===workerId && z.venue_id===venueId && !z.smazano) zalohy+=z.castka; });
   return { hodiny:roundH(hodiny), hruby:hruby, uctyDluh:ucty, penalizaceTotal:pen, zalohy:zalohy, cisty:hruby-pen-zalohy };
-}
-// Jako getVydelekVenue, ale po jednotlivých (nevyplacených) dnech - používá se
-// v modálu "Vyplatit" na rozpad dlužné částky po měsících, ať je hned vidět,
-// kolik je za tenhle měsíc a kolik za předchozí.
-function getNevyplaceneDnyVenue(workerId, venueId) {
-  var today = todayStr();
-  var sazba = getSazbaVenue(workerId, venueId);
-  var odDatumu = getPosledniVyplataDatumVenue(venueId, workerId);
-  var seen = {};
-  var out = [];
-  PRACOVNI_DNY.forEach(function(pd){
-    if (pd.workerId!==workerId || pd.venue_id!==venueId || pd.datum>today) return;
-    if (odDatumu && pd.datum<=odDatumu) return;
-    if (seen[pd.datum]) return; seen[pd.datum]=true;
-    if (!pd.prichod || !pd.odchod) return;
-    var h = calcHodiny(pd.prichod, pd.odchod);
-    out.push({ datum:pd.datum, hodiny:roundH(h), hruby:Math.round(h*sazba) });
-  });
-  out.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
-  return out;
 }
 // Stejné jako getVydelekVenue (odpracované hodiny × sazba), ale jen za
 // konkrétní měsíc (nebo 'all' = celá sezóna) - pro Statistiky, ať se do
@@ -1386,6 +1409,11 @@ function getVyplacenoVenue(venueId, workerId) {
   return total;
 }
 async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId) {
+  // Pozn.: "datum" je pořád datum, kdy se výplata doopravdy zapsala (dnešek) -
+  // podle něj se výplata řadí do měsíčních statistik (Vyplacené mzdy) a
+  // pokladní knihy, protože peníze z pokladny reálně odchází dnes. Který
+  // konkrétní den/měsíc je tím vyplacený (pro "Zbývá" příště) určuje "dny" -
+  // viz getNevyplaceneDnyVenue/getVyplacenDnyVenue výš.
   var row = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamka||'', dny:dny||[], venue_id:venueId };
   VYPLATY.push(row);
   var res = await saveVyplaty();

@@ -197,3 +197,29 @@ test('getNevyplaceneDnyVenue - počítá jen dny po poslední výplatě, dny bez
   const dny = ctx.getNevyplaceneDnyVenue(WORKER_ID, VENUE_ID);
   assert.deepEqual(Array.from(dny.map((d) => d.datum)), ['2026-07-05'], 'jen den po poslední výplatě a se zapsaným příchodem/odchodem');
 });
+
+test('addVyplataVenue - vyplacení jen VYBRANÉHO měsíce nechá ostatní (nevybrané) dny dál k výplatě', async () => {
+  const ctx = freshContext();
+  setupWorkerAndVenue(ctx);
+  ctx.PRACOVNI_DNY.push(
+    { id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-07-28', prichod: '10:00', odchod: '18:00' }, // 8h, červenec
+    { id: 2, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-08-02', prichod: '10:00', odchod: '18:00' }, // 8h, srpen
+  );
+  await ctx.addVyplataVenue(VENUE_ID, WORKER_ID, 1600, 'výplata za červenec', ['2026-07-28'], 1);
+  const dny = ctx.getNevyplaceneDnyVenue(WORKER_ID, VENUE_ID);
+  assert.deepEqual(Array.from(dny.map((d) => d.datum)), ['2026-08-02'], 'srpnový den (nevybraný) zůstává dál k výplatě');
+  const v = ctx.getVydelekVenue(WORKER_ID, VENUE_ID);
+  assert.equal(v.hodiny, 8, 'jen nevyplacených srpnových 8h - červencové jsou už vyplacené');
+});
+
+test('getVydelekVenue - penalizace z (ještě) nevyplaceného měsíce se počítá i po částečné výplatě jiného měsíce', () => {
+  const ctx = freshContext();
+  setupWorkerAndVenue(ctx);
+  // Výplata se zapsala (datum) až 15.8., ale vyplatila jen červencový den (dny) -
+  // penalizace z 10.8. (po červenci, ale PŘED datem zápisu výplaty) se pořád
+  // musí počítat jako dlužná, ne tiše "spadnout pod stůl".
+  ctx.VYPLATY.push({ id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-08-15', castka: 1600, dny: ['2026-07-28'] });
+  ctx.PENALIZACE.push({ id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-08-10', castka: 300, duvod: 'srpnová penalizace' });
+  const v = ctx.getVydelekVenue(WORKER_ID, VENUE_ID);
+  assert.equal(v.penalizaceTotal, 300, 'penalizace ze srpna se počítá - vyplacený byl jen červencový den');
+});

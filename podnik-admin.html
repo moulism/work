@@ -442,7 +442,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=14"></script>
+<script src="js/data.js?v=15"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1484,11 +1484,11 @@ function renderVyplaty(){
 
 // ── VYPLATIT (modál - jde v něm upravit částku před uložením + vidět/upravit/smazat historii) ──
 var vyplVWorkerId=null;
+var vyplVMesice=[]; // [{key, label, hodiny, hruby, dny:[...]}] pro aktuálně otevřenou výplatu
 function openVyplatitModalVenue(workerId, zbyva){
   vyplVWorkerId = workerId;
   var w = getWorkerById(workerId);
   document.getElementById('vypl-v-title').textContent = 'Zapsat výplatu – '+(w?w.jmeno:'');
-  document.getElementById('vypl-v-castka').value = Math.round(zbyva);
   document.getElementById('vypl-v-poznamka').value = '';
   document.getElementById('vypl-v-err').style.display = 'none';
   document.getElementById('zal-v-castka').value = '';
@@ -1497,29 +1497,47 @@ function openVyplatitModalVenue(workerId, zbyva){
   renderVyplHistorieVenue(workerId);
   document.getElementById('modal-vyplatit-v').classList.remove('hidden');
 }
-// Rozpad dlužné (nevyplacené) částky po měsících - ať je hned při vyplácení
-// vidět, kolik je za tenhle měsíc a kolik za předchozí (např. po delší době).
+// Rozpad nevyplacené částky po měsících, se zaškrtávátky - admin tak vidí
+// rovnou kolik je za který měsíc a může zaškrtnout jen ty měsíce, co chce
+// teď vyplatit (zbytek zůstane dál "k výplatě" příště). Zaškrtnuté měsíce
+// se sečtou do pole s částkou (po odečtení penalizací/záloh).
 function renderVyplMesicniRozpadVenue(workerId){
   var dny = getNevyplaceneDnyVenue(workerId, venue.id);
   var el = document.getElementById('vypl-v-mesice');
-  if (!dny.length) { el.innerHTML = ''; return; }
   var monthNames = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-  var mesice = {}, poradi = [];
+  var map = {};
+  vyplVMesice = [];
   dny.forEach(function(d){
     var key = d.datum.slice(0,7);
-    if (!mesice[key]) { mesice[key] = { hodiny:0, hruby:0 }; poradi.push(key); }
-    mesice[key].hodiny += d.hodiny;
-    mesice[key].hruby += d.hruby;
+    if (!map[key]) {
+      map[key] = { key:key, label: monthNames[parseInt(key.slice(5,7),10)-1]+' '+key.slice(0,4), hodiny:0, hruby:0, dny:[] };
+      vyplVMesice.push(map[key]);
+    }
+    map[key].hodiny += d.hodiny;
+    map[key].hruby += d.hruby;
+    map[key].dny.push(d.datum);
   });
-  if (poradi.length < 2) { el.innerHTML = ''; return; } // jen jeden měsíc - rozpad by nic nepřidal
-  el.innerHTML = '<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">ZA KTERÉ MĚSÍCE TOHLE JE</p>'+
-    poradi.map(function(key){
-      var label = monthNames[parseInt(key.slice(5,7),10)-1]+' '+key.slice(0,4);
-      var m = mesice[key];
-      return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">'+
-        '<span>'+label+' <span style="color:var(--text-muted);">('+m.hodiny+'h)</span></span>'+
-        '<span style="font-weight:600;">'+Math.round(m.hruby).toLocaleString('cs-CZ')+' Kč</span></div>';
+  if (!vyplVMesice.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Žádná nevyplacená mzda - částku níž můžeš zapsat ručně (např. jen vyrovnání zálohy).</p>'; vyplVRecalc(); return; }
+  el.innerHTML = '<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">ZA KTERÉ MĚSÍCE VYPLÁCÍŠ</p>'+
+    vyplVMesice.map(function(m,i){
+      return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--sand-dark);cursor:pointer;">'+
+        '<input type="checkbox" class="vypl-v-mesic-cb" data-idx="'+i+'" checked onchange="vyplVRecalc()"/>'+
+        '<span style="flex:1;">'+m.label+' <span style="color:var(--text-muted);">('+m.hodiny+'h)</span></span>'+
+        '<span style="font-weight:600;min-width:80px;text-align:right;">'+Math.round(m.hruby).toLocaleString('cs-CZ')+' Kč</span>'+
+        '</label>';
     }).join('');
+  vyplVRecalc();
+}
+// Přepočítá částku k výplatě podle zaškrtnutých měsíců (penalizace/zálohy se
+// odečítají vždycky celé, bez ohledu na to, kolik měsíců je zaškrtnutých -
+// jsou to průběžné položky, ne rozdělené po měsících).
+function vyplVRecalc(){
+  var total = 0;
+  document.querySelectorAll('.vypl-v-mesic-cb').forEach(function(cb){
+    if (cb.checked) { var m = vyplVMesice[parseInt(cb.getAttribute('data-idx'))]; total += m.hruby; }
+  });
+  var v = getVydelekVenue(vyplVWorkerId, venue.id);
+  document.getElementById('vypl-v-castka').value = Math.round(total - v.penalizaceTotal - v.zalohy);
 }
 function closeVyplatitModalVenue(){ document.getElementById('modal-vyplatit-v').classList.add('hidden'); vyplVWorkerId=null; }
 async function confirmVyplatitVenue(){
@@ -1529,8 +1547,13 @@ async function confirmVyplatitVenue(){
   err.style.display = 'none';
   if (isNaN(castka) || castka<=0) { err.style.display='block'; err.textContent='Zadej platnou částku.'; return; }
   if (!confirm('Vyplatit '+castka.toLocaleString('cs-CZ')+' Kč?')) return;
-  await addVyplataVenue(venue.id, vyplVWorkerId, castka, poznamka, [], currentAdmin.id);
+  var vybraneDny = [];
+  document.querySelectorAll('.vypl-v-mesic-cb').forEach(function(cb){
+    if (cb.checked) { var m = vyplVMesice[parseInt(cb.getAttribute('data-idx'))]; vybraneDny = vybraneDny.concat(m.dny); }
+  });
+  await addVyplataVenue(venue.id, vyplVWorkerId, castka, poznamka, vybraneDny, currentAdmin.id);
   document.getElementById('vypl-v-poznamka').value = '';
+  renderVyplMesicniRozpadVenue(vyplVWorkerId);
   renderVyplZalohyVenue(vyplVWorkerId);
   renderVyplHistorieVenue(vyplVWorkerId);
   renderVyplaty();
