@@ -78,3 +78,29 @@ test('výplata i záloha se propisují do pokladny jako výdaj se sledovatelným
   assert.ok(ctx.POKLADNA.some((p) => (p.popis || '').includes('výplata #' + vyplata.row.id)));
   assert.ok(ctx.POKLADNA.some((p) => (p.popis || '').includes('záloha #' + zaloha.row.id)));
 });
+
+test('addBytPlatba - přijatý nájem se propíše do pokladny jako příjem hotovosti dané nemovitosti', async () => {
+  const ctx = freshContext();
+  ctx.BYTY.push({ id: 31, venue_id: 13, nazev: 'Byt 1', najemnik: 'Novák', mesicni_castka: 6500, aktivni: true });
+  const res = await ctx.addBytPlatba(31, '2026-09', 6500, '');
+  assert.equal(res.ok, true);
+  assert.equal(res.pokladnaOk, true);
+  assert.equal(ctx.BYTY_PLATBY.length, 1);
+  assert.equal(ctx.POKLADNA.length, 1, 'platba nájmu vytvoří právě jeden pokladní zápis');
+  const pk = ctx.POKLADNA[0];
+  assert.equal(pk.venue_id, 13);
+  assert.equal(pk.typ, 'prijem');
+  assert.equal(pk.castka, 6500);
+  assert.equal(pk.ucet, 'hotovost');
+  assert.ok(pk.popis.indexOf('(nájem #' + res.row.id + ')') !== -1);
+  assert.equal(ctx.getPokladnaZustatek(13, 'hotovost'), 6500);
+});
+
+test('deleteBytPlatba - smaže i odpovídající příjem v pokladně', async () => {
+  const ctx = freshContext();
+  ctx.BYTY.push({ id: 31, venue_id: 13, nazev: 'Byt 1', najemnik: '', mesicni_castka: 6500, aktivni: true });
+  const res = await ctx.addBytPlatba(31, '2026-09', 6500, '');
+  await ctx.deleteBytPlatba(res.row.id);
+  assert.equal(ctx.BYTY_PLATBY.length, 0);
+  assert.equal(ctx.POKLADNA.length, 0);
+});

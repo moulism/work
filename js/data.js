@@ -1937,12 +1937,21 @@ function getBytDluhMesic(bytId, mesic) {
   if (!b) return 0;
   return (b.mesicni_castka||0) - getBytZaplacenoMesic(bytId, mesic);
 }
+// Marker v popisu pokladního zápisu spojuje přijatý nájem s konkrétní platbou
+// (viz addBytPlatba/deleteBytPlatba) - stejný princip jako "(výplata #ID)".
+function bytPlatbaPokladnaMarker(platbaId) { return '(nájem #'+platbaId+')'; }
 async function addBytPlatba(bytId, mesic, castka, poznamka) {
   var row = { id:getNextId(BYTY_PLATBY), byt_id:bytId, mesic:mesic, datum:todayStr(), castka:castka, poznamka:poznamka||'' };
   var res = await dbUpsert('byty_platby', [row]);
   if (!res.ok) return res;
   BYTY_PLATBY.push(row);
-  return { ok:true, row:row };
+  // Přijatý nájem je příjem hotovosti do pokladní knihy dané nemovitosti -
+  // propiš ho tam automaticky, ať je v pokladně vidět každý pohyb peněz
+  // (stejně jako u tržeb a výplat u provozoven).
+  var b = BYTY.find(function(x){return x.id===bytId;});
+  var popis = 'Nájem – '+(b?b.nazev:'?')+(b && b.najemnik ? ' ('+b.najemnik+')' : '')+' za '+mesic+' '+bytPlatbaPokladnaMarker(row.id);
+  var pk = b ? await addPokladnaZapis(b.venue_id, 'prijem', castka, popis, null, 'hotovost', row.datum) : { ok:false };
+  return { ok:true, row:row, pokladnaOk: !!(pk && pk.ok) };
 }
 async function deleteBytPlatba(id) {
   try {
@@ -1950,6 +1959,10 @@ async function deleteBytPlatba(id) {
     if (res && res.error) return { ok:false, error:res.error };
   } catch(e) { return { ok:false, error:e }; }
   BYTY_PLATBY = BYTY_PLATBY.filter(function(p){ return p.id!==id; });
+  // Smaž i odpovídající příjem v pokladní knize (viz addBytPlatba).
+  var marker = bytPlatbaPokladnaMarker(id);
+  var pkRows = POKLADNA.filter(function(p){ return (p.popis||'').indexOf(marker)!==-1; });
+  for (var i=0; i<pkRows.length; i++) { await deletePokladnaZapisAdmin(pkRows[i].id); }
   return { ok:true };
 }
 function getBytyPlatbyForVenue(venueId) {
