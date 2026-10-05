@@ -97,7 +97,9 @@
     </div>
     <div class="card">
       <div class="card-title">Rozpis</div>
-      <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="rz-table"></table></div>
+      <div class="rz-month-btns" id="rz-list-month-btns"></div>
+      <div class="rz-legend" id="rz-list-legend"></div>
+      <div class="schedule-wrap"><table class="schedule-table rz-table" style="width:100%" id="rz-table"></table></div>
     </div>
     <div class="card">
       <div class="card-title">🗓️ Hromadný přehled – celý měsíc</div>
@@ -955,6 +957,7 @@ async function addShift(){
   var poznamka = document.getElementById('rz-poznamka').value.trim();
   if (!workerId || !datum) { alert('Vyber brigádníka a datum.'); return; }
   await addShiftVenue(venue.id, workerId, 'hlavni', datum, poznamka);
+  rzMonth = parseInt(datum.slice(5,7),10) || rzMonth;
   document.getElementById('rz-poznamka').value = '';
   renderShiftTable();
   renderRzDostupni();
@@ -1020,6 +1023,7 @@ function renderRzPresetyManual(){
 }
 async function rzPridatDostupneho(workerId, datum, smena){
   await addShiftVenue(venue.id, workerId, 'hlavni', datum, smena||'');
+  rzMonth = parseInt(datum.slice(5,7),10) || rzMonth;
   renderShiftTable();
   renderRzDostupni();
   renderRzMesic();
@@ -1037,16 +1041,60 @@ async function editShiftPoznamka(id, current){
   renderShiftTable();
   renderRzMesic();
 }
+// Rozpis po měsících: jeden řádek na den, každý brigádník má svou barvu,
+// víkendy a dnešek jsou zvýrazněné - ať se nemusí listovat dlouhým seznamem
+// všech měsíců najednou.
+var RZ_COLORS = [['#dbe7ff','#1c3a8a'],['#d7f2e3','#0d5a41'],['#fde4c8','#7a3d00'],['#f1ddf7','#6a2181'],['#ffe0e0','#8c2a2a'],['#dff1f5','#0f5566'],['#fff3bf','#6b5300'],['#e6e6f0','#38385a']];
+var RZ_MESICE = ['','Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+function rzWorkerColor(workerId){
+  var ids = getWorkersForVenue(venue.id).map(function(w){return w.id;}).sort(function(a,b){return a-b;});
+  var i = ids.indexOf(workerId);
+  return i === -1 ? ['#eceef3','#3c4558'] : RZ_COLORS[i % RZ_COLORS.length];
+}
+function editShiftPoznamkaById(id){
+  var s = SCHEDULE.find(function(x){return x.id===id;});
+  editShiftPoznamka(id, s ? (s.poznamka||'') : '');
+}
 function renderShiftTable(){
-  var rows = getScheduleForVenue(venue.id).slice().sort(function(a,b){return a.datum.localeCompare(b.datum);});
-  var html = '<thead><tr><th>Datum</th><th>Brigádník</th><th>Poznámka</th><th></th></tr></thead><tbody>';
-  if (!rows.length) html += '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Zatím žádné směny.</td></tr>';
+  buildRzMonthBtns();
+  var prefix = 2026+'-'+String(rzMonth).padStart(2,'0');
+  var rows = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(prefix)===0; });
+  var today = todayStr();
+  var byDate = {};
+  rows.forEach(function(s){ (byDate[s.datum] = byDate[s.datum] || []).push(s); });
+  var dates = Object.keys(byDate).sort();
+
+  // legenda: kdo má jakou barvu (jen lidé, co mají v měsíci směnu)
+  var seen = {}, legend = '';
   rows.forEach(function(s){
-    var w = getWorkerById(s.workerId);
-    var pz = (s.poznamka||'').replace(/'/g,"\\'");
-    html += '<tr><td>'+formatDate(s.datum)+'</td><td>'+(w?w.jmeno:'?')+'</td>'+
-      '<td style="font-size:12px;color:var(--text-muted);cursor:pointer;" onclick="editShiftPoznamka('+s.id+',\''+pz+'\')">'+(s.poznamka?('📝 '+s.poznamka):'<span style="text-decoration:underline;">+ přidat</span>')+'</td>'+
-      '<td><button class="btn btn-sm btn-danger" onclick="removeShift('+s.id+')">🗑️</button></td></tr>';
+    if (seen[s.workerId]) return; seen[s.workerId] = true;
+  });
+  Object.keys(seen).map(Number).sort(function(a,b){
+    var wa=getWorkerById(a), wb=getWorkerById(b); return (wa?wa.jmeno:'').localeCompare(wb?wb.jmeno:'', 'cs');
+  }).forEach(function(id){
+    var w = getWorkerById(id), c = rzWorkerColor(id), pocet = rows.filter(function(s){return s.workerId===id;}).length;
+    legend += '<span class="sh-chip sh-legend" style="background:'+c[0]+';color:'+c[1]+';">'+prEsc(w?w.jmeno:'?')+' <span class="sh-note">'+pocet+'×</span></span>';
+  });
+  document.getElementById('rz-list-legend').innerHTML = rows.length
+    ? '<div class="rz-sum">'+RZ_MESICE[rzMonth]+': <b>'+rows.length+'</b> '+(rows.length===1?'směna':(rows.length<5?'směny':'směn'))+' ve <b>'+dates.length+'</b> '+(dates.length===1?'dni':'dnech')+'</div>'+legend
+    : '';
+
+  var html = '<thead><tr><th style="width:140px;">Den</th><th>Kdo je na směně</th></tr></thead><tbody>';
+  if (!dates.length) html += '<tr><td colspan="2" style="text-align:center;color:var(--text-muted);padding:1.5rem;">V měsíci '+RZ_MESICE[rzMonth].toLowerCase()+' zatím nejsou žádné směny.</td></tr>';
+  dates.forEach(function(d){
+    var we = isWeekend(d), dnes = d===today, minule = d<today;
+    html += '<tr class="rz-row'+(we?' rz-we':'')+(dnes?' rz-today':'')+(minule?' rz-past':'')+'"'+(dnes?' id="rz-row-today"':'')+'><td class="rz-date">'+formatDate(d)+(dnes?' <span class="badge badge-info">DNES</span>':'')+'</td><td>';
+    byDate[d].slice().sort(function(a,b){
+      var wa=getWorkerById(a.workerId), wb=getWorkerById(b.workerId);
+      return (wa?wa.jmeno:'').localeCompare(wb?wb.jmeno:'', 'cs');
+    }).forEach(function(sm){
+      var w = getWorkerById(sm.workerId), c = rzWorkerColor(sm.workerId);
+      html += '<span class="sh-chip" style="background:'+c[0]+';color:'+c[1]+';">'+prEsc(w?w.jmeno:'?')+
+        (sm.poznamka ? ' <span class="sh-note">· '+prEsc(sm.poznamka)+'</span>' : '')+
+        '<button type="button" class="sh-btn" title="Upravit poznámku" aria-label="Upravit poznámku" onclick="editShiftPoznamkaById('+sm.id+')">✎</button>'+
+        '<button type="button" class="sh-btn" title="Smazat směnu" aria-label="Smazat směnu" onclick="removeShift('+sm.id+')">✕</button></span>';
+    });
+    html += '</td></tr>';
   });
   html += '</tbody>';
   document.getElementById('rz-table').innerHTML = html;
@@ -1055,13 +1103,20 @@ function renderShiftTable(){
 // ── Hromadný měsíční přehled rozpisu (všichni brigádníci/stanoviště najednou) ──
 var rzMonth = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
 function buildRzMonthBtns(){
-  var el = document.getElementById('rz-mesic-btns');
   var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
-  el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===rzMonth?'btn-primary':'btn-secondary')+'" onclick="setRzMonth('+x.m+',this)">'+x.l+'</button>';}).join('');
+  var el = document.getElementById('rz-mesic-btns');
+  if (el) el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===rzMonth?'btn-primary':'btn-secondary')+'" onclick="setRzMonth('+x.m+',this)">'+x.l+'</button>';}).join('');
+  // Stejné měsíce nad seznamem směn - s počtem směn, ať je hned vidět, kde co je.
+  var cnt = {};
+  getScheduleForVenue(venue.id).forEach(function(s){ if (s.datum.indexOf('2026-')===0) { var m = parseInt(s.datum.slice(5,7),10); cnt[m] = (cnt[m]||0)+1; } });
+  var el2 = document.getElementById('rz-list-month-btns');
+  if (el2) el2.innerHTML = months.map(function(x){
+    return '<button type="button" class="btn btn-sm '+(x.m===rzMonth?'btn-primary':'btn-secondary')+(cnt[x.m]?'':' rz-empty')+'" onclick="setRzMonth('+x.m+',this)">'+x.l+(cnt[x.m]?' <span class="rz-cnt">'+cnt[x.m]+'</span>':'')+'</button>';
+  }).join('');
 }
 function setRzMonth(m, btn){
   rzMonth = m;
-  buildRzMonthBtns();
+  renderShiftTable();
   renderRzMesic();
 }
 // Stejný styl jako Kosatka má u svého Rozpisu (admin.html renderSched) -

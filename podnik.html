@@ -443,24 +443,52 @@ function renderVydelek(){
   }).join('');
 }
 
+// Moje směny: nahoře to, co mě teprve čeká (s odpočtem "dnes/zítra"), minulé směny
+// jsou schované pod rozbalovátkem a seskupené po měsících - ať se nemusí listovat.
 function renderShifts(){
   var shifts = getMyShiftsVenue(currentUser.id, currentVenue.id).slice().sort(function(a,b){return a.datum.localeCompare(b.datum);});
   var today = todayStr();
   var el = document.getElementById('my-shifts');
   if (!shifts.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📅</div>Zatím žádné směny</div>'; return; }
-  el.innerHTML = shifts.map(function(s){
+  var MESICE = ['','Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  function dnuDo(d){
+    var a = new Date(today+'T00:00:00'), b = new Date(d+'T00:00:00');
+    return Math.round((b-a)/86400000);
+  }
+  function radek(s, minule){
     var st = stanoviste.find(function(x){return x.slug===s.mistoId;});
     var pd = getPracovniDen(currentUser.id, s.datum);
     var cas = pd && pd.prichod && pd.odchod ? pd.prichod+' – '+pd.odchod : '';
-    return '<div style="padding:8px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;'+(s.datum===today?'background:#f0f8fc;':'')+'">'+
-      '<div style="display:flex;align-items:center;gap:10px;">'+
-      '<span style="min-width:80px;font-weight:'+(s.datum===today?700:400)+';">'+formatDate(s.datum)+'</span>'+
-      '<span style="flex:1;">'+(st?st.ikona+' '+st.label:s.mistoId)+'</span>'+
-      '<span style="color:var(--text-muted);font-size:12px;">'+(cas||'–')+'</span>'+
-      '</div>'+
-      (s.poznamka ? '<div style="margin-top:4px;font-size:12px;color:var(--water-dark);">📝 '+s.poznamka+'</div>' : '')+
+    var dnes = s.datum===today, we = isWeekend(s.datum);
+    var rozdil = dnuDo(s.datum);
+    var stitek = dnes ? '<span class="badge badge-info">DNES</span>' : (rozdil===1 ? '<span class="badge badge-warning">ZÍTRA</span>' : '');
+    return '<div class="ms-row'+(dnes?' ms-today':'')+(we?' ms-we':'')+(minule?' ms-past':'')+'">'+
+      '<div class="ms-date">'+formatDate(s.datum)+'</div>'+
+      '<div class="ms-main">'+(st?st.ikona+' '+st.label:'Směna')+(s.poznamka ? '<div class="ms-note">📝 '+prEscW(s.poznamka)+'</div>' : '')+'</div>'+
+      '<div class="ms-side">'+stitek+(cas?'<div class="ms-time">'+cas+'</div>':'')+'</div>'+
       '</div>';
-  }).join('');
+  }
+  function prEscW(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var budouci = shifts.filter(function(s){return s.datum>=today;});
+  var minule = shifts.filter(function(s){return s.datum<today;}).reverse();
+  var html = '';
+  html += '<div class="ms-head">Nadcházející ('+budouci.length+')</div>';
+  html += budouci.length ? budouci.map(function(s){return radek(s,false);}).join('') : '<div class="ms-empty">Zatím tě nic nečeká. Nové směny se ti objeví tady.</div>';
+  if (minule.length) {
+    var skupiny = {}, poradi = [];
+    minule.forEach(function(s){
+      var k = s.datum.slice(0,7);
+      if (!skupiny[k]) { skupiny[k] = []; poradi.push(k); }
+      skupiny[k].push(s);
+    });
+    html += '<details class="ms-past-wrap"><summary>Minulé směny ('+minule.length+')</summary>';
+    poradi.forEach(function(k){
+      var m = parseInt(k.slice(5,7),10);
+      html += '<div class="ms-month">'+MESICE[m]+' '+k.slice(0,4)+' <span>'+skupiny[k].length+'×</span></div>'+skupiny[k].map(function(s){return radek(s,true);}).join('');
+    });
+    html += '</details>';
+  }
+  el.innerHTML = html;
 }
 
 function renderUctyMisto(){

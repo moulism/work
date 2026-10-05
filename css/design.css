@@ -280,3 +280,40 @@ body.ds-panel .venue-card { border-radius: var(--radius); }
   .todo-row .tag { min-width: 0; }
 }
 body.ds-panel #admin-wrap { margin-top: 28px; }
+
+/* ── ROZPIS: měsíce, barevní brigádníci, víkendy ── */
+.rz-month-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.rz-month-btns .btn.rz-empty { color: var(--text-muted); border-style: dashed; }
+.rz-cnt { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: rgba(27,35,51,.1); font-size: 12px; font-weight: 700; text-align: center; }
+.btn-primary .rz-cnt { background: rgba(255,255,255,.25); }
+.rz-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
+.rz-sum { flex: 0 0 100%; color: var(--text-muted); font-size: 14px; margin-bottom: 2px; }
+.sh-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; margin: 3px 8px 3px 0; }
+.sh-chip.sh-legend { padding: 4px 12px; margin: 0; }
+.sh-note { font-weight: 400; font-size: 12.5px; opacity: .9; }
+.sh-btn { border: 0; background: transparent; color: inherit; min-width: 30px; min-height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer; opacity: .75; }
+.sh-btn:hover { opacity: 1; background: rgba(255,255,255,.6); }
+.rz-table .rz-date { font-weight: 600; white-space: nowrap; vertical-align: top; padding-top: 14px; }
+.rz-table tr.rz-we td { background: #fbf4ef; }
+.rz-table tr.rz-we .rz-date { color: var(--red); }
+.rz-table tr.rz-today td { background: #e9edfc; }
+.rz-table tr.rz-past:not(.rz-today) .sh-chip { opacity: .78; }
+.rz-table tr.rz-past:not(.rz-today) .rz-date { color: var(--text-muted); }
+
+/* ── MOJE SMĚNY (brigádnická appka) ── */
+.ms-head { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+.ms-row { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; margin-bottom: 6px; background: #fff; border: 1px solid var(--sand-dark); }
+.ms-date { min-width: 84px; font-weight: 700; }
+.ms-main { flex: 1; min-width: 0; font-size: 14px; }
+.ms-note { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+.ms-side { text-align: right; font-size: 12.5px; color: var(--text-muted); }
+.ms-time { margin-top: 2px; }
+.ms-we { background: #fbf4ef; }
+.ms-we .ms-date { color: var(--red); }
+.ms-today { background: #e9edfc; border-color: var(--water); }
+.ms-past { opacity: .75; }
+.ms-empty { color: var(--text-muted); padding: 10px 2px; }
+.ms-past-wrap { margin-top: 14px; border-top: 1px solid var(--sand-dark); padding-top: 6px; }
+.ms-past-wrap > summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+.ms-month { margin: 12px 0 6px; font-weight: 700; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.ms-month span { font-weight: 600; margin-left: 4px; }
