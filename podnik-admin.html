@@ -98,18 +98,9 @@
     <div class="card">
       <div class="card-title">Rozpis</div>
       <div class="rz-month-btns" id="rz-list-month-btns"></div>
+      <div id="rz-chybi-wrap"></div>
       <div class="rz-legend" id="rz-list-legend"></div>
       <div class="schedule-wrap"><table class="schedule-table rz-table" style="width:100%" id="rz-table"></table></div>
-    </div>
-    <div class="card">
-      <div class="card-title">🗓️ Hromadný přehled – celý měsíc</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Kdo je na směně který den v celém měsíci, na jeden pohled - místo klikání den po dni.</p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="rz-mesic-btns"></div>
-      <div style="margin-bottom:1rem;">
-        <div class="card-title" style="font-size:13px;">🔎 Chybí doplnit do rozpisu</div>
-        <div id="rz-chybi-wrap"></div>
-      </div>
-      <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="rz-mesic-table"></table></div>
     </div>
   </div>
 
@@ -1117,8 +1108,6 @@ function renderShiftTable(){
 var rzMonth = new Date().getFullYear()===2026 ? (new Date().getMonth()+1) : 7;
 function buildRzMonthBtns(){
   var months = [{m:1,l:'Led'},{m:2,l:'Úno'},{m:3,l:'Bře'},{m:4,l:'Dub'},{m:5,l:'Kvě'},{m:6,l:'Čer'},{m:7,l:'Čvc'},{m:8,l:'Srp'},{m:9,l:'Zář'},{m:10,l:'Říj'},{m:11,l:'Lis'},{m:12,l:'Pro'}];
-  var el = document.getElementById('rz-mesic-btns');
-  if (el) el.innerHTML = months.map(function(x){return '<button type="button" class="btn btn-sm '+(x.m===rzMonth?'btn-primary':'btn-secondary')+'" onclick="setRzMonth('+x.m+',this)">'+x.l+'</button>';}).join('');
   // Stejné měsíce nad seznamem směn - s počtem směn, ať je hned vidět, kde co je.
   var cnt = {};
   getScheduleForVenue(venue.id).forEach(function(s){ if (s.datum.indexOf('2026-')===0) { var m = parseInt(s.datum.slice(5,7),10); cnt[m] = (cnt[m]||0)+1; } });
@@ -1145,13 +1134,15 @@ function renderRzChybi(){
   getScheduleForVenue(venue.id).forEach(function(s){ if (s.datum.indexOf(prefix)===0) obsazeno[s.datum] = true; });
   var chybi = days.filter(function(d){ return !obsazeno[d]; });
   var el = document.getElementById('rz-chybi-wrap');
-  if (!chybi.length) { el.innerHTML = '<div style="color:#3B6D11;font-size:13px;padding:6px 0;">✓ Každý den v měsíci má aspoň jednu naplánovanou směnu.</div>'; return; }
-  el.innerHTML = chybi.map(function(d){
+  if (!el) return;
+  if (!chybi.length) { el.innerHTML = '<div class="rz-ok">✓ Každý den v měsíci má aspoň jednu naplánovanou směnu.</div>'; return; }
+  var open = chybi.length <= 5 ? ' open' : '';
+  el.innerHTML = '<details class="rz-chybi"'+open+'><summary>🔎 Chybí doplnit: <b>'+chybi.length+'</b> '+(chybi.length===1?'den bez směny':(chybi.length<5?'dny bez směny':'dnů bez směny'))+'</summary>'+
+  chybi.map(function(d){
     var we = isWeekend(d), dnes = d===todayStr();
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--sand-dark);font-size:13px;">'+
-      '<span style="'+(we?'color:var(--red);':'')+'font-weight:'+(dnes?700:500)+';">'+formatDate(d)+(dnes?' <span class="badge badge-info" style="font-size:9px;">DNES</span>':'')+'</span>'+
+    return '<div class="rz-chybi-row"><span style="'+(we?'color:var(--red);':'')+'font-weight:'+(dnes?700:500)+';">'+formatDate(d)+(dnes?' <span class="badge badge-info" style="font-size:9px;">DNES</span>':'')+'</span>'+
       '<button class="btn btn-sm btn-primary" onclick="rzSkokNaDen(\''+d+'\')">+ Přidat</button></div>';
-  }).join('');
+  }).join('')+'</details>';
 }
 function rzSkokNaDen(datum){
   document.getElementById('rz-datum').value = datum;
@@ -1159,41 +1150,7 @@ function rzSkokNaDen(datum){
   renderRzPresetyManual();
   document.getElementById('rz-datum').scrollIntoView({behavior:'smooth', block:'center'});
 }
-function renderRzMesic(){
-  renderRzChybi();
-  var days = getMonthDaysAny(2026, rzMonth);
-  var prefix = 2026+'-'+String(rzMonth).padStart(2,'0');
-  var vsechnySmeny = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(prefix)===0; });
-  var el = document.getElementById('rz-mesic-table');
-  if (!vsechnySmeny.length) { el.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">V tomhle měsíci zatím nejsou žádné směny.</td></tr></tbody>'; return; }
-  var byDate = {}; days.forEach(function(d){ byDate[d] = []; });
-  vsechnySmeny.forEach(function(s){ if (byDate[s.datum]) byDate[s.datum].push(s); });
-  var html = '<thead><tr><th>Datum</th><th>Brigádník</th><th>Směna</th><th></th></tr></thead><tbody>';
-  var maZaznam = false;
-  days.forEach(function(d){
-    var shifts = byDate[d].slice().sort(function(a,b){
-      var wa=getWorkerById(a.workerId), wb=getWorkerById(b.workerId);
-      return (wa?wa.jmeno:'').localeCompare(wb?wb.jmeno:'', 'cs');
-    });
-    if (!shifts.length) return;
-    maZaznam = true;
-    var we = isWeekend(d), dnes = d===todayStr();
-    shifts.forEach(function(s, i){
-      var w = getWorkerById(s.workerId);
-      html += '<tr'+(dnes?' style="background:#f0f8fc;"':'')+'>';
-      if (i===0) html += '<td rowspan="'+shifts.length+'" style="font-weight:'+(dnes?700:500)+';vertical-align:top;padding-top:10px;'+(we?'color:var(--red);':'')+'">'+formatDate(d)+(dnes?' <span class="badge badge-info" style="font-size:9px;">DNES</span>':'')+'</td>';
-      html += '<td>'+(w?w.jmeno:'?')+'</td>';
-      html += '<td><span class="smena-pill">'+(s.poznamka?s.poznamka:'✓')+'</span></td>';
-      html += '<td style="white-space:nowrap;">'+
-        '<button class="btn btn-sm btn-secondary" style="margin-right:4px;" onclick="editShiftPoznamka('+s.id+',\''+(s.poznamka||'').replace(/'/g,"\\'")+'\')">✏️</button>'+
-        '<button class="btn btn-sm btn-danger" onclick="removeShift('+s.id+')">🗑️</button></td>';
-      html += '</tr>';
-    });
-  });
-  if (!maZaznam) { el.innerHTML = '<tbody><tr><td style="text-align:center;color:var(--text-muted);padding:1.5rem;">V tomhle měsíci zatím nejsou žádné směny.</td></tr></tbody>'; return; }
-  html += '</tbody>';
-  el.innerHTML = html;
-}
+function renderRzMesic(){ renderRzChybi(); }
 
 function buildMonthBtns(){
   var el = document.getElementById('trzby-month-btns');

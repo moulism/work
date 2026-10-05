@@ -284,6 +284,7 @@ body.ds-panel #admin-wrap { margin-top: 28px; }
 /* ── ROZPIS: měsíce, barevní brigádníci, víkendy ── */
 .rz-month-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .rz-month-btns .btn.rz-empty { color: var(--text-muted); border-style: dashed; }
+.rz-month-btns .btn.rz-empty.btn-primary { color: #fff; border-style: solid; }
 .rz-cnt { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: rgba(27,35,51,.1); font-size: 12px; font-weight: 700; text-align: center; }
 .btn-primary .rz-cnt { background: rgba(255,255,255,.25); }
 .rz-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
@@ -324,3 +325,10 @@ button.sh-legend:hover { border-color: currentColor; }
 button.sh-legend.sh-on { border-color: currentColor; box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
 button.sh-legend.sh-off { opacity: .45; }
 .rz-hint { color: var(--text-muted); }
+
+/* Rozpis: dny bez směny (dřív v Hromadném přehledu) */
+.rz-ok { color: var(--green); font-size: 13.5px; font-weight: 600; margin: 0 0 12px; }
+details.rz-chybi { background: #fdf3ec; border: 1px solid #f1d7c5; border-radius: 12px; padding: 10px 14px; margin: 0 0 14px; }
+details.rz-chybi summary { cursor: pointer; font-size: 14px; color: var(--red); font-weight: 600; }
+.rz-chybi-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid #f1d7c5; font-size: 13.5px; }
+.rz-chybi-row:first-of-type { margin-top: 8px; }
