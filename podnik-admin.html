@@ -5,47 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Správa provozovny</title>
   <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/design.css?v=1"/>
   <link rel="icon" href="icons/icon-192.png" type="image/png"/>
   <link rel="apple-touch-icon" href="icons/icon-180.png"/>
 </head>
-<body>
+<body class="ds-side">
 
 <div id="app" style="display:none">
 
   <div class="topbar">
     <div class="topbar-brand" id="tb-brand">🏢 Admin</div>
+    <div class="gs-wrap">
+      <label class="gs-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input type="search" id="gs-input" placeholder="Hledat náklad, fakturu, pokladnu, brigádníka…" aria-label="Hledat v celé provozovně" autocomplete="off" oninput="globalSearch()"/>
+      </label>
+      <div class="gs-results" id="gs-results"></div>
+    </div>
+    <button class="btn btn-primary topbar-add" onclick="openQuickAdd()">+ Zapsat</button>
     <div class="topbar-right">
       <span class="badge badge-warning" id="admin-name">Admin</span>
-      <button class="btn btn-sm btn-secondary" onclick="location.reload()" style="margin-right:8px;">🔄 Obnovit data</button>
-      <button class="btn btn-sm btn-secondary" onclick="location.href='podniky.html'" style="margin-right:8px;">🏠 Podniky</button>
+      <button class="btn btn-sm btn-secondary" onclick="location.reload()">🔄 Obnovit data</button>
+      <button class="btn btn-sm btn-secondary topbar-podniky" onclick="location.href='podniky.html'">🏠 Podniky</button>
       <button class="logout-btn" onclick="logout()">Odhlásit</button>
     </div>
   </div>
 
   <div class="nav-tabs">
+    <a class="nav-back" href="podniky.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Všechny podniky</a>
+    <button class="nav-tab active" data-tab="prehled" onclick="showTab('prehled',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Přehled</button>
     <span class="nav-group-label">Provoz</span>
-    <button class="nav-tab active" onclick="showTab('rozpis',this)">📅 Rozpis</button>
-    <button class="nav-tab"        onclick="showTab('dostupnost',this)">🗓️ Dostupnost</button>
-    <button class="nav-tab"        onclick="showTab('dochazka',this)">⏱️ Docházka</button>
-    <span class="nav-sep"></span>
+    <button class="nav-tab" data-tab="rozpis" onclick="showTab('rozpis',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Rozpis</button>
+    <button class="nav-tab" data-tab="dostupnost" onclick="showTab('dostupnost',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Dostupnost</button>
+    <button class="nav-tab" data-tab="dochazka" onclick="showTab('dochazka',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Docházka <span class="nav-cnt" id="cnt-dochazka"></span></button>
     <span class="nav-group-label">Peníze</span>
-    <button class="nav-tab"        onclick="showTab('vyplaty',this)">💰 Výplaty</button>
-    <button class="nav-tab"        onclick="showTab('trzby',this)">💵 Tržby</button>
-    <button class="nav-tab"        onclick="showTab('naklady',this)">🧾 Náklady</button>
-    <button class="nav-tab"        onclick="showTab('pokladna',this)">💵 Pokladna</button>
-    <button class="nav-tab"        onclick="showTab('statistiky',this)">📊 Statistiky</button>
-    <span class="nav-sep"></span>
+    <button class="nav-tab" data-tab="naklady" onclick="showTab('naklady',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Náklady a faktury</button>
+    <button class="nav-tab" data-tab="trzby" onclick="showTab('trzby',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18l5-6 4 4 7-9"/><path d="M15 7h5v5"/></svg>Tržby</button>
+    <button class="nav-tab" data-tab="pokladna" onclick="showTab('pokladna',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg>Pokladna</button>
+    <button class="nav-tab" data-tab="vyplaty" onclick="showTab('vyplaty',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3h-3a1.5 1.5 0 000 3h4"/></svg>Výplaty <span class="nav-cnt" id="cnt-vyplaty"></span></button>
+    <button class="nav-tab" data-tab="statistiky" onclick="showTab('statistiky',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Statistiky</button>
     <span class="nav-group-label">Lidé</span>
-    <button class="nav-tab"        onclick="showTab('brigadnici',this)">👥 Brigádníci</button>
-    <button class="nav-tab"        onclick="showTab('penalizace',this)">⚠️ Penalizace</button>
-    <span class="nav-sep"></span>
-    <!-- Sklad je jen pro Kosatku, tady záměrně schovaný (na přání majitele). -->
-    <button class="nav-tab"        onclick="showTab('objednavky',this)">📦 Objednávky</button>
-    <button class="nav-tab"        onclick="showTab('nastaveni',this)">⚙️ Nastavení</button>
+    <button class="nav-tab" data-tab="brigadnici" onclick="showTab('brigadnici',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5 6.5-5s5.7 1.5 6.5 5"/><circle cx="17" cy="9" r="2.5"/></svg>Brigádníci</button>
+    <button class="nav-tab" data-tab="penalizace" onclick="showTab('penalizace',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Penalizace</button>
+    <span class="nav-group-label">Ostatní</span>
+    <button class="nav-tab" data-tab="objednavky" onclick="showTab('objednavky',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/></svg>Objednávky</button>
+    <button class="nav-tab" data-tab="nastaveni" onclick="showTab('nastaveni',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Nastavení</button>
+  </div>
+
+  <!-- PŘEHLED -->
+  <div class="page active" id="tab-prehled">
+    <div class="kpi-grid" id="pr-kpi"></div>
+    <div class="ds-grid2">
+      <div class="card">
+        <div class="card-title">Co je potřeba udělat</div>
+        <div id="pr-todo"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Dnes na směně</div>
+        <div id="pr-dnes"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+        <div class="card-title" style="margin:0;">Poslední pohyby peněz</div>
+        <button class="btn btn-sm btn-secondary" onclick="gotoTab('pokladna')">Celá pokladna →</button>
+      </div>
+      <div id="pr-feed"></div>
+    </div>
   </div>
 
   <!-- ROZPIS -->
-  <div class="page active" id="tab-rozpis">
+  <div class="page" id="tab-rozpis">
     <div class="card">
       <div class="card-title">Přidat směnu</div>
       <div class="form-group" style="margin:0;max-width:220px;"><label class="form-label">Datum</label><input type="date" class="form-input" id="rz-datum" onchange="renderRzDostupni();renderRzPresetyManual();"/></div>
@@ -119,18 +149,15 @@
     </div>
 
     <div class="card">
-      <div class="card-title">🧾 Náklady tenhle měsíc</div>
-      <div id="nakl-admin-list"></div>
-    </div>
-
-    <div class="card">
       <div class="card-title">💰 Čistý zisk tenhle měsíc</div>
       <div id="zisk-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;"></div>
     </div>
   </div>
 
-  <!-- NÁKLADY (souhrn) -->
+  <!-- NÁKLADY A FAKTURY: seznam + formulář na jednom místě -->
   <div class="page" id="tab-naklady">
+    <div class="ds-split">
+      <div class="ds-col-main">
     <div class="card">
       <div class="card-title">🧾 Všechny náklady</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Faktury/náklady i výdaje zapsané přímo z pokladny (hotovostní i online) na jednom místě, ať je hned vidět, co všechno provozovnu za dané období stálo peníze.</p>
@@ -138,6 +165,28 @@
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;" id="nakl-vse-month-btns"></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem;" id="nakl-vse-souhrn"></div>
       <div id="nakl-vse-list"></div>
+    </div>
+
+        <div class="card">
+          <div class="card-title">Faktury zapsané tenhle měsíc</div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Tady jde zapsaný náklad i smazat.</p>
+          <div id="nakl-admin-list"></div>
+        </div>
+      </div>
+      <div class="ds-col-form">
+        <div class="card">
+          <div class="card-title">Zapsat náklad nebo fakturu</div>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Makro, CocaCola, rozvoz, elektřina... - cokoliv, co jde do nákladů provozovny. Vyber kategorii, ať se to propíše do Statistik.</p>
+          <div class="form-group"><label class="form-label" for="pk-nakl-popis">Co to bylo</label><input class="form-input" id="pk-nakl-popis" placeholder="např. Makro - pivo a limo"/></div>
+          <div class="ds-form-grid">
+            <div class="form-group"><label class="form-label" for="pk-nakl-castka">Kolik to stálo (Kč)</label><input type="number" class="form-input" id="pk-nakl-castka" placeholder="Kč"/></div>
+            <div class="form-group"><label class="form-label" for="pk-nakl-datum">Datum</label><input type="date" class="form-input" id="pk-nakl-datum"/></div>
+          </div>
+          <div class="form-group"><label class="form-label" for="pk-nakl-kategorie">Kategorie</label><select class="form-select" id="pk-nakl-kategorie"><option value="">Ostatní</option><option value="mzdy">Mzdy</option><option value="odvody">Odvody</option><option value="teplo">Teplo</option><option value="elektro">Elektřina</option><option value="telefon">Telefon</option><option value="internet">Internet</option><option value="dph">DPH</option></select></div>
+          <button class="btn btn-primary" style="width:100%;min-height:46px;" onclick="pkZapsatNaklad()">Zapsat náklad</button>
+          <div id="pk-nakl-msg" style="display:none;margin-top:8px;" class="form-error"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -301,16 +350,9 @@
     </div>
 
     <div class="card">
-      <div class="card-title">🧾 Zapsat náklad / fakturu</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Makro, CocaCola, rozvoz, elektřina... - cokoliv, co jde do nákladů provozovny. Vyber kategorii, ať se to propíše do Statistik.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;align-items:end;">
-        <div class="form-group" style="margin:0;"><label class="form-label">Co to bylo</label><input class="form-input" id="pk-nakl-popis" placeholder="např. Makro - pivo a limo"/></div>
-        <div class="form-group" style="margin:0;"><label class="form-label">Kolik to stálo</label><input type="number" class="form-input" id="pk-nakl-castka" placeholder="Kč"/></div>
-        <div class="form-group" style="margin:0;"><label class="form-label">Datum</label><input type="date" class="form-input" id="pk-nakl-datum"/></div>
-        <div class="form-group" style="margin:0;"><label class="form-label">Kategorie</label><select class="form-select" id="pk-nakl-kategorie"><option value="">Ostatní</option><option value="mzdy">Mzdy</option><option value="odvody">Odvody</option><option value="teplo">Teplo</option><option value="elektro">Elektřina</option><option value="telefon">Telefon</option><option value="internet">Internet</option><option value="dph">DPH</option></select></div>
-      </div>
-      <button class="btn btn-primary" style="margin-top:10px;" onclick="pkZapsatNaklad()">Uložit</button>
-      <div id="pk-nakl-msg" style="display:none;margin-top:8px;" class="form-error"></div>
+      <div class="card-title">🧾 Faktury a náklady</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Faktury a nákupy se zapisují v záložce <b>Náklady a faktury</b> - formulář je tam hned vedle seznamu, ať je všechno na jednom místě.</p>
+      <button class="btn btn-primary" onclick="gotoTab('naklady','pk-nakl-popis')">Zapsat náklad / fakturu →</button>
     </div>
 
     <div class="card">
@@ -441,8 +483,27 @@
 
 </div>
 
+<button class="fab-add" onclick="openQuickAdd()" aria-label="Zapsat">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Zapsat
+</button>
+
+<div class="modal-overlay hidden" id="qa-modal" onclick="if(event.target===this)closeQuickAdd()">
+  <div class="modal-box" role="dialog" aria-label="Co chceš zapsat?">
+    <div class="modal-title">Co chceš zapsat?</div>
+    <div class="qa-grid">
+      <button class="qa-opt" onclick="qaPick('naklady','pk-nakl-popis')"><b>Náklad / faktura</b><span>Makro, elektřina, servis…</span></button>
+      <button class="qa-opt" onclick="qaPick('trzby','tv-datum')"><b>Tržba</b><span>hotově a kartou za den</span></button>
+      <button class="qa-opt" onclick="qaPick('rozpis','rz-datum')"><b>Směna</b><span>přidat do rozpisu</span></button>
+      <button class="qa-opt" onclick="qaPick('penalizace','pen-worker')"><b>Penalizace</b><span>srážka z výplaty</span></button>
+      <button class="qa-opt" onclick="qaPick('vyplaty',null)"><b>Výplata</b><span>vyplatit brigádníka</span></button>
+      <button class="qa-opt" onclick="qaPick('pokladna','pk-castka')"><b>Pokladna</b><span>vklad, výběr, drobnosti</span></button>
+    </div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeQuickAdd()">Zavřít</button></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=16"></script>
+<script src="js/data.js?v=17"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -486,6 +547,7 @@ loadAll().then(function(){
   renderVyplaty();
   buildVyplatyDetailWorkerVenue();
   renderPenalizace();
+  renderPrehled();
 
   document.getElementById('app').style.display='block';
 });
@@ -508,6 +570,135 @@ function showTab(id,btn){
   if(id==='naklady') renderNakladyVse();
   if(id==='statistiky') renderStatistikyAdmin();
   if(id==='nastaveni') renderNastaveni();
+  if(id==='prehled') renderPrehled();
+}
+
+// ── NAVIGACE, RYCHLÝ ZÁPIS, HLEDÁNÍ A PŘEHLED (nový vzhled - jen čtou data a přepínají záložky) ──
+function gotoTab(id, focusId){
+  var btn = document.querySelector('.nav-tab[data-tab="'+id+'"]');
+  showTab(id, btn);
+  window.scrollTo(0, 0);
+  if (btn && btn.scrollIntoView) { try { btn.scrollIntoView({block:'nearest', inline:'center'}); } catch(e){} }
+  if (focusId) setTimeout(function(){
+    var el = document.getElementById(focusId);
+    if (el) { el.scrollIntoView({block:'center', behavior:'smooth'}); el.focus(); }
+  }, 80);
+}
+function openQuickAdd(){ document.getElementById('qa-modal').classList.remove('hidden'); }
+function closeQuickAdd(){ document.getElementById('qa-modal').classList.add('hidden'); }
+function qaPick(tab, focusId){ closeQuickAdd(); gotoTab(tab, focusId); }
+
+function prEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function prKc(n){ return (n||0).toLocaleString('cs-CZ')+' Kč'; }
+
+var _gsRes = [], _gsQ = '';
+function globalSearch(){
+  var q = (document.getElementById('gs-input').value||'').trim().toLowerCase();
+  var box = document.getElementById('gs-results');
+  _gsQ = q;
+  if (q.length < 2) { box.classList.remove('open'); box.innerHTML=''; return; }
+  var out = [];
+  getVsechnyNakladyVenueMonth(venue.id, 2026, 'all').forEach(function(n){
+    var w = n.workerId ? getWorkerById(n.workerId) : null;
+    var kat = n.kategorie ? getNakladKategorieLabel(n.kategorie) : '';
+    var hay = ((n.popis||'')+' '+String(n.castka||'')+' '+(w?w.jmeno:'')+' '+kat+' '+n.zdroj).toLowerCase();
+    if (hay.indexOf(q) !== -1) out.push({ typ:'Náklad', tag:'out', t:n.popis, s:formatDate(n.datum)+' · '+n.zdroj+(kat?' · '+kat:''), amt:'− '+prKc(n.castka), cls:'out', tab:'naklady' });
+  });
+  ['hotovost'].concat(isOnlinePenezenkaVenue(venue) ? ['online'] : []).forEach(function(u){
+    getPokladnaForVenue(venue.id, u).filter(function(p){ return p.typ==='prijem'; }).forEach(function(p){
+      var w = p.worker_id ? getWorkerById(p.worker_id) : null;
+      var hay = ((p.popis||'')+' '+String(p.castka||'')+' '+(w?w.jmeno:'')).toLowerCase();
+      if (hay.indexOf(q) !== -1) out.push({ typ:'Příjem', tag:'in', t:p.popis, s:formatDate(p.datum)+' · '+(u==='online'?'online peněženka':'pokladna'), amt:'+ '+prKc(p.castka), cls:'in', tab:'pokladna' });
+    });
+  });
+  getWorkersForVenue(venue.id).forEach(function(w){
+    if (w.jmeno.toLowerCase().indexOf(q) !== -1) {
+      var v = getVydelekVenue(w.id, venue.id);
+      out.push({ typ:'Brigádník', tag:'blue', t:w.jmeno, s:'k vyplacení', amt:prKc(v.cisty), cls:'', tab:'vyplaty' });
+    }
+  });
+  _gsRes = out.slice(0, 30);
+  box.innerHTML = _gsRes.length ? _gsRes.map(function(r,i){
+    return '<div class="gs-row"><span class="tag '+r.tag+'">'+r.typ+'</span><div class="gs-main"><div class="gs-t">'+prEsc(r.t)+'</div><div class="gs-s">'+prEsc(r.s)+'</div></div>'+
+      '<div class="amt '+r.cls+'">'+r.amt+'</div><button class="btn btn-sm btn-secondary" onclick="gsOpen('+i+')">Otevřít</button></div>';
+  }).join('') + (out.length>30 ? '<div class="gs-empty">Zobrazuju prvních 30 výsledků, upřesni hledání.</div>' : '')
+  : '<div class="gs-empty">Nic jsme nenašli. Zkus jiné slovo.</div>';
+  box.classList.add('open');
+}
+function gsOpen(i){
+  var r = _gsRes[i]; if (!r) return;
+  var q = _gsQ;
+  document.getElementById('gs-results').classList.remove('open');
+  if (r.tab === 'naklady') { nakladyVseMonth = 'all'; document.getElementById('nakl-vse-search').value = q; }
+  if (r.tab === 'pokladna') {
+    pkHistMonth = 'all'; opHistMonth = 'all';
+    document.getElementById('pk-hist-search').value = q;
+    document.getElementById('op-hist-search').value = q;
+  }
+  gotoTab(r.tab);
+}
+document.addEventListener('click', function(e){
+  if (!e.target.closest || !e.target.closest('.gs-wrap')) { var b = document.getElementById('gs-results'); if (b) b.classList.remove('open'); }
+});
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') { var b = document.getElementById('gs-results'); if (b) b.classList.remove('open'); var m = document.getElementById('qa-modal'); if (m) m.classList.add('hidden'); }
+});
+
+function renderPrehled(){
+  var MN = ['','leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
+  var z = getZiskVenueMonth(venue.id, 2026, trzbyMonth);
+  var online = isOnlinePenezenkaVenue(venue);
+  var hot = getPokladnaZustatek(venue.id, 'hotovost');
+  var kpi =
+    '<button type="button" class="kpi" onclick="gotoTab(\'trzby\')"><span class="kl">Tržby, '+MN[trzbyMonth]+'</span><span class="kv in">'+prKc(z.trzby)+'</span><span class="kg">Zobrazit tržby →</span></button>'+
+    '<button type="button" class="kpi" onclick="gotoTab(\'naklady\')"><span class="kl">Náklady a faktury, '+MN[trzbyMonth]+'</span><span class="kv out">'+prKc(z.naklady)+'</span><span class="kg">Zobrazit náklady →</span></button>'+
+    '<button type="button" class="kpi" onclick="gotoTab(\'vyplaty\')"><span class="kl">Vyplacené mzdy, '+MN[trzbyMonth]+'</span><span class="kv">'+prKc(z.vyplaty)+'</span><span class="kg">Zobrazit výplaty →</span></button>'+
+    '<div class="kpi dark"><span class="kl">Čistý zisk, '+MN[trzbyMonth]+'</span><span class="kv">'+prKc(z.zisk)+'</span><span class="kg">tržby − náklady − mzdy</span></div>'+
+    '<button type="button" class="kpi" onclick="gotoTab(\'pokladna\')"><span class="kl">'+(online?'Hotovost v pokladně':'Zůstatek v pokladně')+'</span><span class="kv">'+prKc(hot)+'</span><span class="kg">Otevřít pokladnu →</span></button>';
+  if (online) kpi += '<button type="button" class="kpi" onclick="gotoTab(\'pokladna\')"><span class="kl">Online peněženka</span><span class="kv">'+prKc(getPokladnaZustatek(venue.id,'online'))+'</span><span class="kg">Otevřít peněženku →</span></button>';
+  document.getElementById('pr-kpi').innerHTML = kpi;
+
+  // Co je potřeba udělat
+  var workers = getWorkersForVenue(venue.id);
+  var dluh = 0, dluznici = 0, chybiDny = 0, chybiLide = 0;
+  workers.forEach(function(w){
+    var v = getVydelekVenue(w.id, venue.id);
+    if (v.cisty > 0) { dluh += v.cisty; dluznici++; }
+    var ch = getChybejiciCasyVenue(w.id, venue.id).length;
+    if (ch) { chybiDny += ch; chybiLide++; }
+  });
+  var dnes = todayStr();
+  var obsazeno = {};
+  getScheduleForVenue(venue.id).forEach(function(s){ obsazeno[s.datum] = true; });
+  var dnyBez = getMonthDaysAny(2026, trzbyMonth).filter(function(d){ return d >= dnes && !obsazeno[d]; }).length;
+  var todo = '';
+  function row(tag, tagCls, t, sub, btn, tab){
+    return '<div class="todo-row"><span class="tag '+tagCls+'">'+tag+'</span><div class="todo-main"><div class="todo-t">'+t+'</div><div class="todo-s">'+sub+'</div></div><button type="button" class="btn btn-sm btn-secondary" onclick="gotoTab(\''+tab+'\')">'+btn+'</button></div>';
+  }
+  if (chybiDny) todo += row('Docházka','out', chybiDny+' '+(chybiDny===1?'směna bez zapsaného času':(chybiDny<5?'směny bez zapsaného času':'směn bez zapsaného času')), 'u '+chybiLide+' '+(chybiLide===1?'člověka':'lidí')+', blokuje to správnou výplatu', 'Zkontrolovat', 'dochazka');
+  if (dluznici) todo += row('Výplaty','blue', dluznici+' '+(dluznici===1?'člověk čeká':(dluznici<5?'lidé čekají':'lidí čeká'))+' na výplatu', 'celkem '+prKc(dluh), 'Vyplatit', 'vyplaty');
+  if (dnyBez) todo += row('Rozpis','', dnyBez+' '+(dnyBez===1?'den':(dnyBez<5?'dny':'dní'))+' do konce měsíce bez směny', 'v rozpisu zatím nikdo není', 'Doplnit', 'rozpis');
+  document.getElementById('pr-todo').innerHTML = todo || '<div class="todo-ok">✓ Všechno je v pořádku, není co řešit.</div>';
+  var cv = document.getElementById('cnt-vyplaty'); if (cv) cv.textContent = dluznici || '';
+  var cd = document.getElementById('cnt-dochazka'); if (cd) cd.textContent = chybiLide || '';
+
+  // Dnes na směně
+  var sm = getScheduleForVenue(venue.id).filter(function(s){ return s.datum === dnes; });
+  document.getElementById('pr-dnes').innerHTML = sm.length ? sm.map(function(s){
+    var w = getWorkerById(s.workerId);
+    var pd = PRACOVNI_DNY.find(function(p){ return p.workerId===s.workerId && p.venue_id===venue.id && p.datum===dnes; });
+    var stav = pd && pd.prichod && pd.odchod ? '<span class="tag in">Odpracováno</span>' : (pd && pd.prichod ? '<span class="tag in">V práci od '+prEsc(pd.prichod)+'</span>' : '<span class="tag">Zatím nezapsáno</span>');
+    return '<div class="todo-row"><div class="todo-main"><div class="todo-t">'+prEsc(w?w.jmeno:'?')+'</div><div class="todo-s">'+prEsc(s.poznamka||'')+'</div></div>'+stav+'</div>';
+  }).join('') : '<div class="empty-state" style="padding:1rem 0;">Dnes nikdo nemá naplánovanou směnu.</div>';
+
+  // Poslední pohyby peněz
+  var feed = getPokladnaForVenue(venue.id, 'hotovost').concat(online ? getPokladnaForVenue(venue.id, 'online') : []);
+  feed.sort(function(a,b){ return (b.datum||'').localeCompare(a.datum||'') || (b.id-a.id); });
+  document.getElementById('pr-feed').innerHTML = feed.length ? feed.slice(0, 8).map(function(p){
+    var prij = p.typ === 'prijem';
+    return '<div class="todo-row"><span class="tag '+(prij?'in':'out')+'">'+(prij?'Příjem':'Výdej')+'</span><div class="todo-main"><div class="todo-t">'+prEsc(p.popis)+'</div><div class="todo-s">'+formatDate(p.datum)+((p.ucet==='online')?' · online peněženka':'')+'</div></div>'+
+      '<div class="amt '+(prij?'in':'out')+'">'+(prij?'+ ':'− ')+prKc(p.castka)+'</div></div>';
+  }).join('') : '<div class="empty-state" style="padding:1rem 0;">V pokladně zatím nic není.</div>';
 }
 
 function renderNastaveni(){

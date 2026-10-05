@@ -427,8 +427,10 @@ function showLoadErrorBannerIfNeeded() {
   if (existing) return;
   var el = document.createElement('div');
   el.id = 'load-error-banner';
-  el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#dc2626;color:#fff;padding:10px 16px;font-size:14px;font-weight:600;text-align:center;';
-  el.textContent = '⚠️ Nepodařilo se načíst data ze serveru (' + failed.join(', ') + '). Neukládej nic, dokud stránku neobnovíš (F5) - jinak hrozí ztráta dat.';
+  el.title = 'Nenačteno: ' + failed.join(', ');
+  el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#fff4e0;color:#7a4300;border-bottom:2px solid #f0b34d;padding:10px 16px;font-size:14px;font-weight:600;text-align:center;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;';
+  el.innerHTML = '<span>Některá data se nenačetla (slabý signál?). Zatím nic neukládej, nejdřív stránku obnov.</span>' +
+    '<button type="button" onclick="location.reload()" style="font:inherit;font-weight:700;padding:6px 14px;border-radius:8px;border:1px solid #7a4300;background:#fff;color:#7a4300;cursor:pointer;">Obnovit</button>';
   document.body.appendChild(el);
 }
 
@@ -1102,7 +1104,36 @@ function getAllProdejeWeeks(sklad) {
 }
 
 // ===================== NAČTENÍ VŠECH DAT (rozšířeno o výplaty a sklad) =====================
+// Úvodní "Načítám data…" obrazovka - stránky mají obsah schovaný, dokud se
+// nenačtou data, takže brigádník by jinak viděl prázdnou bílou plochu a mohl by
+// si myslet, že appka nefunguje.
+var _firstLoadDone = false;
+function showAppLoading() {
+  if (typeof document === 'undefined' || !document.body || document.getElementById('app-loading')) return;
+  var st = document.createElement('style');
+  st.id = 'app-loading-style';
+  st.textContent = '@keyframes appspin{to{transform:rotate(360deg)}}';
+  document.head.appendChild(st);
+  var el = document.createElement('div');
+  el.id = 'app-loading';
+  el.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#f5f6f8;color:#5d6678;font:600 16px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;z-index:99990;';
+  el.innerHTML = '<div style="width:38px;height:38px;border:4px solid #d9deea;border-top-color:#2c4fd1;border-radius:50%;animation:appspin .8s linear infinite;"></div><div>Načítám data…</div><div style="font-weight:400;font-size:13px;">Chvilku strpení, appka funguje.</div>';
+  document.body.appendChild(el);
+}
+function hideAppLoading() {
+  if (typeof document === 'undefined') return;
+  var el = document.getElementById('app-loading');
+  if (el) el.remove();
+  var st = document.getElementById('app-loading-style');
+  if (st) st.remove();
+}
 async function loadAll() {
+  var prvni = !_firstLoadDone;
+  if (prvni) showAppLoading();
+  try { await loadAllInner(); }
+  finally { _firstLoadDone = true; hideAppLoading(); }
+}
+async function loadAllInner() {
   await loadSettings(); // ať se hned na začátku načte případné admin nastavení (stanoviště, sazby, ...)
   try {
     var r = await db.from('schedule').select('*');
@@ -1127,7 +1158,9 @@ async function loadAll() {
   try { var rtz = await db.from('trzby').select('*'); if (rtz.error) throw rtz.error; TRZBY = rtz.data || []; LOAD_OK.trzby = true; } catch(e) { LOAD_OK.trzby = false; console.error('Načtení "trzby" selhalo:', e); }
   try { var rnk = await db.from('naklady').select('*'); if (rnk.error) throw rnk.error; NAKLADY = rnk.data || []; LOAD_OK.naklady = true; } catch(e) { LOAD_OK.naklady = false; console.error('Načtení "naklady" selhalo:', e); }
 
-  showLoadErrorBannerIfNeeded();
+  // (Varovný pruh se tu schválně NEukazuje - provozovny, pokladna a další se
+  // načítají až v loadVenues() níž a do té doby by pruh zbytečně strašil
+  // i při úplně normálním načítání. Vyhodnotí se až na konci loadVenues().)
 
   try {
     var rs = await db.from('sklad_produkty').select('*');
