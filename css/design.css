@@ -317,3 +317,10 @@ body.ds-panel #admin-wrap { margin-top: 28px; }
 .ms-past-wrap > summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
 .ms-month { margin: 12px 0 6px; font-weight: 700; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
 .ms-month span { font-weight: 600; margin-left: 4px; }
+
+/* filtr brigádníků v rozpisu */
+button.sh-legend { border: 2px solid transparent; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; min-height: 38px; }
+button.sh-legend:hover { border-color: currentColor; }
+button.sh-legend.sh-on { border-color: currentColor; box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+button.sh-legend.sh-off { opacity: .45; }
+.rz-hint { color: var(--text-muted); }

@@ -1055,28 +1055,41 @@ function editShiftPoznamkaById(id){
   var s = SCHEDULE.find(function(x){return x.id===id;});
   editShiftPoznamka(id, s ? (s.poznamka||'') : '');
 }
+// Filtr brigádníků v rozpisu: klik na bublinu ukáže jen jeho směny, další klik
+// přidá dalšího, klik na vybraného ho zase odebere. Nic vybráno = vidět všichni.
+var rzFilter = {};
+function rzToggleWorker(id){
+  if (rzFilter[id]) delete rzFilter[id]; else rzFilter[id] = true;
+  renderShiftTable();
+}
+function rzClearFilter(){ rzFilter = {}; renderShiftTable(); }
 function renderShiftTable(){
   buildRzMonthBtns();
   var prefix = 2026+'-'+String(rzMonth).padStart(2,'0');
-  var rows = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(prefix)===0; });
+  var vsechny = getScheduleForVenue(venue.id).filter(function(s){ return s.datum.indexOf(prefix)===0; });
+  var filtrAktivni = Object.keys(rzFilter).length > 0;
+  var rows = filtrAktivni ? vsechny.filter(function(s){ return rzFilter[s.workerId]; }) : vsechny;
   var today = todayStr();
   var byDate = {};
   rows.forEach(function(s){ (byDate[s.datum] = byDate[s.datum] || []).push(s); });
   var dates = Object.keys(byDate).sort();
 
-  // legenda: kdo má jakou barvu (jen lidé, co mají v měsíci směnu)
-  var seen = {}, legend = '';
-  rows.forEach(function(s){
-    if (seen[s.workerId]) return; seen[s.workerId] = true;
-  });
+  // legenda = výběr brigádníků (všichni, co mají v měsíci směnu, i když jsou zrovna skrytí)
+  var seen = {};
+  vsechny.forEach(function(s){ seen[s.workerId] = true; });
+  Object.keys(rzFilter).forEach(function(id){ seen[id] = true; });
+  var legend = '';
   Object.keys(seen).map(Number).sort(function(a,b){
     var wa=getWorkerById(a), wb=getWorkerById(b); return (wa?wa.jmeno:'').localeCompare(wb?wb.jmeno:'', 'cs');
   }).forEach(function(id){
-    var w = getWorkerById(id), c = rzWorkerColor(id), pocet = rows.filter(function(s){return s.workerId===id;}).length;
-    legend += '<span class="sh-chip sh-legend" style="background:'+c[0]+';color:'+c[1]+';">'+prEsc(w?w.jmeno:'?')+' <span class="sh-note">'+pocet+'×</span></span>';
+    var w = getWorkerById(id), c = rzWorkerColor(id), pocet = vsechny.filter(function(s){return s.workerId===id;}).length;
+    var vybran = !!rzFilter[id], skryty = filtrAktivni && !vybran;
+    legend += '<button type="button" class="sh-chip sh-legend'+(vybran?' sh-on':'')+(skryty?' sh-off':'')+'" aria-pressed="'+vybran+'" style="background:'+c[0]+';color:'+c[1]+';" onclick="rzToggleWorker('+id+')">'+
+      (vybran?'✓ ':'')+prEsc(w?w.jmeno:'?')+' <span class="sh-note">'+pocet+'×</span></button>';
   });
-  document.getElementById('rz-list-legend').innerHTML = rows.length
-    ? '<div class="rz-sum">'+RZ_MESICE[rzMonth]+': <b>'+rows.length+'</b> '+(rows.length===1?'směna':(rows.length<5?'směny':'směn'))+' ve <b>'+dates.length+'</b> '+(dates.length===1?'dni':'dnech')+'</div>'+legend
+  document.getElementById('rz-list-legend').innerHTML = vsechny.length || filtrAktivni
+    ? '<div class="rz-sum">'+RZ_MESICE[rzMonth]+': <b>'+rows.length+'</b> '+(rows.length===1?'směna':(rows.length<5?'směny':'směn'))+' ve <b>'+dates.length+'</b> '+(dates.length===1?'dni':'dnech')+
+      (filtrAktivni ? ' · zobrazuju jen vybrané <button type="button" class="btn btn-sm btn-secondary" style="margin-left:6px;" onclick="rzClearFilter()">Zobrazit všechny</button>' : ' · <span class="rz-hint">klikni na jméno a uvidíš jen jeho směny</span>')+'</div>'+legend
     : '';
 
   var html = '<thead><tr><th style="width:140px;">Den</th><th>Kdo je na směně</th></tr></thead><tbody>';
