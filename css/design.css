@@ -332,3 +332,38 @@ details.rz-chybi { background: #fdf3ec; border: 1px solid #f1d7c5; border-radius
 details.rz-chybi summary { cursor: pointer; font-size: 14px; color: var(--red); font-weight: 600; }
 .rz-chybi-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid #f1d7c5; font-size: 13.5px; }
 .rz-chybi-row:first-of-type { margin-top: 8px; }
+
+/* ── Hlavní panel: sekce Brigádníci (hledání, filtr podle provozovny, kompaktní řádky) ── */
+.bw { max-width: 900px; margin-bottom: 1.5rem; }
+.bw-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.bw-count { font-weight: 500; color: var(--text-muted); font-size: 15px; }
+.bw-add { background: #fff; border: 1.5px solid var(--sand-dark, #e1e4ea); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.bw-add-title { font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+.bw-add-grid { display: grid; grid-template-columns: 1.4fr .8fr 1.2fr; gap: 12px; }
+.bw-add-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.bw-tools { margin-bottom: 10px; }
+.bw-tools .form-input { max-width: 380px; width: 100%; }
+.bw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.bw-chip { font: inherit; font-size: 13.5px; font-weight: 600; min-height: 38px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--sand-dark, #e1e4ea); background: #fff; color: var(--water-dark, #1b2333); }
+.bw-chip:hover { border-color: var(--water, #2c4fd1); }
+.bw-chip.on { background: var(--water, #2c4fd1); border-color: var(--water, #2c4fd1); color: #fff; }
+.bw-chip-n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: rgba(27,35,51,.1); font-size: 12px; text-align: center; }
+.bw-chip.on .bw-chip-n { background: rgba(255,255,255,.25); }
+.bw-list { display: flex; flex-direction: column; gap: 8px; }
+.bw-row { display: grid; grid-template-columns: 40px minmax(150px, 1.2fr) minmax(0, 1.6fr) auto; align-items: center; gap: 12px;
+  background: #fff; border: 1.5px solid var(--sand-dark, #e1e4ea); border-radius: 14px; padding: 10px 14px; }
+.bw-row:hover { border-color: #c4cbe0; }
+.bw-av { width: 40px; height: 40px; border-radius: 50%; background: #e8edff; color: #1b2fa0; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.bw-name { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.bw-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 1px; overflow-wrap: anywhere; }
+.bw-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.bw-pill { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.bw-nopill { background: #fdf3ec; color: var(--red, #a8431a); }
+.bw-edit { white-space: nowrap; min-height: 38px; }
+@media (max-width: 760px) {
+  .bw-add-grid { grid-template-columns: 1fr; }
+  .bw-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .bw-pills { grid-column: 2 / 4; grid-row: 2; }
+  .bw-edit { grid-column: 3; grid-row: 1; }
+}

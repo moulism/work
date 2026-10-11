@@ -115,10 +115,30 @@
     <div class="dash-title">🆕 Čekající registrace</div>
     <div id="registrace-list" style="max-width:900px;"></div>
 
-    <details class="ds-details" style="margin-top:1.5rem;">
-      <summary>Správa lidí a provozoven</summary>
-    <div class="dash-title" style="margin-top:1.5rem;">👥 Všichni brigádníci</div>
-    <div id="all-workers-wrap" style="max-width:900px;margin-bottom:1rem;"></div>
+    <section class="bw" id="bw-section" aria-label="Brigádníci">
+      <div class="bw-head">
+        <div class="dash-title" style="margin:0;">👥 Brigádníci <span class="bw-count" id="bw-count"></span></div>
+        <button type="button" class="btn btn-primary" id="bw-add-btn" onclick="bwToggleAdd()" aria-expanded="false" aria-controls="bw-add">+ Nový brigádník</button>
+      </div>
+      <div class="bw-add" id="bw-add" style="display:none;">
+        <div class="bw-add-title">Založit nového brigádníka</div>
+        <div class="bw-add-grid">
+          <div class="form-group"><label class="form-label" for="hp-nwb-jmeno">Jméno a příjmení</label><input class="form-input" type="text" id="hp-nwb-jmeno" placeholder="Jana Nováková" autocomplete="off"/></div>
+          <div class="form-group"><label class="form-label" for="hp-nwb-pin">PIN (4 číslice)</label><input class="form-input" type="text" id="hp-nwb-pin" maxlength="4" inputmode="numeric" placeholder="1234" autocomplete="off"/></div>
+          <div class="form-group"><label class="form-label" for="hp-nwb-venue">Provozovna</label><select class="form-select" id="hp-nwb-venue"></select></div>
+        </div>
+        <div class="bw-add-actions"><button class="btn btn-primary" onclick="hpPridatBrigadnika()">Založit</button><button type="button" class="btn btn-secondary" onclick="bwToggleAdd(false)">Zavřít</button></div>
+        <div class="form-error" id="hp-nwb-err" style="display:none;"></div>
+      </div>
+      <div class="bw-tools">
+        <input class="form-input" type="search" id="bw-q" placeholder="🔍 Hledat brigádníka podle jména…" oninput="renderAllWorkersTable()" aria-label="Hledat brigádníka"/>
+      </div>
+      <div class="bw-chips" id="bw-chips" role="group" aria-label="Filtr podle provozovny"></div>
+      <div class="bw-list" id="all-workers-wrap"></div>
+    </section>
+
+    <details class="ds-details" id="hp-sprava-details" style="margin-top:1.5rem;display:none;">
+      <summary>Správa provozoven a správců</summary>
 
     <div id="podniky-spravci-wrap" style="display:none;">
       <div class="dash-title" style="margin-top:1.5rem;">🏢 Podniky a jejich provozovny</div>
@@ -190,16 +210,6 @@
       </div>
     </div>
 
-    <div class="dash-title">➕ Nový brigádník</div>
-    <div class="venue-back" style="padding:0;margin:0 0 1.5rem;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:var(--radius-sm);padding:16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-        <div class="form-group"><label class="form-label">Jméno a příjmení</label><input class="form-input" type="text" id="hp-nwb-jmeno" placeholder="Jana Nováková"/></div>
-        <div class="form-group"><label class="form-label">PIN (4 číslice)</label><input class="form-input" type="text" id="hp-nwb-pin" maxlength="4" placeholder="1234"/></div>
-        <div class="form-group"><label class="form-label">Provozovna</label><select class="form-select" id="hp-nwb-venue"></select></div>
-      </div>
-      <button class="btn btn-primary" onclick="hpPridatBrigadnika()">Založit</button>
-      <div class="form-error" id="hp-nwb-err" style="display:none;"></div>
-    </div>
     </details>
   </div>
 </div>
@@ -260,6 +270,7 @@ function renderHlavniAdmin(){
 
   if (currentUser.role === 'admin') {
     document.getElementById('podniky-spravci-wrap').style.display = 'block';
+    document.getElementById('hp-sprava-details').style.display = ''; // správce tuhle část nevidí, takže pro něj zůstane celá schovaná
     renderPodnikyList();
     renderSpravciList();
     renderNvBusiness();
@@ -433,6 +444,38 @@ async function doApprove(workerId){
   renderAllWorkersTable();
 }
 
+// ── Seznam brigádníků: hledání, filtr podle provozovny, kompaktní řádky ──
+var bwFilter = 'all'; // 'all' | id provozovny | 'none' (bez provozovny)
+var BW_COLORS = [['#e8edff','#1b2fa0'],['#e3f4ec','#0d5a40'],['#fdeee3','#8f3a12'],['#f1e8fb','#5b2a96'],['#e6f4f8','#0f5a73'],['#fbe8ef','#9a2150'],['#f3f0dc','#6d5d10'],['#eceff3','#3d4658']];
+function bwEsc(t){ return String(t==null?'':t).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function bwNorm(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+function bwInitials(jmeno){
+  var p = String(jmeno||'?').trim().split(/\s+/);
+  return bwEsc(((p[0]||'?').charAt(0) + (p.length>1 ? p[p.length-1].charAt(0) : '')).toUpperCase());
+}
+function bwColor(v){ var i = VENUES.findIndex(function(x){return x.id===v.id;}); return BW_COLORS[(i<0?0:i)%BW_COLORS.length]; }
+function bwPill(v, plus){
+  var c = bwColor(v);
+  return '<span class="bw-pill" style="background:'+c[0]+';color:'+c[1]+';"'+(plus?' title="Vedlejší provozovna"':'')+'>'+(plus?'+ ':'')+bwEsc(v.ikona||'')+' '+bwEsc(v.nazev)+'</span>';
+}
+function bwSecondary(w){
+  return WORKER_VENUES.filter(function(wv){return wv.worker_id===w.id;}).map(function(wv){return getVenueById(wv.venue_id);}).filter(Boolean);
+}
+function bwWorksAt(w, venueId){
+  return w.venue_id===venueId || WORKER_VENUES.some(function(wv){return wv.worker_id===w.id && wv.venue_id===venueId;});
+}
+function bwSetFilter(f){ bwFilter = f; renderAllWorkersTable(); }
+function bwToggleAdd(force){
+  var box = document.getElementById('bw-add'), btn = document.getElementById('bw-add-btn');
+  var open = (typeof force==='boolean') ? force : (box.style.display==='none');
+  box.style.display = open ? 'block' : 'none';
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    var sel = document.getElementById('hp-nwb-venue');
+    if (typeof bwFilter==='number' && sel) sel.value = String(bwFilter); // předvyplň provozovnu podle filtru
+    var j = document.getElementById('hp-nwb-jmeno'); if (j) j.focus();
+  }
+}
 function renderAllWorkersTable(){
   var allowedVenueIds = myVenues.map(function(v){return v.id;});
   var workers = WORKERS.filter(function(w){
@@ -443,41 +486,54 @@ function renderAllWorkersTable(){
     return allowedVenueIds.indexOf(w.venue_id)!==-1 || secondary.some(function(id){return allowedVenueIds.indexOf(id)!==-1;});
   });
   var wrap = document.getElementById('all-workers-wrap');
-  if (!workers.length) { wrap.innerHTML = '<div class="empty-state"><div class="icon">👥</div>Zatím nikdo.</div>'; return; }
+  var chipsEl = document.getElementById('bw-chips');
+  var countEl = document.getElementById('bw-count');
+  if (!workers.length) {
+    chipsEl.innerHTML = ''; countEl.textContent = '';
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">👥</div>Zatím tu nikdo není. Přidej prvního brigádníka tlačítkem „+ Nový brigádník“.</div>';
+    return;
+  }
 
-  function workerRow(w){
-    var home = getVenueById(w.venue_id);
-    var secondary = WORKER_VENUES.filter(function(wv){return wv.worker_id===w.id;}).map(function(wv){return getVenueById(wv.venue_id);}).filter(Boolean);
+  // Filtr podle provozovny (čipy s počtem) - ukazují se jen provozovny, kde někdo je.
+  var bezVenue = workers.filter(function(w){ return !myVenues.some(function(v){return v.id===w.venue_id;}); });
+  var chips = [{ key:'all', label:'Všichni', n:workers.length }];
+  myVenues.forEach(function(v){
+    var n = workers.filter(function(w){ return bwWorksAt(w, v.id); }).length;
+    if (n) chips.push({ key:v.id, label:(v.ikona||'')+' '+v.nazev, n:n });
+  });
+  if (bezVenue.length) chips.push({ key:'none', label:'❔ Bez provozovny', n:bezVenue.length });
+  if (!chips.some(function(c){return c.key===bwFilter;})) bwFilter = 'all';
+  chipsEl.innerHTML = chips.map(function(c){
+    var on = c.key===bwFilter;
+    var arg = (typeof c.key==='number') ? c.key : ("'"+c.key+"'");
+    return '<button type="button" class="bw-chip'+(on?' on':'')+'" aria-pressed="'+on+'" onclick="bwSetFilter('+arg+')">'+bwEsc(c.label)+' <span class="bw-chip-n">'+c.n+'</span></button>';
+  }).join('');
+
+  var q = bwNorm((document.getElementById('bw-q')||{}).value||'').trim();
+  var shown = workers.filter(function(w){
+    if (bwFilter==='none') { if (myVenues.some(function(v){return v.id===w.venue_id;})) return false; }
+    else if (bwFilter!=='all' && !bwWorksAt(w, bwFilter)) return false;
+    if (q && bwNorm(w.jmeno+' '+(w.email||'')).indexOf(q)===-1) return false;
+    return true;
+  }).sort(function(a,b){ return a.jmeno.localeCompare(b.jmeno,'cs'); });
+  countEl.textContent = (shown.length===workers.length) ? '('+workers.length+')' : '('+shown.length+' z '+workers.length+')';
+
+  if (!shown.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">🔍</div>Nikdo nenalezen. Zkus jiné jméno, nebo vyber „Všichni“.</div>';
+    return;
+  }
+  wrap.innerHTML = shown.map(function(w){
+    var home = getVenueById(w.venue_id), sec = bwSecondary(w).filter(function(v){ return !home || v.id!==home.id; });
     var dostSet = new Set(w.dostupnost||[]);
     WORKER_DOSTUPNOST.filter(function(d){return d.worker_id===w.id;}).forEach(function(d){ (d.dny||[]).forEach(function(x){ dostSet.add(x); }); });
     var dost = dostSet.size;
-    return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+(w.email||'–')+'</td>'+
-      '<td>'+(home?home.ikona+' '+home.nazev:'<span style="color:var(--text-muted);">– bez přiřazení –</span>')+'</td>'+
-      '<td>'+(secondary.length?secondary.map(function(v){return v.ikona+' '+v.nazev;}).join(', '):'<span style="color:var(--text-muted);">–</span>')+'</td>'+
-      '<td>'+(dost?dost+' dní':'<span style="color:var(--text-muted);">–</span>')+'</td>'+
-      '<td><button class="btn btn-sm btn-secondary" onclick="editWorkerModal('+w.id+')">✏️ Upravit</button></td></tr>';
-  }
-  function groupTable(rows){
-    return '<table class="schedule-table" style="width:100%;background:var(--white);">'+
-      '<thead><tr><th>Jméno</th><th>E-mail</th><th>Domovská provozovna</th><th>Další provozovny</th><th>Dostupnost</th><th></th></tr></thead>'+
-      '<tbody>'+rows.map(workerRow).join('')+'</tbody></table>';
-  }
-
-  // Rozbalovací skupiny podle domovské provozovny, ať dlouhý seznam brigádníků
-  // ze všech provozoven dohromady nezabíral celou obrazovku - každou jde
-  // rozkliknout zvlášť, stejně jako se to dělá u dostupnosti/historie výše.
-  var groups = myVenues.map(function(v){
-    return { venue:v, workers: workers.filter(function(w){return w.venue_id===v.id;}) };
-  }).filter(function(g){ return g.workers.length; });
-  var bezVenue = workers.filter(function(w){ return !myVenues.some(function(v){return v.id===w.venue_id;}); });
-  if (bezVenue.length) groups.push({ venue:null, workers:bezVenue });
-
-  wrap.innerHTML = groups.map(function(g){
-    var label = g.venue ? (g.venue.ikona+' '+g.venue.nazev) : '❔ Nezařazení';
-    return '<details style="margin-bottom:8px;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:var(--radius-sm);padding:10px 14px;">'+
-      '<summary style="cursor:pointer;font-weight:600;font-size:13px;">'+label+' <span style="font-weight:400;color:var(--text-muted);">('+g.workers.length+')</span></summary>'+
-      '<div class="schedule-wrap" style="margin-top:10px;">'+groupTable(g.workers)+'</div>'+
-      '</details>';
+    return '<div class="bw-row">'+
+      '<div class="bw-av" aria-hidden="true">'+bwInitials(w.jmeno)+'</div>'+
+      '<div class="bw-main"><div class="bw-name">'+bwEsc(w.jmeno)+'</div>'+
+        '<div class="bw-sub">'+(w.email?bwEsc(w.email)+' · ':'')+(dost?dost+' dní dostupnosti':'bez zapsané dostupnosti')+'</div></div>'+
+      '<div class="bw-pills">'+(home?bwPill(home):'<span class="bw-pill bw-nopill">❔ bez provozovny</span>')+sec.map(function(v){return bwPill(v,true);}).join('')+'</div>'+
+      '<button type="button" class="btn btn-sm btn-secondary bw-edit" onclick="editWorkerModal('+w.id+')" aria-label="Upravit brigádníka '+bwEsc(w.jmeno)+'">✏️ Upravit</button>'+
+    '</div>';
   }).join('');
 }
 
