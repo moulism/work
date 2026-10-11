@@ -18,6 +18,7 @@ const vm = require('vm');
 
 const DATA_JS_PATH = path.join(__dirname, '..', 'js', 'data.js');
 const SRC = fs.readFileSync(DATA_JS_PATH, 'utf8');
+const EXPORT_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'export.js'), 'utf8');
 
 // Minimální "thenable" query builder, co napodobuje řetězení Supabase JS
 // klienta (.from().select().eq()... a pak `await` na konci). Testy business
@@ -85,11 +86,14 @@ function freshContext() {
       removeItem() {},
     },
     navigator: {},
+    TextEncoder,
+    Blob: typeof Blob !== 'undefined' ? Blob : undefined,
   };
   sandbox.globalThis = sandbox;
   sandbox.self = sandbox;
   const context = vm.createContext(sandbox);
   new vm.Script(SRC, { filename: 'js/data.js' }).runInContext(context);
+  new vm.Script(EXPORT_SRC, { filename: 'js/export.js' }).runInContext(context);
   return context;
 }
 

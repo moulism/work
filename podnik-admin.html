@@ -44,6 +44,7 @@
     <button class="nav-tab" data-tab="pokladna" onclick="showTab('pokladna',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg>Pokladna</button>
     <button class="nav-tab" data-tab="vyplaty" onclick="showTab('vyplaty',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3h-3a1.5 1.5 0 000 3h4"/></svg>Výplaty <span class="nav-cnt" id="cnt-vyplaty"></span></button>
     <button class="nav-tab" data-tab="statistiky" onclick="showTab('statistiky',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Statistiky</button>
+    <button class="nav-tab" data-tab="export" onclick="showTab('export',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>Export pro účetní</button>
     <span class="nav-group-label">Lidé</span>
     <button class="nav-tab" data-tab="brigadnici" onclick="showTab('brigadnici',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5 6.5-5s5.7 1.5 6.5 5"/><circle cx="17" cy="9" r="2.5"/></svg>Brigádníci</button>
     <button class="nav-tab" data-tab="penalizace" onclick="showTab('penalizace',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Penalizace</button>
@@ -135,7 +136,7 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Tržby podle měsíce</div>
+      <div class="card-title ex-title"><span>Tržby podle měsíce</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('trzby', trzbyMonth)">⬇ Excel</button></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="trzby-month-btns"></div>
       <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="trzby-table"></table></div>
       <p style="font-size:12px;color:var(--text-muted);margin-top:10px;" id="trzby-total"></p>
@@ -152,7 +153,7 @@
     <div class="ds-split">
       <div class="ds-col-main">
     <div class="card">
-      <div class="card-title">🧾 Všechny náklady</div>
+      <div class="card-title ex-title"><span>🧾 Všechny náklady</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('naklady', nakladyVseMonth)">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Faktury/náklady i výdaje zapsané přímo z pokladny (hotovostní i online) na jednom místě, ať je hned vidět, co všechno provozovnu za dané období stálo peníze.</p>
       <div class="form-group" style="max-width:320px;margin-bottom:10px;"><input class="form-input" type="text" id="nakl-vse-search" oninput="renderNakladyVse()" placeholder="🔍 hledat podle popisu, kategorie nebo jména..."/></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;" id="nakl-vse-month-btns"></div>
@@ -187,7 +188,7 @@
   <!-- VÝPLATY -->
   <div class="page" id="tab-vyplaty">
     <div class="card">
-      <div class="card-title">Přehled výdělků</div>
+      <div class="card-title ex-title"><span>Přehled výdělků</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('mzdy', 'all')">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny i hrubá mzda od té chvíle počítají znovu od nuly - "Zbývá" je vždycky jen to, co je dlužné od poslední výplaty. Sloupec "Účty" je jen informativní dluh za odebrané zboží - výplata ho nijak nemění, brigádník si účet platí sám zvlášť v hotovosti.</p>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
@@ -317,7 +318,7 @@
   <!-- POKLADNA -->
   <div class="page" id="tab-pokladna">
     <div class="card">
-      <div class="card-title">💵 Zůstatek v pokladně (safu)</div>
+      <div class="card-title ex-title"><span>💵 Zůstatek v pokladně (safu)</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('pokladna', pkHistMonth)">⬇ Excel</button></div>
       <div style="font-size:32px;font-weight:700;" id="pk-zustatek"></div>
       <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Hotovost z tržeb (položka "Hotové"), zaplacené účty brigádníků a výplaty mezd se sem propisují automaticky. Ruční zápisy použij na ostatní příjmy/výdaje (např. vklad, výběr, nákup drobností z hotovosti).</p>
     </div>
@@ -393,7 +394,7 @@
   <!-- DOCHÁZKA -->
   <div class="page" id="tab-dochazka">
     <div class="card">
-      <div class="card-title">⏱️ Docházka</div>
+      <div class="card-title ex-title"><span>⏱️ Docházka</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('dochazka', dochMonth)">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Co si kdo zapsal za příchod/odchod, nejnovější první. Vyber brigádníka, ať snadno najdeš jen jeho historii a vidíš součet hodin i výdělku.</p>
       <div class="form-group" style="max-width:280px;margin-bottom:10px;"><label class="form-label">Brigádník</label><select class="form-select" id="doch-worker" onchange="renderDochazkaAdmin()"></select></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;" id="doch-month-btns"></div>
@@ -436,7 +437,7 @@
   <!-- STATISTIKY -->
   <div class="page" id="tab-statistiky">
     <div class="card">
-      <div class="card-title">📊 Přehled – <span id="stat-month-label"></span></div>
+      <div class="card-title ex-title"><span>📊 Přehled – <span id="stat-month-label"></span></span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('statistiky', statMonth)">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:.75rem;">Vyber si libovolný měsíc (nemusí to být zrovna tenhle) - nebo celou sezónu.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="stat-month-btns"></div>
       <div id="stat-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;"></div>
@@ -456,6 +457,9 @@
       </div>
     </div>
   </div>
+
+  <!-- EXPORT PRO ÚČETNÍ -->
+  <div class="page" id="tab-export"><div id="export-root"></div></div>
 
   <!-- NASTAVENÍ -->
   <div class="page" id="tab-nastaveni">
@@ -497,6 +501,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=17"></script>
+<script src="js/export.js?v=1"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -562,9 +567,13 @@ function showTab(id,btn){
   if(id==='pokladna') { renderPokladnaAdmin(); renderOnlinePenezenkaAdmin(); buildPkUzMonthBtns(); renderPkUzaverka(); if (isOnlinePenezenkaVenue(venue)) { buildOpUzMonthBtns(); renderOpUzaverka(); } }
   if(id==='naklady') renderNakladyVse();
   if(id==='statistiky') renderStatistikyAdmin();
+  if(id==='export') ExportUI.mount('export-root');
   if(id==='nastaveni') renderNastaveni();
   if(id==='prehled') renderPrehled();
 }
+
+// Co potřebuje js/export.js vědět o téhle stránce: která provozovna a kteří brigádníci.
+function exportContext(){ return { venue: venue, kosatka: false, workers: getWorkersForVenue(venue.id) }; }
 
 // ── NAVIGACE, RYCHLÝ ZÁPIS, HLEDÁNÍ A PŘEHLED (nový vzhled - jen čtou data a přepínají záložky) ──
 function gotoTab(id, focusId){

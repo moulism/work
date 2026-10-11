@@ -33,6 +33,7 @@
     <button class="nav-tab"        onclick="showTab('trzby',this)">💵 Tržby</button>
     <button class="nav-tab"        onclick="showTab('ucty',this)">🧾 Účty</button>
     <button class="nav-tab"        onclick="showTab('statistiky',this)">📊 Statistiky</button>
+    <button class="nav-tab"        onclick="showTab('export',this)">📥 Export pro účetní</button>
     <span class="nav-sep"></span>
     <span class="nav-group-label">Lidé</span>
     <button class="nav-tab"        onclick="showTab('brigadnici',this)">👥 Brigádníci</button>
@@ -75,7 +76,7 @@
   <!-- VÝPLATY -->
   <div class="page" id="tab-vyplaty">
     <div class="card">
-      <div class="card-title">Přehled výdělků (reálné hodiny z příchodu/odchodu)</div>
+      <div class="card-title ex-title"><span>Přehled výdělků (reálné hodiny z příchodu/odchodu)</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('mzdy', 'all')">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Restaurace = 200 Kč/h · ostatní 180 Kč/h · minus penalizace. Po kliknutí na "Vyplatit" se hodiny i penalizace od té chvíle počítají znovu od nuly - "Účty" je jen informativní dluh, výplata ho nijak nemění, brigádník si účet platí sám zvlášť v hotovosti.</p>
       <div class="schedule-wrap">
       <table class="schedule-table" style="width:100%">
@@ -106,7 +107,7 @@
   <!-- TRŽBY -->
   <div class="page" id="tab-trzby">
     <div class="card">
-      <div class="card-title">Denní tržby podle oddělení</div>
+      <div class="card-title ex-title"><span>Denní tržby podle oddělení</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('trzby', trzbyMonth)">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Zapisuje kdokoli ze směny na daném stanovišti (stačí od jednoho člověka). Můžeš to tu i ručně opravit.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="trzby-month-btns"></div>
       <div class="schedule-wrap"><table class="schedule-table" style="width:100%" id="trzby-table"></table></div>
@@ -139,7 +140,7 @@
   <!-- STATISTIKY -->
   <div class="page" id="tab-statistiky">
     <div class="card">
-      <div class="card-title">Přehled – celá sezóna</div>
+      <div class="card-title ex-title"><span>Přehled – celá sezóna</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('statistiky', 'all')">⬇ Excel</button></div>
       <div id="stat-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;"></div>
     </div>
     <div class="card">
@@ -172,6 +173,9 @@
       </div>
     </div>
   </div>
+
+  <!-- EXPORT PRO ÚČETNÍ -->
+  <div class="page" id="tab-export"><div id="export-root"></div></div>
 
   <!-- NASTAVENÍ -->
   <div class="page" id="tab-nastaveni">
@@ -340,7 +344,7 @@
   <!-- DOCHÁZKA -->
   <div class="page" id="tab-dochazka">
     <div class="card">
-      <div class="card-title">⏱️ Docházka – všichni brigádníci</div>
+      <div class="card-title ex-title"><span>⏱️ Docházka – všichni brigádníci</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('dochazka', 'all')">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Co si kdo zapsal za příchod/odchod, nejnovější první.</p>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
@@ -551,6 +555,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="js/data.js?v=17"></script>
+<script src="js/export.js?v=1"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -608,6 +613,7 @@ function showTab(id,btn){
   if(id==='objednavky') adminRenderObjednavky('vse');
   if(id==='sklad') setSkladSub(skladSub);
   if(id==='statistiky') initStatistiky();
+  if(id==='export') ExportUI.mount('export-root');
   if(id==='nastaveni') renderNastaveni();
 }
 
@@ -638,6 +644,13 @@ function isKosatkaWorker(w){
 function isKosatkaHomeWorker(w){
   var kid = kosatkaVenueId();
   return w.venue_id===kid || w.venue_id==null;
+}
+
+// Co potřebuje js/export.js vědět o téhle stránce: provozovna Kosatka a její brigádníci
+// (stejný výběr jako v záložce Výplaty).
+function exportContext(){
+  var kv = (typeof getVenueBySlug==='function') ? getVenueBySlug('kosatka') : null;
+  return { venue: kv || { id:null, nazev:'Kosatka' }, kosatka: true, workers: WORKERS.filter(function(w){ return w.role!=='admin' && isKosatkaWorker(w); }) };
 }
 
 function initSelects(){
