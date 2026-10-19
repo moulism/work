@@ -729,18 +729,27 @@ function getVyplatyForWorker(workerId) {
 }
 
 // Uloží novou výplatu - "dny" je pole konkrétních dat, které tato výplata pokrývá
-async function addVyplata(workerId, castka, poznamka, dny, adminId) {
+async function addVyplata(workerId, castka, poznamka, dny, adminId, opts) {
   // DŮLEŽITÉ: venue_id musí být nastaveno stejně jako u submitTrzba(), jinak tahle výplata
   // "zmizí" z venue-scoped přehledů (getZiskVenueMonth na Hlavním panelu v podniky.html) -
   // přesně tohle byl bug, kdy se srpnové výplaty nepropsaly na hlavní stránku.
   var kv = (typeof getVenueBySlug==='function') ? getVenueBySlug('kosatka') : null;
-  var v = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamka||'', dny:dny||[], venue_id: kv ? kv.id : null };
+  // Volitelné (opts.odecistUcty): odečtení otevřených účtů od výplaty - viz planUctyOdecet.
+  var odecet = (opts && opts.odecistUcty) ? planUctyOdecetLegacy(workerId, castka) : { polozky:[], soucet:0 };
+  var poznamkaFinal = poznamka||'';
+  if (odecet.polozky.length) poznamkaFinal = (poznamkaFinal ? poznamkaFinal+' · ' : '')+'z toho odečteno za účty: '+odecet.soucet+' Kč';
+  var v = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamkaFinal, dny:dny||[], venue_id: kv ? kv.id : null };
+  var uctyRes = await settleUctyPolozky(odecet.polozky, adminId);
+  if (!uctyRes.ok) return { ok:false, error:uctyRes.error };
   var res = await dbUpsert('vyplaty', [v]);
-  if (!res.ok) return { ok:false, error:res.error };
+  if (!res.ok) {
+    if (odecet.polozky.length) { try { await unsettleUctyPolozky(odecet.polozky); } catch(e) {} }
+    return { ok:false, error:res.error };
+  }
   VYPLATY.push(v);
   // Účty se výplatou už NEMAŽOU - brigádník si je platí sám zvlášť v hotovosti
   // (admin je smaže/upraví ručně na kartě Účty, viz smazatUcetPolozkuLegacyAdmin).
-  return { ok:true, row:v };
+  return { ok:true, row:v, odecteno:odecet.soucet, uctyPolozek:odecet.polozky.length };
 }
 
 async function delVyplata(id) {
@@ -753,8 +762,20 @@ async function delVyplata(id) {
   // ať po smazání výplaty zůstane pokladna v pořádku.
   var marker = '(výplata #'+id+')';
   var pkRows = POKLADNA.filter(function(p){ return (p.popis||'').indexOf(marker)!==-1; });
+  // Účty odečtené z té výplaty (marker "(účty #1,2)") zase otevři - výplata,
+  // ze které se zaplatily, už neexistuje.
+  var obnoveneUcty = [];
+  pkRows.forEach(function(pk){
+    var m = /\(účty #([\d,]+)\)/.exec(pk.popis||'');
+    if (!m) return;
+    m[1].split(',').forEach(function(sid){
+      var up = UCTY_POLOZKY.find(function(x){ return x.id===parseInt(sid,10); });
+      if (up && up.smazano) obnoveneUcty.push(up);
+    });
+  });
   for (var i=0; i<pkRows.length; i++) { await deletePokladnaZapisAdmin(pkRows[i].id); }
-  return { ok:true };
+  if (obnoveneUcty.length) { try { await unsettleUctyPolozky(obnoveneUcty); } catch(e) {} }
+  return { ok:true, obnovenoUctu:obnoveneUcty.length };
 }
 
 // Oprava už zapsané výplaty (částka a/nebo poznámka) - pro admina, co si všimne
@@ -1441,16 +1462,28 @@ function getVyplacenoVenue(venueId, workerId) {
   var total=0; VYPLATY.forEach(function(v){ if(v.venue_id===venueId && v.workerId===workerId) total+=v.castka; });
   return total;
 }
-async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId) {
+async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId, opts) {
   // Pozn.: "datum" je pořád datum, kdy se výplata doopravdy zapsala (dnešek) -
   // podle něj se výplata řadí do měsíčních statistik (Vyplacené mzdy) a
   // pokladní knihy, protože peníze z pokladny reálně odchází dnes. Který
   // konkrétní den/měsíc je tím vyplacený (pro "Zbývá" příště) určuje "dny" -
   // viz getNevyplaceneDnyVenue/getVyplacenDnyVenue výš.
-  var row = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamka||'', dny:dny||[], venue_id:venueId };
+  // Volitelné (opts.odecistUcty): z výplaty se odečtou otevřené účty brigádníka
+  // - "castka" zůstává celá vyplacená mzda (ať sedí "Zbývá"), ale účty se
+  // označí jako zaplacené a fyzicky se vyplatí jen castka minus účty.
+  var odecet = (opts && opts.odecistUcty) ? planUctyOdecetVenue(workerId, venueId, castka) : { polozky:[], soucet:0 };
+  var poznamkaFinal = poznamka||'';
+  if (odecet.polozky.length) poznamkaFinal = (poznamkaFinal ? poznamkaFinal+' · ' : '')+'z toho odečteno za účty: '+odecet.soucet+' Kč';
+  var row = { id:getNextId(VYPLATY), workerId:workerId, datum:todayStr(), castka:castka, poznamka:poznamkaFinal, dny:dny||[], venue_id:venueId };
+  var uctyRes = await settleUctyPolozky(odecet.polozky, adminId);
+  if (!uctyRes.ok) return uctyRes;
   VYPLATY.push(row);
   var res = await saveVyplaty();
-  if (!res.ok) { VYPLATY = VYPLATY.filter(function(v){return v.id!==row.id;}); return res; }
+  if (!res.ok) {
+    VYPLATY = VYPLATY.filter(function(v){return v.id!==row.id;});
+    if (odecet.polozky.length) { try { await unsettleUctyPolozky(odecet.polozky); } catch(e) {} }
+    return res;
+  }
   // Výplata jde z hotovostní pokladny (safu) ven - propiš ji tam automaticky
   // jako výdaj, ať je v pokladní knize vidět úplně každý pohyb peněz na
   // podniku (příjmy i výdaje), ne jen tržby. Marker "(výplata #ID)" v popisu
@@ -1459,6 +1492,14 @@ async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId
   // i odpovídající zápis v pokladně.
   var w = getWorkerById(workerId);
   try { await addPokladnaZapis(venueId, 'vydaj', castka, 'Výplata mzdy – '+(w?w.jmeno:'?')+' (výplata #'+row.id+')', adminId, 'hotovost'); } catch(e) {}
+  // Odečtené účty: brigádník je zaplatil "z výplaty" - do pokladny se propíšou
+  // jako příjem (stejně jako ruční "Zaplaceno"), takže čistý pohyb hotovosti =
+  // mzda minus účty. Marker "(výplata #ID)" zajistí smazání spolu s výplatou,
+  // "(účty #id,id)" umožní při smazání výplaty účty zase otevřít (delVyplata).
+  if (odecet.polozky.length) {
+    var ids = odecet.polozky.map(function(p){return p.id;}).join(',');
+    try { await addPokladnaZapis(venueId, 'prijem', odecet.soucet, 'Zaplacený účet (odečteno z výplaty) – '+(w?w.jmeno:'?')+' (výplata #'+row.id+') (účty #'+ids+')', adminId, 'hotovost'); } catch(e) {}
+  }
   // Účty (dluh za odebrané zboží) se výplatou NEVYROVNÁVAJÍ - brigádník si je
   // platí sám zvlášť v hotovosti (viz oznacitUcetZaplaceno). Výplata je tedy
   // čistě hrubá mzda minus penalizace a zálohy (viz getVydelekVenue), účet
@@ -1469,7 +1510,7 @@ async function addVyplataVenue(venueId, workerId, castka, poznamka, dny, adminId
   // vyrovnaly a je čas je smazat (soft-delete), ať se od dalšího výplatního
   // období počítá zase od nuly.
   try { await clearZalohyForWorkerVenue(venueId, workerId, adminId); } catch(e) {}
-  return { ok:true, row:row };
+  return { ok:true, row:row, odecteno:odecet.soucet, uctyPolozek:odecet.polozky.length };
 }
 
 // ── ZÁLOHY (venue-scoped) - peníze vyplacené brigádníkovi předem, které se
@@ -1914,6 +1955,40 @@ async function clearUctyForWorkerVenue(venueId, workerId, adminId) {
   var res = await dbUpsert('ucty', polozky);
   if (!res.ok) { polozky.forEach(function(p){ p.smazano=false; p.smazano_at=null; p.smazano_by=null; }); }
   return res;
+}
+
+// ── Odečtení účtů od výplaty (volitelné - admin to zaškrtne v modálu Vyplatit) ──
+// Účty se normálně výplatou NEVYROVNÁVAJÍ (brigádník je platí sám zvlášť),
+// ale admin může při výplatě zaškrtnout "odečíst účty": otevřené položky se
+// pak vyrovnají z mzdy - označí se jako zaplacené (soft-delete, stejně jako
+// při ručním "Zaplaceno") a brigádník je u sebe už nevidí jako dluh.
+// Vybírá se po CELÝCH položkách od nejstarší, dokud se vejdou do částky
+// výplaty (aby výplata nikdy nešla do mínusu); co se nevejde, zůstane otevřené.
+function planUctyOdecet(polozky, maxCastka) {
+  var serazene = polozky.slice().sort(function(a,b){ return (a.datum||'').localeCompare(b.datum||'') || a.id-b.id; });
+  var celkem = 0; serazene.forEach(function(p){ celkem += p.castka; });
+  var vybrane = [], soucet = 0;
+  serazene.forEach(function(p){ if (soucet + p.castka <= maxCastka + 1e-9) { vybrane.push(p); soucet += p.castka; } });
+  return { polozky:vybrane, soucet:soucet, celkem:celkem };
+}
+function planUctyOdecetVenue(workerId, venueId, maxCastka) {
+  return planUctyOdecet(getUctyForWorkerVenue(workerId, venueId), maxCastka);
+}
+function planUctyOdecetLegacy(workerId, maxCastka) {
+  return planUctyOdecet(UCTY_POLOZKY.filter(function(p){ return p.workerId===workerId && !p.venue_id && !p.smazano; }), maxCastka);
+}
+async function settleUctyPolozky(polozky, adminId) {
+  if (!polozky.length) return { ok:true };
+  var now = new Date().toISOString();
+  polozky.forEach(function(p){ p.smazano=true; p.smazano_at=now; p.smazano_by=adminId||null; });
+  var res = await dbUpsert('ucty', polozky);
+  if (!res.ok) { polozky.forEach(function(p){ p.smazano=false; p.smazano_at=null; p.smazano_by=null; }); }
+  return res;
+}
+async function unsettleUctyPolozky(polozky) {
+  if (!polozky.length) return { ok:true };
+  polozky.forEach(function(p){ p.smazano=false; p.smazano_at=null; p.smazano_by=null; });
+  return await dbUpsert('ucty', polozky);
 }
 
 // Smazání JEDNÉ položky z účtu - výhradně pro admina/správce (volající stránka

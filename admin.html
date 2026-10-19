@@ -77,7 +77,7 @@
   <div class="page" id="tab-vyplaty">
     <div class="card">
       <div class="card-title ex-title"><span>Přehled výdělků (reálné hodiny z příchodu/odchodu)</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('mzdy', 'all')">⬇ Excel</button></div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Restaurace = 200 Kč/h · ostatní 180 Kč/h · minus penalizace. Po kliknutí na "Vyplatit" se hodiny i penalizace od té chvíle počítají znovu od nuly - "Účty" je jen informativní dluh, výplata ho nijak nemění, brigádník si účet platí sám zvlášť v hotovosti.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Restaurace = 200 Kč/h · ostatní 180 Kč/h · minus penalizace. Po kliknutí na "Vyplatit" se hodiny i penalizace od té chvíle počítají znovu od nuly - "Účty" je jen informativní dluh, výplata ho sama nemění (brigádník si účet platí zvlášť v hotovosti), ale při výplatě můžeš zaškrtnout "Odečíst účty z výplaty" - odečtené položky se pak označí jako zaplacené.</p>
       <div class="schedule-wrap">
       <table class="schedule-table" style="width:100%">
         <thead><tr><th>Brigádník</th><th>Hodin</th><th>Hrubý</th><th>Pen.</th><th>Účty</th><th>Vyplaceno celkem</th><th>Zbývá (od reset)</th><th></th></tr></thead>
@@ -454,8 +454,15 @@
       <button class="btn btn-sm btn-secondary" onclick="vyplSelectAll(true)">Vybrat vše</button>
       <button class="btn btn-sm btn-secondary" onclick="vyplSelectAll(false)">Zrušit výběr</button>
     </div>
-    <div class="form-group"><label class="form-label">Částka k výplatě (Kč)</label><input class="form-input" type="number" id="vypl-castka"/></div>
+    <div class="form-group"><label class="form-label">Částka k výplatě (Kč)</label><input class="form-input" type="number" id="vypl-castka" oninput="vyplUctyUpdate()"/></div>
     <div class="form-group"><label class="form-label">Poznámka</label><input class="form-input" type="text" id="vypl-poznamka" placeholder="např. hotově, výplata za červenec..."/></div>
+    <div id="vypl-ucty-wrap" style="display:none;margin:2px 0 10px;padding:10px 12px;border:1px solid var(--sand-dark);border-radius:8px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
+        <input type="checkbox" id="vypl-ucty-cb" onchange="vyplUctyUpdate()"/>
+        <span id="vypl-ucty-lbl">Odečíst účty z výplaty</span>
+      </label>
+      <div id="vypl-ucty-info" style="font-size:12px;color:var(--text-muted);margin-top:4px;"></div>
+    </div>
     <div class="form-error" id="vypl-err">Zadej platnou částku.</div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeVyplatitModal()">Zrušit</button>
@@ -554,7 +561,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="js/data.js?v=17"></script>
+<script src="js/data.js?v=18"></script>
 <script src="js/export.js?v=1"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
@@ -1113,6 +1120,7 @@ function openVyplatitModal(workerId){
   document.getElementById('vypl-title').textContent='Zapsat výplatu – '+w.jmeno;
   document.getElementById('vypl-poznamka').value='';
   document.getElementById('vypl-err').style.display='none';
+  document.getElementById('vypl-ucty-cb').checked=false;
   renderVyplDnyList();
   renderVyplHistorie(workerId);
   document.getElementById('modal-vyplatit').classList.remove('hidden');
@@ -1162,6 +1170,26 @@ function vyplRecalc(){
     if(cb.checked){ var d=vyplNevyplacene[parseInt(cb.getAttribute('data-idx'))]; total+=d.cisty; }
   });
   document.getElementById('vypl-castka').value=Math.round(total);
+  vyplUctyUpdate();
+}
+// Volitelné odečtení otevřených účtů od výplaty - viz planUctyOdecet v data.js.
+function vyplUctyUpdate(){
+  var wrap=document.getElementById('vypl-ucty-wrap');
+  if(!wrap||!vyplatitWorkerId) return;
+  var castka=parseFloat(document.getElementById('vypl-castka').value);
+  if(isNaN(castka)||castka<0) castka=0;
+  var plan=planUctyOdecetLegacy(vyplatitWorkerId, castka);
+  if(plan.celkem<=0){wrap.style.display='none';document.getElementById('vypl-ucty-cb').checked=false;return;}
+  wrap.style.display='block';
+  var kc=function(n){return Math.round(n).toLocaleString('cs-CZ')+' Kč';};
+  document.getElementById('vypl-ucty-lbl').textContent='Odečíst účty z výplaty (−'+kc(plan.soucet)+')';
+  var info;
+  if(!plan.polozky.length) info='Otevřené účty celkem '+kc(plan.celkem)+' – nevejdou se do částky výplaty, nelze odečíst.';
+  else if(document.getElementById('vypl-ucty-cb').checked){
+    info='Vyplatí se v hotovosti '+kc(castka-plan.soucet)+' ('+kc(castka)+' − účty '+kc(plan.soucet)+'). Odečtené účty se označí jako zaplacené.';
+    if(plan.soucet<plan.celkem) info+=' Zbyde otevřeno '+kc(plan.celkem-plan.soucet)+'.';
+  } else info='Otevřené účty celkem '+kc(plan.celkem)+'. Nezaškrtnuté = účty zůstanou otevřené a brigádník je zaplatí zvlášť.';
+  document.getElementById('vypl-ucty-info').textContent=info;
 }
 function renderVyplHistorie(workerId){
   var list=getVyplatyForWorker(workerId);
@@ -1196,13 +1224,21 @@ async function confirmVyplatit(){
   });
   if(!dny.length){err.style.display='block';err.textContent='Vyber aspoň jeden den.';return;}
   err.style.display='none';
+  var odecistUcty=!!document.getElementById('vypl-ucty-cb').checked;
+  if(odecistUcty){
+    var plan=planUctyOdecetLegacy(vyplatitWorkerId, castka);
+    if(!plan.polozky.length) odecistUcty=false;
+    else if(!confirm('Vyplatit '+castka.toLocaleString('cs-CZ')+' Kč, z toho odečíst účty '+plan.soucet.toLocaleString('cs-CZ')+' Kč (v hotovosti '+(castka-plan.soucet).toLocaleString('cs-CZ')+' Kč)? Odečtené účty se označí jako zaplacené.')) return;
+  }
   var btn=document.getElementById('vypl-confirm-btn');
   btn.disabled=true; btn.textContent='Ukládám...';
-  var res=await addVyplata(vyplatitWorkerId, castka, document.getElementById('vypl-poznamka').value.trim(), dny, (authGetCurrent()||{}).id);
+  var res=await addVyplata(vyplatitWorkerId, castka, document.getElementById('vypl-poznamka').value.trim(), dny, (authGetCurrent()||{}).id, {odecistUcty:odecistUcty});
   btn.disabled=false; btn.textContent='Zapsat';
   if(!res.ok){ err.style.display='block'; err.textContent='Nepovedlo se to uložit, zkus to znovu.'; return; }
   renderVyplaty();
+  if(typeof renderUcty==='function'){ try{renderUcty();}catch(e){} }
   vyplNevyplacene = getNevyplaceneDny(vyplatitWorkerId);
+  document.getElementById('vypl-ucty-cb').checked=false;
   renderVyplDnyList();
   renderVyplHistorie(vyplatitWorkerId);
   document.getElementById('vypl-poznamka').value='';
@@ -1782,7 +1818,7 @@ function renderUcty(){
   if(!items.length){el.innerHTML=summary+'<p style="color:var(--text-muted);font-size:13px;padding:.5rem 0;">'+(w?w.jmeno:'?')+' nemá žádné položky na účtu.</p>';return;}
   var celkem=items.reduce(function(s,p){return s+p.castka;},0);
   el.innerHTML=summary+'<p style="font-size:13px;font-weight:600;margin-bottom:.5rem;">Celkový dluh na účtu: '+celkem.toLocaleString('cs-CZ')+' Kč</p>'+
-  '<p style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;">Výplata už účet nijak nemaže - brigádník si účet platí sám zvlášť v hotovosti. Jednotlivé položky smíš mazat/opravovat jen ty jako admin (🗑️/✏️ vpravo) - brigádník sám nikdy.</p>'+
+  '<p style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;">Výplata účet sama nemaže (brigádník si ho platí zvlášť v hotovosti), jen když při výplatě zaškrtneš "Odečíst účty z výplaty". Jednotlivé položky smíš mazat/opravovat jen ty jako admin (🗑️/✏️ vpravo) - brigádník sám nikdy.</p>'+
   '<table class="schedule-table" style="width:100%"><thead><tr><th>Stanoviště</th><th>Položka</th><th>Cena</th><th>Datum</th><th></th></tr></thead><tbody>'+
   items.map(function(p){
     var st=getStanoviste(p.mistoId);
