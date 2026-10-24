@@ -224,7 +224,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=20"></script>
-<script src="js/mesice.js?v=6"></script>
+<script src="js/mesice.js?v=7"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -445,8 +445,9 @@ function renderVydelek(){
     {lbl:'Dluh na účtu',  val: v.uctyDluh ? '−'+v.uctyDluh+' Kč' : '0 Kč'},
     {lbl:'Čistý výdělek', val: v.cisty.toLocaleString('cs-CZ')+' Kč'},
   ];
+  if (v.uctyDluh) items.push({lbl:'K výplatě po odečtení účtů', val: Math.max(0, v.cisty - v.uctyDluh).toLocaleString('cs-CZ')+' Kč', hl:true});
   document.getElementById('vydelek-grid').innerHTML = items.map(function(i){
-    return '<div class="stat-box"><div class="stat-lbl">'+i.lbl+'</div><div class="stat-val" style="font-size:16px">'+i.val+'</div></div>';
+    return '<div class="stat-box"'+(i.hl?' style="background:#e4eafc;"':'')+'><div class="stat-lbl">'+i.lbl+'</div><div class="stat-val" style="font-size:16px">'+i.val+'</div></div>';
   }).join('');
   renderMesice();
 }

@@ -113,6 +113,12 @@
     return views[el._mpid];
   }
   function maData(m) { return m.dny.length || m.vyplaceno || m.penalizace || m.zalohy.celkem || m.ucty.celkem; }
+  // Výplata s odečtenými účty má v poznámce "odečteno za účty: N Kč" (viz addVyplata*).
+  function uctyZVyplaty(poznamka) { var m = /odečteno za účty: (\d+)/.exec(poznamka || ''); return m ? parseInt(m[1], 10) : 0; }
+  function vRuce(castka, poznamka) {
+    var u = uctyZVyplaty(poznamka);
+    return u ? '<small style="display:block;font-weight:400;color:var(--text-muted,#6b7280);">z toho účty −' + kc(u) + ' · v hotovosti ' + kc(castka - u) + '</small>' : '';
+  }
   function pocetDni(n) { return n + ' ' + (n === 1 ? 'den' : (n > 1 && n < 5 ? 'dny' : 'dní')); }
   function tiles(arr) {
     return '<div class="mp-sum">' + arr.map(function (t) {
@@ -175,7 +181,7 @@
     var sl = '<div class="mp-h">Výpočet mzdy</div>' + slip({ hodiny: m.hodiny, sazba: m.sazba, hruby: m.hruby, sub: pocetDni(m.dny.length) + ' v měsíci · hrubá mzda', pen: m.penalizace, penN: m.penalizaceItems.length, zOdectene: z.odectene, zOtevrene: z.otevrene, cista: m.cista, u: u, poOdectu: m.poOdectuUctu });
     var pay = '<div class="mp-h">Výplaty za tenhle měsíc</div>' + (m.vyplaty.length ? m.vyplaty.map(function (v) {
       return '<div class="mp-pay"><span>' + esc(dat(v.datum)) + (v.poznamka ? ' <span style="color:var(--text-muted,#6b7280);">– ' + esc(v.poznamka) + '</span>' : '') +
-        (v.rozdeleno ? ' <span style="color:var(--text-muted,#6b7280);">(výplata za víc měsíců, tady jen část)</span>' : '') + '</span><b>' + kc(v.podil) + '</b></div>';
+        (v.rozdeleno ? ' <span style="color:var(--text-muted,#6b7280);">(výplata za víc měsíců, tady jen část)</span>' : '') + '</span><b style="text-align:right;">' + kc(v.podil) + (v.rozdeleno ? '' : vRuce(v.castka, v.poznamka)) + '</b></div>';
     }).join('') : '<div style="color:var(--text-muted,#6b7280);padding:4px 0;">Za tenhle měsíc zatím žádná výplata.</div>') +
       (m.nevyplacenoHruby ? '<div class="mp-pay"><span>Ještě nevyplaceno (hrubá mzda za ' + esc(hh(m.nevyplacenoHodiny)) + ')</span><b style="color:#8a3a10;">' + kc(m.nevyplacenoHruby) + '</b></div>' : '');
     var stavLbl = { otevrene: 'nezaplaceno', zVyplaty: 'odečteno z výplaty', zvlast: 'zaplaceno zvlášť' };
@@ -226,7 +232,7 @@
     tb += '<tr class="tot"><td data-l="">Celkem</td><td class="r" data-l="Hodin">' + esc(hh(c.hodiny)) + '</td><td class="r" data-l="Hrubá mzda">' + kc(c.hruby) + '</td><td class="r" data-l="Penalizace">' + (c.penalizace ? '−' + kc(c.penalizace) : '–') + '</td><td class="r" data-l="Zálohy">' + (c.zalohy ? '−' + kc(c.zalohy) : '–') + '</td><td class="r" data-l="Čistá mzda">' + kc(c.cista) + '</td><td class="r" data-l="Vyplaceno">' + kc(c.vyplaceno) + '</td><td class="r" data-l="Čeká">' + (c.nevyplacenoHruby ? kc(c.nevyplacenoHruby) : '✓ nic') + '</td></tr></tbody></table></div>';
     var vyp = mp.vyplaty || [];
     var pay = '<div class="mp-h">Všechny výplaty (' + vyp.length + ')</div>' + (vyp.length ? vyp.map(function (v) {
-      return '<div class="mp-pay"><span>' + esc(dat(v.datum)) + (v.poznamka ? ' <span style="color:var(--text-muted,#6b7280);">– ' + esc(v.poznamka) + '</span>' : '') + '</span><b>' + kc(v.castka) + '</b></div>';
+      return '<div class="mp-pay"><span>' + esc(dat(v.datum)) + (v.poznamka ? ' <span style="color:var(--text-muted,#6b7280);">– ' + esc(v.poznamka) + '</span>' : '') + '</span><b style="text-align:right;">' + kc(v.castka) + vRuce(v.castka, v.poznamka) + '</b></div>';
     }).join('') : '<div style="color:var(--text-muted,#6b7280);padding:4px 0;">Zatím žádná výplata.</div>');
     return hd + t + sl + tb + pay;
   }

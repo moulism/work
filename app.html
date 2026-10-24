@@ -550,7 +550,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=20"></script>
-<script src="js/mesice.js?v=6"></script>
+<script src="js/mesice.js?v=7"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -992,8 +992,9 @@ function appRenderVydelek() {
     {lbl:'Dluh na účtech',val: v.uctyDluh ? '−'+v.uctyDluh+' Kč' : '0 Kč'},
     {lbl:'Čistý výdělek', val: v.cisty.toLocaleString('cs-CZ')+' Kč'},
   ];
+  if (v.uctyDluh) items.push({lbl:'K výplatě po odečtení účtů', val: Math.max(0, v.cisty - v.uctyDluh).toLocaleString('cs-CZ')+' Kč', hl:true});
   var html='';
-  for (var i=0; i<items.length; i++) html+='<div class="stat-box"><div class="stat-lbl">'+items[i].lbl+'</div><div class="stat-val" style="font-size:16px">'+items[i].val+'</div></div>';
+  for (var i=0; i<items.length; i++) html+='<div class="stat-box"'+(items[i].hl?' style="background:#e4eafc;"':'')+'><div class="stat-lbl">'+items[i].lbl+'</div><div class="stat-val" style="font-size:16px">'+items[i].val+'</div></div>';
   document.getElementById('vydelek-grid').innerHTML = html;
   var noteEl = document.getElementById('vydelek-note');
   if (v.nevyplaceneDny && v.nevyplaceneDny.length) noteEl.textContent = 'Zahrnuje '+v.nevyplaceneDny.length+' nevyplacených dní.';
