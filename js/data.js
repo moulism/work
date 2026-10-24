@@ -1479,7 +1479,9 @@ function getMesicniPrehled(workerId, venueId) {
   function mesic(key) {
     if (!mesice[key]) {
       mesice[key] = { key:key, label:mesicPopisek(key), aktualni:key===curKey, hodiny:0, hruby:0, dny:[], vyplacenoHodiny:0, vyplacenoHruby:0,
-        nevyplacenoHodiny:0, nevyplacenoHruby:0, penalizace:0, vyplaceno:0, vyplaty:[], stav:'nic' };
+        nevyplacenoHodiny:0, nevyplacenoHruby:0, penalizace:0, penalizaceItems:[], vyplaceno:0, vyplaty:[], stav:'nic',
+        zalohy:{ otevrene:0, odectene:0, celkem:0, items:[] }, ucty:{ otevrene:0, zVyplaty:0, zvlast:0, celkem:0, items:[] },
+        sazba:0, cista:0, poOdectuUctu:0 };
       poradi.push(key);
     }
     return mesice[key];
@@ -1525,35 +1527,84 @@ function getMesicniPrehled(workerId, venueId) {
   PENALIZACE.forEach(function(pn){
     if (pn.workerId!==workerId) return;
     if (legacy ? (pn.venue_id && pn.venue_id!==kosatkaId) : pn.venue_id!==venueId) return;
-    mesic(mesicKlic(pn.datum)).penalizace += pn.castka;
+    var pm = mesic(mesicKlic(pn.datum));
+    pm.penalizace += pn.castka;
+    pm.penalizaceItems.push({ datum:pn.datum, castka:pn.castka, duvod:pn.duvod||'', poznamka:pn.poznamka||'' });
   });
+  // Účty (dluh za odebrané zboží): otevřené, odečtené z výplaty (viz "Odečíst účty z
+  // výplaty" při výplatě - poznáme podle pokladního zápisu "(účty #id,id)", u Kosatky
+  // podle poznámky výplaty a data), nebo zaplacené zvlášť/skryté.
+  var odecteneUcty = {};
+  POKLADNA.forEach(function(pk){
+    var mm = /\(účty #([\d,]+)\)/.exec(pk.popis||'');
+    if (mm) mm[1].split(',').forEach(function(x){ odecteneUcty[parseInt(x,10)] = true; });
+  });
+  if (legacy) {
+    vyplaty.forEach(function(v){
+      if (!/odečteno za účty/.test(v.poznamka||'')) return;
+      UCTY_POLOZKY.forEach(function(u){
+        if (u.workerId!==workerId || u.venue_id || !u.smazano || !u.smazano_at) return;
+        var rozdil = Math.abs(new Date(String(u.smazano_at).slice(0,10)+'T00:00:00') - new Date(v.datum+'T00:00:00'))/86400000;
+        if (rozdil<=1) odecteneUcty[u.id] = true;
+      });
+    });
+  }
+  UCTY_POLOZKY.forEach(function(u){
+    if (u.workerId!==workerId) return;
+    if (legacy ? !!u.venue_id : u.venue_id!==venueId) return;
+    var um = mesic(mesicKlic(u.datum));
+    var stav = !u.smazano ? 'otevrene' : (odecteneUcty[u.id] ? 'zVyplaty' : 'zvlast');
+    um.ucty[stav] += u.castka; um.ucty.celkem += u.castka;
+    um.ucty.items.push({ datum:u.datum, popis:u.popis||'Účet', castka:u.castka, stav:stav });
+  });
+  // Zálohy: otevřené, nebo odečtené při výplatě (smazané zálohy bez pokladního zápisu
+  // = omylem zapsané a smazané, ty se nepočítají).
+  if (!legacy) {
+    ZALOHY.forEach(function(z){
+      if (z.workerId!==workerId || z.venue_id!==venueId) return;
+      var mark = '(záloha #'+z.id+')';
+      var maPokladnu = POKLADNA.some(function(pk){ return (pk.popis||'').indexOf(mark)!==-1; });
+      if (z.smazano && !maPokladnu) return;
+      var zm = mesic(mesicKlic(z.datum));
+      zm.zalohy[z.smazano ? 'odectene' : 'otevrene'] += z.castka; zm.zalohy.celkem += z.castka;
+      zm.zalohy.items.push({ datum:z.datum, castka:z.castka, poznamka:z.poznamka||'', stav:z.smazano ? 'odectena' : 'otevrena' });
+    });
+  }
   var out = poradi.sort().reverse().map(function(k){
     var m = mesice[k];
     m.dny.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
     m.hodiny = roundH(m.hodiny); m.vyplacenoHodiny = roundH(m.vyplacenoHodiny); m.nevyplacenoHodiny = roundH(m.nevyplacenoHodiny);
+    m.penalizaceItems.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
+    m.ucty.items.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
+    m.zalohy.items.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
+    m.sazba = m.hodiny ? Math.round(m.hruby/m.hodiny) : 0;
+    m.cista = m.hruby - m.penalizace - m.zalohy.celkem;
+    m.poOdectuUctu = m.cista - m.ucty.otevrene;
     if (!m.dny.length) m.stav = m.vyplaceno ? 'vyplaceno' : 'nic';
     else if (!m.nevyplacenoHruby && !m.nevyplacenoHodiny) m.stav = 'vyplaceno';
     else if (!m.vyplacenoHodiny) m.stav = 'ceka';
     else m.stav = 'castecne';
     return m;
   });
-  var celkem = { hodiny:0, hruby:0, vyplaceno:vyplacenoCelkem, nevyplacenoHruby:0, nevyplacenoHodiny:0, penalizace:0 };
-  out.forEach(function(m){ celkem.hodiny += m.hodiny; celkem.hruby += m.hruby; celkem.nevyplacenoHruby += m.nevyplacenoHruby; celkem.nevyplacenoHodiny += m.nevyplacenoHodiny; celkem.penalizace += m.penalizace; });
+  var celkem = { hodiny:0, hruby:0, vyplaceno:vyplacenoCelkem, nevyplacenoHruby:0, nevyplacenoHodiny:0, penalizace:0, zalohy:0, uctyOtevrene:0, cista:0 };
+  out.forEach(function(m){ celkem.zalohy += m.zalohy.celkem; celkem.uctyOtevrene += m.ucty.otevrene; celkem.cista += m.cista; celkem.hodiny += m.hodiny; celkem.hruby += m.hruby; celkem.nevyplacenoHruby += m.nevyplacenoHruby; celkem.nevyplacenoHodiny += m.nevyplacenoHodiny; celkem.penalizace += m.penalizace; });
   celkem.hodiny = roundH(celkem.hodiny); celkem.nevyplacenoHodiny = roundH(celkem.nevyplacenoHodiny);
   return { mesice:out, celkem:celkem, vyplaty:vyplaty };
 }
 // Souhrn za CELOU provozovnu po měsících (venueId null = Kosatka) - součet přes
 // všechny brigádníky; "radky" nese i rozpad po brigádnících pro tabulku.
 function getMesicniSouhrn(workerIds, venueId) {
-  var mapa = {}, klice = [], celkem = { hodiny:0, hruby:0, vyplaceno:0, nevyplacenoHruby:0, penalizace:0 };
+  var mapa = {}, klice = [], celkem = { hodiny:0, hruby:0, vyplaceno:0, nevyplacenoHruby:0, penalizace:0, zalohy:0, uctyOtevrene:0, cista:0 };
   workerIds.forEach(function(wid){
     var mp = getMesicniPrehled(wid, venueId);
     celkem.vyplaceno += mp.celkem.vyplaceno;
     mp.mesice.forEach(function(m){
-      if (!mapa[m.key]) { mapa[m.key] = { key:m.key, label:m.label, aktualni:m.aktualni, brigadniku:0, hodiny:0, hruby:0, vyplaceno:0, nevyplacenoHruby:0, penalizace:0 }; klice.push(m.key); }
+      if (!mapa[m.key]) { mapa[m.key] = { key:m.key, label:m.label, aktualni:m.aktualni, brigadniku:0, hodiny:0, hruby:0, vyplaceno:0, nevyplacenoHruby:0, penalizace:0, zalohy:0, uctyOtevrene:0, cista:0 }; klice.push(m.key); }
       var r = mapa[m.key];
       if (m.dny.length || m.vyplaceno) r.brigadniku++;
       r.hodiny += m.hodiny; r.hruby += m.hruby; r.vyplaceno += m.vyplaceno; r.nevyplacenoHruby += m.nevyplacenoHruby; r.penalizace += m.penalizace;
+      r.zalohy += m.zalohy.celkem; r.uctyOtevrene += m.ucty.otevrene; r.cista += m.cista;
+      celkem.zalohy += m.zalohy.celkem; celkem.uctyOtevrene += m.ucty.otevrene; celkem.cista += m.cista;
       celkem.hodiny += m.hodiny; celkem.hruby += m.hruby; celkem.nevyplacenoHruby += m.nevyplacenoHruby; celkem.penalizace += m.penalizace;
     });
   });

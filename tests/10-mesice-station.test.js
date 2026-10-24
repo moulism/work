@@ -146,3 +146,51 @@ test('addShiftVenue - stejný brigádník ve stejný den se nepřidá dvakrát (
   await ctx.addShiftVenue(VENUE_ID, WORKER_ID, 'hlavni', '2026-01-10', '');
   assert.equal(ctx.SCHEDULE.filter((s) => s.workerId === WORKER_ID && s.datum === '2026-01-10').length, 1);
 });
+
+// ── Rozpad mzdy po měsících: penalizace, zálohy, účty ──
+test('getMesicniPrehled - výpočet mzdy: hrubá − penalizace − zálohy = čistá, účty zvlášť', () => {
+  const ctx = freshContext(); setup(ctx);
+  ctx.PENALIZACE.push({ id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-01-06', castka: 100, duvod: 'Pozdní příchod' });
+  ctx.ZALOHY.push({ id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-01-07', castka: 500, smazano: false });
+  ctx.UCTY_POLOZKY.push({ id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-01-08', popis: 'Pivo', castka: 300, smazano: false });
+  const led = ctx.getMesicniPrehled(WORKER_ID, VENUE_ID).mesice.find((m) => m.key === '2026-01');
+  assert.equal(led.hruby, 3200); assert.equal(led.sazba, 200);
+  assert.equal(led.penalizace, 100); assert.equal(led.zalohy.otevrene, 500);
+  assert.equal(led.cista, 3200 - 100 - 500);
+  assert.equal(led.ucty.otevrene, 300); assert.equal(led.poOdectuUctu, 2600 - 300);
+  assert.equal(led.penalizaceItems[0].duvod, 'Pozdní příchod');
+});
+
+test('getMesicniPrehled - účty odečtené z výplaty a zálohy odečtené při výplatě se rozliší od ostatních', async () => {
+  const ctx = freshContext(); setup(ctx);
+  ctx.LOAD_OK.vyplaty = true;
+  ctx.UCTY_POLOZKY.push(
+    { id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-01-05', popis: 'Pivo', castka: 300, smazano: false },
+    { id: 2, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-01-06', popis: 'Káva', castka: 80, smazano: false },
+  );
+  ctx.UCTY_POLOZKY.push({ id: 3, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-01-07', popis: 'Jídlo', castka: 150, smazano: true, smazano_at: '2026-01-20T10:00:00Z' });
+  const z = await ctx.addZalohaVenue(VENUE_ID, WORKER_ID, 400, '', 1, '2026-01-08');
+  const res = await ctx.addVyplataVenue(VENUE_ID, WORKER_ID, 3200, '', ['2026-01-05', '2026-01-06'], 1, { odecistUcty: true });
+  assert.equal(res.ok, true);
+  const led = ctx.getMesicniPrehled(WORKER_ID, VENUE_ID).mesice.find((m) => m.key === '2026-01');
+  assert.equal(led.ucty.zVyplaty, 380, 'odečteno z výplaty');
+  assert.equal(led.ucty.zvlast, 150, 'zaplaceno zvlášť');
+  assert.equal(led.ucty.otevrene, 0);
+  assert.equal(led.zalohy.odectene, 400, 'záloha vyrovnaná při výplatě');
+  // omylem zapsaná a smazaná záloha (bez pokladního zápisu) se nepočítá
+  const z2 = await ctx.addZalohaVenue(VENUE_ID, WORKER_ID, 999, '', 1, '2026-01-09');
+  await ctx.deleteZalohaAdmin(z2.row.id, 1);
+  const led2 = ctx.getMesicniPrehled(WORKER_ID, VENUE_ID).mesice.find((m) => m.key === '2026-01');
+  assert.equal(led2.zalohy.celkem, 400);
+});
+
+test('getMesicniSouhrn - sčítá penalizace, zálohy, otevřené účty a čistou mzdu', () => {
+  const ctx = freshContext(); setup(ctx);
+  ctx.PRACOVNI_DNY.push({ id: 10, workerId: WORKER2_ID, venue_id: VENUE_ID, datum: '2026-01-05', prichod: '10:00', odchod: '14:00' });
+  ctx.PENALIZACE.push({ id: 1, workerId: WORKER_ID, venue_id: VENUE_ID, datum: '2026-01-06', castka: 100, duvod: 'x' });
+  ctx.ZALOHY.push({ id: 1, workerId: WORKER2_ID, venue_id: VENUE_ID, datum: '2026-01-07', castka: 50, smazano: false });
+  ctx.UCTY_POLOZKY.push({ id: 1, workerId: WORKER2_ID, venue_id: VENUE_ID, datum: '2026-01-08', popis: 'Pivo', castka: 60, smazano: false });
+  const led = ctx.getMesicniSouhrn([WORKER_ID, WORKER2_ID], VENUE_ID).radky.find((r) => r.key === '2026-01');
+  assert.equal(led.penalizace, 100); assert.equal(led.zalohy, 50); assert.equal(led.uctyOtevrene, 60);
+  assert.equal(led.cista, (3200 + 400) - 100 - 50);
+});
