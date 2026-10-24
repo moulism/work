@@ -68,6 +68,12 @@
       <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">Počítá se z reálně odpracovaných hodin (příchod–odchod).</p>
     </div>
 
+    <div class="card" id="card-mesice">
+      <div class="card-title">📅 Moje měsíce a výplaty</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc vidíš odpracované hodiny, hrubou mzdu a kdy ti byla vyplacená – ať si to můžeš sám ověřit. Klikni na měsíc a uvidíš i jednotlivé dny.</p>
+      <div id="mesice-wrap"></div>
+    </div>
+
     <div class="card">
       <div class="card-title">📋 Moje odpracované dny</div>
       <div id="pd-historie"></div>
@@ -217,7 +223,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=18"></script>
+<script src="js/data.js?v=19"></script>
+<script src="js/mesice.js?v=1"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -441,6 +448,13 @@ function renderVydelek(){
   document.getElementById('vydelek-grid').innerHTML = items.map(function(i){
     return '<div class="stat-box"><div class="stat-lbl">'+i.lbl+'</div><div class="stat-val" style="font-size:16px">'+i.val+'</div></div>';
   }).join('');
+  renderMesice();
+}
+// Měsíce a výplaty: po měsících hodiny, hrubá mzda a vyplacená částka (viz js/mesice.js).
+function renderMesice(){
+  var el = document.getElementById('mesice-wrap');
+  if (!el || !window.MP) return;
+  el.innerHTML = MP.workerCard(getMesicniPrehled(currentUser.id, currentVenue.id), { otevrit:1 });
 }
 
 // Moje směny: nahoře to, co mě teprve čeká (s odpočtem "dnes/zítra"), minulé směny
@@ -457,6 +471,7 @@ function renderShifts(){
   }
   function radek(s, minule){
     var st = stanoviste.find(function(x){return x.slug===s.mistoId;});
+    var mInfo = getSmenaMistoInfo(currentVenue, s.mistoId);
     var pd = getPracovniDen(currentUser.id, s.datum);
     var cas = pd && pd.prichod && pd.odchod ? pd.prichod+' – '+pd.odchod : '';
     var dnes = s.datum===today, we = isWeekend(s.datum);
@@ -464,7 +479,7 @@ function renderShifts(){
     var stitek = dnes ? '<span class="badge badge-info">DNES</span>' : (rozdil===1 ? '<span class="badge badge-warning">ZÍTRA</span>' : '');
     return '<div class="ms-row'+(dnes?' ms-today':'')+(we?' ms-we':'')+(minule?' ms-past':'')+'">'+
       '<div class="ms-date">'+formatDate(s.datum)+'</div>'+
-      '<div class="ms-main">'+(st?st.ikona+' '+st.label:'Směna')+(s.poznamka ? '<div class="ms-note">📝 '+prEscW(s.poznamka)+'</div>' : '')+'</div>'+
+      '<div class="ms-main">'+(st?st.ikona+' '+st.label:(mInfo?'<b>'+mInfo.ikona+' '+mInfo.label+'</b> <span style="color:var(--text-muted);font-size:12px;">(jsi na Station)</span>':'Směna'))+(s.poznamka ? '<div class="ms-note">📝 '+prEscW(s.poznamka)+'</div>' : '')+'</div>'+
       '<div class="ms-side">'+stitek+(cas?'<div class="ms-time">'+cas+'</div>':'')+'</div>'+
       '</div>';
   }

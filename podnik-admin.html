@@ -93,6 +93,9 @@
           <button class="btn btn-secondary" onclick="addShift()">+ Přidat</button>
         </div>
         <div class="form-group" style="margin-top:10px;"><label class="form-label">Poznámka ke směně (nepovinné)</label><input class="form-input" id="rz-poznamka" placeholder="např. přines vlastní reproduktor..."/></div>
+        <div id="rz-misto-wrap" class="form-group" style="margin-top:10px;display:none;max-width:260px;"><label class="form-label">Místo</label>
+          <select class="form-select" id="rz-misto"></select>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Na Station je vždy jen jeden člověk na den – kdo tam byl dřív, vrátí se do Café.</div></div>
         <div id="rz-presety-manual-wrap" style="margin-top:8px;"></div>
       </div>
     </div>
@@ -187,12 +190,17 @@
   <!-- ÚČTY -->
   <!-- VÝPLATY -->
   <div class="page" id="tab-vyplaty">
+    <div class="card" id="mp-souhrn-card">
+      <div class="card-title">📊 Celkové výplaty po měsících</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc: kolik se odpracovalo, kolik je to hrubé mzdy, kolik už je vyplaceno a kolik ještě čeká. Rozpad po brigádnících je v tabulce níž (klikni na jméno).</p>
+      <div id="mp-souhrn"></div>
+    </div>
     <div class="card">
       <div class="card-title ex-title"><span>Přehled výdělků</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('mzdy', 'all')">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny i hrubá mzda od té chvíle počítají znovu od nuly - "Zbývá" je vždycky jen to, co je dlužné od poslední výplaty. Sloupec "Účty" je jen informativní dluh za odebrané zboží - výplata ho sama nemění (brigádník si účet platí zvlášť v hotovosti), ale při výplatě můžeš zaškrtnout "Odečíst účty z výplaty" - odečtené položky se pak označí jako zaplacené.</p>
       <div class="schedule-wrap">
         <table class="schedule-table" style="width:100%">
-          <thead><tr><th>Brigádník</th><th>Hodin (od výplaty)</th><th>Hrubý (od výplaty)</th><th>Účty</th><th>Zálohy</th><th>Vyplaceno celkem</th><th>Zbývá</th><th></th></tr></thead>
+          <thead><tr><th>Brigádník / měsíce</th><th>Hodin (od výplaty)</th><th>Hrubý (od výplaty)</th><th>Účty</th><th>Zálohy</th><th>Vyplaceno celkem</th><th>Zbývá</th><th></th></tr></thead>
           <tbody id="vyplaty-tbody"></tbody>
         </table>
       </div>
@@ -507,8 +515,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/data.js?v=18"></script>
+<script src="js/data.js?v=19"></script>
 <script src="js/export.js?v=1"></script>
+<script src="js/mesice.js?v=1"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -537,6 +546,7 @@ loadAll().then(function(){
   document.getElementById('op-wrap').style.display = isOnlinePenezenkaVenue(venue) ? 'block' : 'none';
 
   initSelects();
+  initRzMisto();
   renderShiftTable();
   buildRzMonthBtns();
   renderRzMesic();
@@ -963,7 +973,9 @@ async function addShift(){
   var datum = document.getElementById('rz-datum').value;
   var poznamka = document.getElementById('rz-poznamka').value.trim();
   if (!workerId || !datum) { alert('Vyber brigádníka a datum.'); return; }
-  await addShiftVenue(venue.id, workerId, 'hlavni', datum, poznamka);
+  var add = await addShiftVenue(venue.id, workerId, 'hlavni', datum, poznamka);
+  var misto = (document.getElementById('rz-misto') || {}).value || 'hlavni';
+  if (add && add.row && misto !== 'hlavni') await rzNastavMisto(add.row.id, misto);
   rzMonth = parseInt(datum.slice(5,7),10) || rzMonth;
   document.getElementById('rz-poznamka').value = '';
   renderShiftTable();
@@ -1034,6 +1046,33 @@ async function rzPridatDostupneho(workerId, datum, smena){
   renderShiftTable();
   renderRzDostupni();
   renderRzMesic();
+}
+// Rozpis Café: místo směny (Café / Station). Station je jen posezení navíc se
+// společnou pokladnou, proto se tady jen přiřadí jeden člověk na den.
+function initRzMisto(){
+  var mista = getSmenaMistaForVenue(venue);
+  var wrap = document.getElementById('rz-misto-wrap');
+  if (!wrap || !mista) return;
+  wrap.style.display = 'block';
+  document.getElementById('rz-misto').innerHTML = mista.map(function(m){ return '<option value="'+m.mistoId+'">'+m.ikona+' '+m.label+'</option>'; }).join('');
+}
+async function rzNastavMisto(id, misto){
+  var s = SCHEDULE.find(function(x){return x.id===id;});
+  if (!s) return;
+  var stavajici = misto !== 'hlavni' ? getStationSmena(venue.id, s.datum) : null;
+  if (stavajici && stavajici.id !== s.id) {
+    var w0 = getWorkerById(stavajici.workerId);
+    if (!confirm('Na Station už je v ten den '+(w0?w0.jmeno:'někdo jiný')+'. Přehodit to na tuhle směnu? (Ten druhý se vrátí do Café.)')) return;
+  }
+  var res = await setSmenaMisto(id, misto);
+  if (!res.ok) { alert('Nepovedlo se to uložit, zkus to znovu.'); return; }
+  renderShiftTable();
+  renderRzMesic();
+}
+function rzToggleStation(id){
+  var s = SCHEDULE.find(function(x){return x.id===id;});
+  if (!s) return;
+  rzNastavMisto(id, s.mistoId==='station' ? 'hlavni' : 'station');
 }
 async function removeShift(id){
   if (!confirm('Smazat tuhle směnu?')) return;
@@ -1109,8 +1148,12 @@ function renderShiftTable(){
       return (wa?wa.jmeno:'').localeCompare(wb?wb.jmeno:'', 'cs');
     }).forEach(function(sm){
       var w = getWorkerById(sm.workerId), c = rzWorkerColor(sm.workerId);
-      html += '<span class="sh-chip" style="background:'+c[0]+';color:'+c[1]+';">'+prEsc(w?w.jmeno:'?')+
+      var mInfo = getSmenaMistoInfo(venue, sm.mistoId);
+      var maStationVolbu = !!getSmenaMistaForVenue(venue);
+      html += '<span class="sh-chip" style="background:'+c[0]+';color:'+c[1]+';'+(mInfo?'box-shadow:inset 0 0 0 2px '+c[1]+';':'')+'">'+prEsc(w?w.jmeno:'?')+
+        (mInfo ? ' <span class="sh-note" style="font-weight:700;">'+mInfo.ikona+' '+prEsc(mInfo.label)+'</span>' : '')+
         (sm.poznamka ? ' <span class="sh-note">· '+prEsc(sm.poznamka)+'</span>' : '')+
+        (maStationVolbu ? '<button type="button" class="sh-btn" title="'+(mInfo?'Sundat ze Station (zpět do Café)':'Přiřadit na Station')+'" aria-label="Station" onclick="rzToggleStation('+sm.id+')" style="'+(mInfo?'opacity:1;':'')+'">🥐</button>' : '')+
         '<button type="button" class="sh-btn" title="Upravit poznámku" aria-label="Upravit poznámku" onclick="editShiftPoznamkaById('+sm.id+')">✎</button>'+
         '<button type="button" class="sh-btn" title="Smazat směnu" aria-label="Smazat směnu" onclick="removeShift('+sm.id+')">✕</button></span>';
     });
@@ -1707,11 +1750,23 @@ function renderVyplaty(){
     var v = getVydelekVenue(w.id, venue.id);
     var vyplaceno = getVyplacenoVenue(venue.id, w.id);
     var zbyva = v.cisty;
-    return '<tr><td style="font-weight:500;">'+w.jmeno+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
+    var mp = getMesicniPrehled(w.id, venue.id);
+    return '<tr><td><a href="#" style="font-weight:600;color:inherit;text-decoration:underline dotted;" title="Měsíce a výplaty – detail" onclick="mpOpenWorker('+w.id+','+venue.id+');return false;">'+w.jmeno+'</a>'+MP.monthChips(mp, 4)+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td style="color:var(--text-muted);">'+(v.uctyDluh?v.uctyDluh+' Kč':'0 Kč')+'</td><td>'+(v.zalohy?'−'+v.zalohy:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td style="font-weight:600;">'+zbyva.toLocaleString('cs-CZ')+' Kč</td>'+
       '<td><button class="btn btn-sm btn-primary" onclick="openVyplatitModalVenue('+w.id+','+zbyva+')">💰 Vyplatit</button></td></tr>';
   }).join('');
+  renderMesicniSouhrnVenue();
+}
+// Souhrn celkových výplat po měsících za celou provozovnu (součet všech brigádníků).
+function renderMesicniSouhrnVenue(){
+  var el = document.getElementById('mp-souhrn');
+  if (!el || !window.MP) return;
+  var ids = {};
+  getWorkersForVenue(venue.id).forEach(function(w){ ids[w.id] = true; });
+  PRACOVNI_DNY.forEach(function(p){ if (p.venue_id===venue.id) ids[p.workerId] = true; });
+  VYPLATY.forEach(function(v){ if (v.venue_id===venue.id) ids[v.workerId] = true; });
+  el.innerHTML = MP.souhrnTable(getMesicniSouhrn(Object.keys(ids).map(Number), venue.id));
 }
 
 // ── VYPLATIT (modál - jde v něm upravit částku před uložením + vidět/upravit/smazat historii) ──
@@ -1750,7 +1805,8 @@ function renderVyplMesicniRozpadVenue(workerId){
     map[key].hruby += d.hruby;
     map[key].dny.push(d.datum);
   });
-  if (!vyplVMesice.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Žádná nevyplacená mzda - částku níž můžeš zapsat ručně (např. jen vyrovnání zálohy).</p>'; vyplVRecalc(); return; }
+  var uzVyplaceno = vyplVVyplaceneMesiceHtml(workerId);
+  if (!vyplVMesice.length) { el.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">Žádná nevyplacená mzda - částku níž můžeš zapsat ručně (např. jen vyrovnání zálohy).</p>'+uzVyplaceno; vyplVRecalc(); return; }
   el.innerHTML = '<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">ZA KTERÉ MĚSÍCE VYPLÁCÍŠ</p>'+
     vyplVMesice.map(function(m,i){
       return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--sand-dark);cursor:pointer;">'+
@@ -1758,8 +1814,22 @@ function renderVyplMesicniRozpadVenue(workerId){
         '<span style="flex:1;">'+m.label+' <span style="color:var(--text-muted);">('+m.hodiny+'h)</span></span>'+
         '<span style="font-weight:600;min-width:80px;text-align:right;">'+Math.round(m.hruby).toLocaleString('cs-CZ')+' Kč</span>'+
         '</label>';
-    }).join('');
+    }).join('') + uzVyplaceno;
   vyplVRecalc();
+}
+// Už vyplacené měsíce (jen k nahlédnutí, bez zaškrtávátka) - ať admin vidí celý
+// obraz hned v modálu, ne jen měsíce, co zrovna čekají na výplatu.
+function vyplVVyplaceneMesiceHtml(workerId){
+  var mp = getMesicniPrehled(workerId, venue.id);
+  var hotove = mp.mesice.filter(function(m){ return m.stav==='vyplaceno' && m.dny.length; });
+  if (!hotove.length) return '';
+  return '<p style="font-size:11px;font-weight:600;color:var(--text-muted);margin:10px 0 4px;">UŽ VYPLACENÉ MĚSÍCE</p>'+
+    hotove.map(function(m){
+      var kdy = m.vyplaty.map(function(v){ return formatDate(v.datum); }).filter(function(x,i,a){ return a.indexOf(x)===i; }).join(', ');
+      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--sand-dark);opacity:.85;">'+
+        '<span style="flex:1;">✓ '+m.label+' <span style="color:var(--text-muted);">('+m.hodiny+'h'+(kdy?' · vyplaceno '+kdy:'')+')</span></span>'+
+        '<span style="font-weight:600;min-width:80px;text-align:right;color:#14652b;">'+Math.round(m.vyplaceno).toLocaleString('cs-CZ')+' Kč</span></div>';
+    }).join('');
 }
 // Přepočítá částku k výplatě podle zaškrtnutých měsíců (penalizace/zálohy se
 // odečítají vždycky celé, bez ohledu na to, kolik měsíců je zaškrtnutých -

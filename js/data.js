@@ -1211,9 +1211,12 @@ var WORKER_VENUES = []; // {id, worker_id, venue_id} - brigádník může mít i
 var WORKER_DOSTUPNOST = []; // {id, worker_id, venue_id, dny} - dostupnost zvlášť pro každou "zaklad" provozovnu
 var STANOVISTE_ZAKLAD = {}; // venue_id -> [stanoviste]
 
+// Provozovny, které se v appce nezobrazují jako samostatné (viz níže "Station").
+// Řádek zůstává v databázi nedotčený, jen se nenačítá do seznamu provozoven.
+var VENUE_SKRYTE_SLUGY = ['andel-station'];
 async function loadVenues() {
   try { var rb = await db.from('businesses').select('*').order('poradi'); if (rb.error) throw rb.error; BUSINESSES = rb.data || []; LOAD_OK.businesses = true; } catch(e) { BUSINESSES = []; LOAD_OK.businesses = false; console.error('Načtení "businesses" selhalo:', e); }
-  try { var rv = await db.from('venues').select('*').order('poradi'); if (rv.error) throw rv.error; VENUES = rv.data || []; LOAD_OK.venues = true; } catch(e) { VENUES = []; LOAD_OK.venues = false; console.error('Načtení "venues" selhalo:', e); }
+  try { var rv = await db.from('venues').select('*').order('poradi'); if (rv.error) throw rv.error; VENUES = (rv.data || []).filter(function(v){ return VENUE_SKRYTE_SLUGY.indexOf(v.slug)===-1; }); LOAD_OK.venues = true; } catch(e) { VENUES = []; LOAD_OK.venues = false; console.error('Načtení "venues" selhalo:', e); }
   try { var rav = await db.from('admin_venues').select('*'); if (rav.error) throw rav.error; ADMIN_VENUES = rav.data || []; LOAD_OK.admin_venues = true; } catch(e) { ADMIN_VENUES = []; LOAD_OK.admin_venues = false; console.error('Načtení "admin_venues" selhalo:', e); }
   try { var rwv = await db.from('worker_venues').select('*'); if (rwv.error) throw rwv.error; WORKER_VENUES = rwv.data || []; LOAD_OK.worker_venues = true; } catch(e) { WORKER_VENUES = []; LOAD_OK.worker_venues = false; console.error('Načtení "worker_venues" selhalo:', e); }
   try { var rwd = await db.from('worker_dostupnost').select('*'); if (rwd.error) throw rwd.error; WORKER_DOSTUPNOST = rwd.data || []; LOAD_OK.worker_dostupnost = true; } catch(e) { WORKER_DOSTUPNOST = []; LOAD_OK.worker_dostupnost = false; console.error('Načtení "worker_dostupnost" selhalo:', e); }
@@ -1262,8 +1265,51 @@ function getChybejiciCasyVenue(workerId, venueId) {
 function getScheduleForVenue(venueId) {
   return SCHEDULE.filter(function(s){return s.venue_id===venueId;});
 }
+// "Místa" na směně uvnitř jedné provozovny (rozpis). Anděl Station není
+// samostatná pobočka, ale jen další posezení u Café se společnou pokladnou -
+// v rozpisu Café se na ni proto jen přiřadí jeden člověk na den (směna dostane
+// mistoId 'station'), tržby a pokladna zůstávají jedny.
+var SMENA_MISTA_VENUE = {
+  'andel-cafe': [
+    { mistoId:'hlavni',  label:'Café',    ikona:'☕' },
+    { mistoId:'station', label:'Station', ikona:'🥐' }
+  ]
+};
+function getSmenaMistaForVenue(venue) {
+  return (venue && SMENA_MISTA_VENUE[venue.slug]) || null;
+}
+// Štítek místa směny (např. 'station' -> 'Station'); pro obyčejnou směnu (hlavni) null.
+function getSmenaMistoInfo(venue, mistoId) {
+  var mista = getSmenaMistaForVenue(venue);
+  if (!mista || !mistoId || mistoId==='hlavni') return null;
+  return mista.find(function(m){ return m.mistoId===mistoId; }) || null;
+}
+// Přiřadí směnu na dané místo (Station), nebo ji z něj zase sundá. Na Station
+// je vždy nejvýš jeden člověk za den - pokud tam už někdo je, vrací se jeho
+// směna v "nahrazeno" a ten člověk se vrátí na obyčejnou směnu v Café.
+async function setSmenaMisto(shiftId, mistoId) {
+  var s = SCHEDULE.find(function(x){return x.id===shiftId;});
+  if (!s) return { ok:false, error:'Směna nenalezena' };
+  var zmeny = [{ s:s, puvodni:s.mistoId }];
+  var nahrazeno = null;
+  if (mistoId && mistoId!=='hlavni') {
+    SCHEDULE.forEach(function(o){
+      if (o.id!==s.id && o.venue_id===s.venue_id && o.datum===s.datum && o.mistoId===mistoId) {
+        zmeny.push({ s:o, puvodni:o.mistoId }); o.mistoId = 'hlavni'; nahrazeno = o;
+      }
+    });
+  }
+  s.mistoId = mistoId || 'hlavni';
+  var res = await saveSchedule();
+  if (!res.ok) { zmeny.forEach(function(z){ z.s.mistoId = z.puvodni; }); return res; }
+  return { ok:true, row:s, nahrazeno:nahrazeno };
+}
+// Kdo je v daný den na Station (směna) - nebo null.
+function getStationSmena(venueId, datum) {
+  return SCHEDULE.find(function(s){ return s.venue_id===venueId && s.datum===datum && s.mistoId==='station'; }) || null;
+}
 async function addShiftVenue(venueId, workerId, stanovisteId, datum, poznamka) {
-  var existing = SCHEDULE.find(function(s){return s.venue_id===venueId && s.workerId===workerId && s.datum===datum && s.mistoId===stanovisteId;});
+  var existing = SCHEDULE.find(function(s){return s.venue_id===venueId && s.workerId===workerId && s.datum===datum;});
   if (existing) return { ok:true, row:existing };
   var row = { id:getNextId(SCHEDULE), workerId:workerId, datum:datum, mistoId:stanovisteId, venue_id:venueId, poznamka:poznamka||null };
   SCHEDULE.push(row);
@@ -1402,6 +1448,118 @@ function getVydelekVenueMonth(workerId, venueId, year, month) {
     if (pd.prichod && pd.odchod) hodiny += calcHodiny(pd.prichod, pd.odchod);
   });
   return { hodiny:roundH(hodiny), hruby:Math.round(hodiny*sazba) };
+}
+
+// ===================== MĚSÍČNÍ PŘEHLED (hodiny, mzda, výplaty po měsících) =====================
+// Jedno místo, odkud čerpá brigádník ("Moje měsíce a výplaty"), admin (měsíce
+// v tabulce před tlačítkem Vyplatit, souhrn celkových výplat) i Excel: pro
+// každý měsíc odpracované hodiny, hrubá mzda, co z toho je už vyplacené a
+// které výplaty k němu patří. venueId = id provozovny; null = Kosatka (starší
+// model bez venue_id, sazba podle stanoviště).
+// Výplata se k měsíci přiřazuje podle "dny", které pokrývá (výplata přes víc
+// měsíců se rozdělí podle hrubé mzdy dnů v každém měsíci); stará výplata bez
+// "dny" (nebo záloha) patří do měsíce svého data.
+function mesicKlic(datum) { return String(datum||'').slice(0,7); }
+function mesicPopisek(key) {
+  var N = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  var m = parseInt(String(key).slice(5,7),10);
+  return (N[m-1]||String(key))+' '+String(key).slice(0,4);
+}
+function getMesicniPrehled(workerId, venueId) {
+  var legacy = (venueId==null);
+  var kosatkaId = null;
+  if (legacy) { var kv = (typeof getVenueBySlug==='function') ? getVenueBySlug('kosatka') : null; kosatkaId = kv ? kv.id : null; }
+  var today = todayStr();
+  var curKey = mesicKlic(today);
+  var jeVyplacenyDen;
+  if (legacy) { var ps = getVyplacenDny(workerId); jeVyplacenyDen = function(d){ return !!ps[d]; }; }
+  else { var pv = getVyplacenDnyVenue(workerId, venueId); jeVyplacenyDen = function(d){ return !!pv.set[d] || !!(pv.legacyCutoff && d<=pv.legacyCutoff); }; }
+  var sazbaVenue = legacy ? null : getSazbaVenue(workerId, venueId);
+  var mesice = {}, poradi = [];
+  function mesic(key) {
+    if (!mesice[key]) {
+      mesice[key] = { key:key, label:mesicPopisek(key), aktualni:key===curKey, hodiny:0, hruby:0, dny:[], vyplacenoHodiny:0, vyplacenoHruby:0,
+        nevyplacenoHodiny:0, nevyplacenoHruby:0, penalizace:0, vyplaceno:0, vyplaty:[], stav:'nic' };
+      poradi.push(key);
+    }
+    return mesice[key];
+  }
+  var seen = {}, denHruby = {};
+  PRACOVNI_DNY.forEach(function(pd){
+    if (pd.workerId!==workerId || pd.datum>today) return;
+    if (!legacy && pd.venue_id!==venueId) return;
+    if (!pd.prichod || !pd.odchod || seen[pd.datum]) return;
+    seen[pd.datum] = true;
+    var h = calcHodiny(pd.prichod, pd.odchod);
+    var hruby = legacy ? h*getSazba(getMistoProDen(workerId, pd.datum), workerId) : h*sazbaVenue;
+    hruby = Math.round(hruby);
+    var m = mesic(mesicKlic(pd.datum));
+    var zaplaceno = jeVyplacenyDen(pd.datum);
+    m.hodiny += h; m.hruby += hruby;
+    if (zaplaceno) { m.vyplacenoHodiny += h; m.vyplacenoHruby += hruby; } else { m.nevyplacenoHodiny += h; m.nevyplacenoHruby += hruby; }
+    m.dny.push({ datum:pd.datum, hodiny:roundH(h), hruby:hruby, vyplaceno:zaplaceno });
+    denHruby[pd.datum] = hruby;
+  });
+  var vyplaty = VYPLATY.filter(function(v){
+    if (v.workerId!==workerId) return false;
+    return legacy ? (!v.venue_id || v.venue_id===kosatkaId) : v.venue_id===venueId;
+  }).slice().sort(function(a,b){ return (b.datum||'').localeCompare(a.datum||'') || b.id-a.id; });
+  var vyplacenoCelkem = 0;
+  vyplaty.forEach(function(v){
+    vyplacenoCelkem += v.castka;
+    var dny = (v.dny||[]).filter(Boolean);
+    var podily = {};
+    if (dny.length) {
+      var soucet = 0; dny.forEach(function(d){ soucet += (denHruby[d]||0); });
+      dny.forEach(function(d){
+        var k = mesicKlic(d);
+        podily[k] = (podily[k]||0) + (soucet>0 ? v.castka*(denHruby[d]||0)/soucet : v.castka/dny.length);
+      });
+    } else { podily[mesicKlic(v.datum)] = v.castka; }
+    Object.keys(podily).forEach(function(k){
+      var m = mesic(k), podil = Math.round(podily[k]);
+      m.vyplaceno += podil;
+      m.vyplaty.push({ id:v.id, datum:v.datum, castka:v.castka, podil:podil, poznamka:v.poznamka||'', pocetDni:dny.length, rozdeleno:Object.keys(podily).length>1 });
+    });
+  });
+  PENALIZACE.forEach(function(pn){
+    if (pn.workerId!==workerId) return;
+    if (legacy ? (pn.venue_id && pn.venue_id!==kosatkaId) : pn.venue_id!==venueId) return;
+    mesic(mesicKlic(pn.datum)).penalizace += pn.castka;
+  });
+  var out = poradi.sort().reverse().map(function(k){
+    var m = mesice[k];
+    m.dny.sort(function(a,b){ return a.datum.localeCompare(b.datum); });
+    m.hodiny = roundH(m.hodiny); m.vyplacenoHodiny = roundH(m.vyplacenoHodiny); m.nevyplacenoHodiny = roundH(m.nevyplacenoHodiny);
+    if (!m.dny.length) m.stav = m.vyplaceno ? 'vyplaceno' : 'nic';
+    else if (!m.nevyplacenoHruby && !m.nevyplacenoHodiny) m.stav = 'vyplaceno';
+    else if (!m.vyplacenoHodiny) m.stav = 'ceka';
+    else m.stav = 'castecne';
+    return m;
+  });
+  var celkem = { hodiny:0, hruby:0, vyplaceno:vyplacenoCelkem, nevyplacenoHruby:0, nevyplacenoHodiny:0, penalizace:0 };
+  out.forEach(function(m){ celkem.hodiny += m.hodiny; celkem.hruby += m.hruby; celkem.nevyplacenoHruby += m.nevyplacenoHruby; celkem.nevyplacenoHodiny += m.nevyplacenoHodiny; celkem.penalizace += m.penalizace; });
+  celkem.hodiny = roundH(celkem.hodiny); celkem.nevyplacenoHodiny = roundH(celkem.nevyplacenoHodiny);
+  return { mesice:out, celkem:celkem, vyplaty:vyplaty };
+}
+// Souhrn za CELOU provozovnu po měsících (venueId null = Kosatka) - součet přes
+// všechny brigádníky; "radky" nese i rozpad po brigádnících pro tabulku.
+function getMesicniSouhrn(workerIds, venueId) {
+  var mapa = {}, klice = [], celkem = { hodiny:0, hruby:0, vyplaceno:0, nevyplacenoHruby:0, penalizace:0 };
+  workerIds.forEach(function(wid){
+    var mp = getMesicniPrehled(wid, venueId);
+    celkem.vyplaceno += mp.celkem.vyplaceno;
+    mp.mesice.forEach(function(m){
+      if (!mapa[m.key]) { mapa[m.key] = { key:m.key, label:m.label, aktualni:m.aktualni, brigadniku:0, hodiny:0, hruby:0, vyplaceno:0, nevyplacenoHruby:0, penalizace:0 }; klice.push(m.key); }
+      var r = mapa[m.key];
+      if (m.dny.length || m.vyplaceno) r.brigadniku++;
+      r.hodiny += m.hodiny; r.hruby += m.hruby; r.vyplaceno += m.vyplaceno; r.nevyplacenoHruby += m.nevyplacenoHruby; r.penalizace += m.penalizace;
+      celkem.hodiny += m.hodiny; celkem.hruby += m.hruby; celkem.nevyplacenoHruby += m.nevyplacenoHruby; celkem.penalizace += m.penalizace;
+    });
+  });
+  var radky = klice.sort().reverse().map(function(k){ var r = mapa[k]; r.hodiny = roundH(r.hodiny); return r; });
+  celkem.hodiny = roundH(celkem.hodiny);
+  return { radky:radky, celkem:celkem };
 }
 
 async function addUcetPolozkaVenue(workerId, venueId, stanovisteId, popis, castka) {
