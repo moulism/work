@@ -42,7 +42,23 @@
     '.mp-tbl td{padding:7px 8px;border-bottom:0.5px solid var(--sand-dark,#e3ddd0);}' +
     '.mp-tbl td.r,.mp-tbl th.r{text-align:right;}' +
     '.mp-tbl tr.tot td{font-weight:700;background:var(--sand,#f4f1ea);border-bottom:none;}' +
-    '@media(max-width:560px){.mp-m>summary{grid-template-columns:1fr;}.mp-m>summary .n{justify-content:flex-start;text-align:left;}}';
+    '@media(max-width:560px){.mp-m>summary{grid-template-columns:1fr;}.mp-m>summary .n{justify-content:flex-start;text-align:left;}}' +
+    // Na telefonu se široké tabulky (class mpr) přepnou na karty: jeden řádek = jedna karta, popisek vlevo, hodnota vpravo.
+    '@media(max-width:640px){' +
+    'table.mpr thead{display:none;}' +
+    'table.mpr{min-width:0 !important;}' +
+    'table.mpr td:first-child{position:static !important;box-shadow:none !important;}' +
+    '.schedule-wrap:has(table.mpr)::after{display:none !important;}' +
+    'table.mpr,table.mpr tbody,table.mpr tr,table.mpr td{display:block;width:100%;box-sizing:border-box;}' +
+    'table.mpr tr{border:1px solid var(--sand-dark,#e3ddd0);border-radius:12px;margin-bottom:10px;padding:8px 12px;background:var(--white,#fff);}' +
+    'table.mpr tr.tot{background:var(--sand,#f4f1ea);}' +
+    'table.mpr td{display:flex;justify-content:space-between;align-items:center;gap:12px;border:none !important;padding:4px 0 !important;text-align:right;background:none !important;}' +
+    'table.mpr td::before{content:attr(data-l);font-size:11.5px;font-weight:600;color:var(--text-muted,#6b7280);text-align:left;flex:0 0 auto;}' +
+    'table.mpr td[data-l=""]{display:block;text-align:left;}' +
+    'table.mpr td[data-l=""]::before{display:none;}' +
+    'table.mpr td.mp-act .btn{width:100%;margin-top:4px;}' +
+    '.mp-m>summary .t{font-size:15px;}' +
+    '}';
 
   function injectCss() {
     if (document.getElementById('mp-css')) return;
@@ -121,13 +137,13 @@
   function souhrnTable(s) {
     injectCss();
     if (!s.radky.length) return '<div style="font-size:13px;color:var(--text-muted,#6b7280);">Zatím žádné hodiny ani výplaty.</div>';
-    var html = '<div class="schedule-wrap"><table class="mp-tbl"><thead><tr><th>Měsíc</th><th class="r">Brigádníků</th><th class="r">Hodin</th><th class="r">Hrubá mzda</th><th class="r">Vyplaceno</th><th class="r">Čeká na výplatu</th></tr></thead><tbody>';
+    var html = '<div class="schedule-wrap"><table class="mp-tbl mpr"><thead><tr><th>Měsíc</th><th class="r">Brigádníků</th><th class="r">Hodin</th><th class="r">Hrubá mzda</th><th class="r">Vyplaceno</th><th class="r">Čeká na výplatu</th></tr></thead><tbody>';
     s.radky.forEach(function (r) {
-      html += '<tr><td><b>' + esc(r.label) + '</b>' + (r.aktualni ? ' <span class="mp-b ted">probíhá</span>' : '') + '</td><td class="r">' + r.brigadniku + '</td><td class="r">' + esc(hh(r.hodiny)) + '</td><td class="r">' + kc(r.hruby) +
-        '</td><td class="r" style="color:#14652b;font-weight:600;">' + kc(r.vyplaceno) + '</td><td class="r" style="color:' + (r.nevyplacenoHruby ? '#8a3a10' : 'inherit') + ';font-weight:600;">' + (r.nevyplacenoHruby ? kc(r.nevyplacenoHruby) : '✓ nic') + '</td></tr>';
+      html += '<tr><td data-l=""><b>' + esc(r.label) + '</b>' + (r.aktualni ? ' <span class="mp-b ted">probíhá</span>' : '') + '</td><td class="r" data-l="Brigádníků">' + r.brigadniku + '</td><td class="r" data-l="Hodin">' + esc(hh(r.hodiny)) + '</td><td class="r" data-l="Hrubá mzda">' + kc(r.hruby) +
+        '</td><td class="r" data-l="Vyplaceno" style="color:#14652b;font-weight:600;">' + kc(r.vyplaceno) + '</td><td class="r" data-l="Čeká na výplatu" style="color:' + (r.nevyplacenoHruby ? '#8a3a10' : 'inherit') + ';font-weight:600;">' + (r.nevyplacenoHruby ? kc(r.nevyplacenoHruby) : '✓ nic') + '</td></tr>';
     });
     var c = s.celkem;
-    html += '<tr class="tot"><td>Celkem</td><td class="r"></td><td class="r">' + esc(hh(c.hodiny)) + '</td><td class="r">' + kc(c.hruby) + '</td><td class="r">' + kc(c.vyplaceno) + '</td><td class="r">' + kc(c.nevyplacenoHruby) + '</td></tr>';
+    html += '<tr class="tot"><td data-l="">Celkem</td><td class="r" data-l="Hodin">' + esc(hh(c.hodiny)) + '</td><td class="r" data-l="Hrubá mzda">' + kc(c.hruby) + '</td><td class="r" data-l="Vyplaceno">' + kc(c.vyplaceno) + '</td><td class="r" data-l="Čeká na výplatu">' + kc(c.nevyplacenoHruby) + '</td></tr>';
     return html + '</tbody></table></div><div class="mp-note">Hrubá mzda = odpracované hodiny × sazba. Vyplaceno = skutečně zapsané výplaty (po odečtení penalizací, záloh a účtů), proto se může od hrubé mzdy lišit.</div>';
   }
 
@@ -154,19 +170,18 @@
     }).filter(function (r) { return r.m && (r.m.dny.length || r.m.vyplaceno); })
       .sort(function (a, b) { return a.jmeno.localeCompare(b.jmeno, 'cs'); });
     var t = { h: 0, hr: 0, pen: 0, vyp: 0, cek: 0 };
-    var html = '<div class="schedule-wrap"><table class="mp-tbl"><thead><tr><th>Brigádník</th><th class="r">Hodin</th><th class="r">Hrubá mzda</th><th class="r">Penalizace</th><th class="r">Vyplaceno</th><th class="r">Čeká</th><th>Stav</th></tr></thead><tbody>';
+    var html = '<div class="schedule-wrap"><table class="mp-tbl mpr"><thead><tr><th>Brigádník</th><th class="r">Hodin</th><th class="r">Hrubá mzda</th><th class="r">Penalizace</th><th class="r">Vyplaceno</th><th class="r">Čeká</th></tr></thead><tbody>';
     radky.forEach(function (r) {
       var m = r.m;
       t.h += m.hodiny; t.hr += m.hruby; t.pen += m.penalizace; t.vyp += m.vyplaceno; t.cek += m.nevyplacenoHruby;
       var kdy = m.vyplaty.map(function (v) { return dat(v.datum); }).filter(function (x, i, a) { return a.indexOf(x) === i; }).join(', ');
-      html += '<tr><td><a href="#" style="font-weight:600;color:inherit;text-decoration:underline dotted;" onclick="mpOpenWorker(' + r.id + ',' + (venueId == null ? 'null' : venueId) + ');return false;">' + esc(r.jmeno) + '</a></td>' +
-        '<td class="r">' + esc(hh(m.hodiny)) + '</td><td class="r">' + kc(m.hruby) + '</td>' +
-        '<td class="r" style="color:' + (m.penalizace ? '#a12b2b' : 'inherit') + ';">' + (m.penalizace ? '−' + kc(m.penalizace) : '–') + '</td>' +
-        '<td class="r" style="color:#14652b;font-weight:600;">' + kc(m.vyplaceno) + (kdy ? '<div style="font-size:10.5px;font-weight:400;color:var(--text-muted,#6b7280);">' + esc(kdy) + '</div>' : '') + '</td>' +
-        '<td class="r" style="color:' + (m.nevyplacenoHruby ? '#8a3a10' : 'inherit') + ';font-weight:600;">' + (m.nevyplacenoHruby ? kc(m.nevyplacenoHruby) : '✓ nic') + '</td>' +
-        '<td>' + stavBadge(m) + '</td></tr>';
+      html += '<tr><td data-l=""><a href="#" style="font-weight:600;font-size:14px;color:inherit;text-decoration:underline dotted;" onclick="mpOpenWorker(' + r.id + ',' + (venueId == null ? 'null' : venueId) + ');return false;">' + esc(r.jmeno) + '</a> <span style="margin-left:4px;">' + stavBadge(m) + '</span></td>' +
+        '<td class="r" data-l="Hodin">' + esc(hh(m.hodiny)) + '</td><td class="r" data-l="Hrubá mzda">' + kc(m.hruby) + '</td>' +
+        '<td class="r" data-l="Penalizace" style="color:' + (m.penalizace ? '#a12b2b' : 'inherit') + ';">' + (m.penalizace ? '−' + kc(m.penalizace) : '–') + '</td>' +
+        '<td class="r" data-l="Vyplaceno" style="color:#14652b;font-weight:600;"><span>' + kc(m.vyplaceno) + (kdy ? '<div style="font-size:10.5px;font-weight:400;color:var(--text-muted,#6b7280);">' + esc(kdy) + '</div>' : '') + '</span></td>' +
+        '<td class="r" data-l="Čeká" style="color:' + (m.nevyplacenoHruby ? '#8a3a10' : 'inherit') + ';font-weight:600;">' + (m.nevyplacenoHruby ? kc(m.nevyplacenoHruby) : '✓ nic') + '</td></tr>';
     });
-    html += '<tr class="tot"><td>Celkem za ' + esc(klice[po.key]) + '</td><td class="r">' + esc(hh(t.h)) + '</td><td class="r">' + kc(t.hr) + '</td><td class="r">' + (t.pen ? '−' + kc(t.pen) : '–') + '</td><td class="r">' + kc(t.vyp) + '</td><td class="r">' + kc(t.cek) + '</td><td></td></tr>';
+    html += '<tr class="tot"><td data-l="">Celkem za ' + esc(klice[po.key]) + '</td><td class="r" data-l="Hodin">' + esc(hh(t.h)) + '</td><td class="r" data-l="Hrubá mzda">' + kc(t.hr) + '</td><td class="r" data-l="Penalizace">' + (t.pen ? '−' + kc(t.pen) : '–') + '</td><td class="r" data-l="Vyplaceno">' + kc(t.vyp) + '</td><td class="r" data-l="Čeká">' + kc(t.cek) + '</td></tr>';
     tblEl.innerHTML = html + '</tbody></table></div><div class="mp-note">Klikni na jméno a uvidíš všechny měsíce a jednotlivé dny toho brigádníka. Vyplaceno může být nižší než hrubá mzda o penalizace, zálohy nebo účty odečtené při výplatě.</div>';
   }
   function vyberMesic(k) { po.key = k; if (po.btns) poLidech(po.btns, po.tbl, po.ids, po.venueId); }

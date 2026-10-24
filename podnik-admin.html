@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Správa provozovny</title>
   <link rel="stylesheet" href="css/style.css"/>
-  <link rel="stylesheet" href="css/design.css?v=1"/>
+  <link rel="stylesheet" href="css/design.css?v=3"/>
   <link rel="icon" href="icons/icon-192.png" type="image/png"/>
   <link rel="apple-touch-icon" href="icons/icon-180.png"/>
 </head>
@@ -205,7 +205,7 @@
       <div class="card-title ex-title"><span>Přehled výdělků</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('mzdy', 'all')">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Po kliknutí na "Vyplatit" se hodiny i hrubá mzda od té chvíle počítají znovu od nuly - "Zbývá" je vždycky jen to, co je dlužné od poslední výplaty. Sloupec "Účty" je jen informativní dluh za odebrané zboží - výplata ho sama nemění (brigádník si účet platí zvlášť v hotovosti), ale při výplatě můžeš zaškrtnout "Odečíst účty z výplaty" - odečtené položky se pak označí jako zaplacené.</p>
       <div class="schedule-wrap">
-        <table class="schedule-table" style="width:100%">
+        <table class="schedule-table mpr" style="width:100%">
           <thead><tr><th>Brigádník / měsíce</th><th>Hodin (od výplaty)</th><th>Hrubý (od výplaty)</th><th>Účty</th><th>Zálohy</th><th>Vyplaceno celkem</th><th>Zbývá</th><th></th></tr></thead>
           <tbody id="vyplaty-tbody"></tbody>
         </table>
@@ -523,7 +523,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=19"></script>
 <script src="js/export.js?v=1"></script>
-<script src="js/mesice.js?v=2"></script>
+<script src="js/mesice.js?v=4"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1757,10 +1757,10 @@ function renderVyplaty(){
     var vyplaceno = getVyplacenoVenue(venue.id, w.id);
     var zbyva = v.cisty;
     var mp = getMesicniPrehled(w.id, venue.id);
-    return '<tr><td><a href="#" style="font-weight:600;color:inherit;text-decoration:underline dotted;" title="Měsíce a výplaty – detail" onclick="mpOpenWorker('+w.id+','+venue.id+');return false;">'+w.jmeno+'</a>'+MP.monthChips(mp, 4)+'</td><td>'+v.hodiny+'h</td><td>'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
-      '<td style="color:var(--text-muted);">'+(v.uctyDluh?v.uctyDluh+' Kč':'0 Kč')+'</td><td>'+(v.zalohy?'−'+v.zalohy:'0')+' Kč</td><td>'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
-      '<td style="font-weight:600;">'+zbyva.toLocaleString('cs-CZ')+' Kč</td>'+
-      '<td><button class="btn btn-sm btn-primary" onclick="openVyplatitModalVenue('+w.id+','+zbyva+')">💰 Vyplatit</button></td></tr>';
+    return '<tr><td data-l=""><a href="#" style="font-weight:600;color:inherit;text-decoration:underline dotted;" title="Měsíce a výplaty – detail" onclick="mpOpenWorker('+w.id+','+venue.id+');return false;">'+w.jmeno+'</a>'+MP.monthChips(mp, 4)+'</td><td data-l="Hodin (od výplaty)">'+v.hodiny+'h</td><td data-l="Hrubý (od výplaty)">'+v.hruby.toLocaleString('cs-CZ')+' Kč</td>'+
+      '<td data-l="Účty" style="color:var(--text-muted);">'+(v.uctyDluh?v.uctyDluh+' Kč':'0 Kč')+'</td><td data-l="Zálohy">'+(v.zalohy?'−'+v.zalohy:'0')+' Kč</td><td data-l="Vyplaceno celkem">'+vyplaceno.toLocaleString('cs-CZ')+' Kč</td>'+
+      '<td data-l="Zbývá" style="font-weight:600;">'+zbyva.toLocaleString('cs-CZ')+' Kč</td>'+
+      '<td data-l="" class="mp-act"><button class="btn btn-sm btn-primary" onclick="openVyplatitModalVenue('+w.id+','+zbyva+')">💰 Vyplatit</button></td></tr>';
   }).join('');
   renderMesicniSouhrnVenue();
 }

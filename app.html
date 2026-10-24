@@ -139,15 +139,14 @@
     <!-- Výdělek -->
     <div class="card">
       <div class="card-title">💰 Tvůj výdělek</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--text-muted);margin-bottom:6px;">OD POSLEDNÍ VÝPLATY (CELKEM)</div>
       <div id="vydelek-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;"></div>
       <p style="font-size:11px;color:var(--text-muted);margin-top:10px;" id="vydelek-note">Počítá se z reálně odpracovaných hodin (příchod–odchod).</p>
-    </div>
-
-    <!-- Měsíce a výplaty -->
-    <div class="card">
-      <div class="card-title">📅 Moje měsíce a výplaty</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc vidíš odpracované hodiny, hrubou mzdu a kdy ti byla vyplacená – ať si to můžeš sám ověřit. Klikni na měsíc a uvidíš i jednotlivé dny.</p>
-      <div id="mesice-wrap"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--sand-dark);">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;">📅 PO MĚSÍCÍCH A VÝPLATY</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc vidíš odpracované hodiny, hrubou mzdu a kdy ti byla vyplacená – ať si to můžeš sám ověřit. Klikni na měsíc a uvidíš i jednotlivé dny.</p>
+        <div id="mesice-wrap"></div>
+      </div>
     </div>
 
     <!-- Dnes na stanovištích -->
@@ -551,7 +550,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=19"></script>
-<script src="js/mesice.js?v=2"></script>
+<script src="js/mesice.js?v=4"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>

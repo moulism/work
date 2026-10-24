@@ -367,3 +367,18 @@ details.rz-chybi summary { cursor: pointer; font-size: 14px; color: var(--red); 
   .bw-pills { grid-column: 2 / 4; grid-row: 2; }
   .bw-edit { grid-column: 3; grid-row: 1; }
 }
+
+/* Rozpis na telefonu: den nad bublinami, bubliny se zalomí a nevyjedou z obrazovky */
+@media (max-width: 640px) {
+  .rz-table { min-width: 0 !important; }
+  .rz-table td:first-child { position: static !important; box-shadow: none !important; }
+  .schedule-wrap:has(.rz-table)::after { display: none !important; }
+  .rz-table thead { display: none; }
+  .rz-table, .rz-table tbody, .rz-table tr, .rz-table td { display: block; width: 100%; box-sizing: border-box; }
+  .rz-table tr { border-bottom: 1px solid var(--sand-dark); padding: 8px 4px; }
+  .rz-table td { border: none; padding: 2px 0; }
+  .rz-table .rz-date { padding-top: 2px; font-size: 14px; }
+  .rz-table td:not(.rz-date) { display: flex; flex-wrap: wrap; gap: 4px 0; }
+  .sh-chip { max-width: 100%; flex-wrap: wrap; row-gap: 0; }
+  .sh-chip .sh-note { overflow-wrap: anywhere; }
+}

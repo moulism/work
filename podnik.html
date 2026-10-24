@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Portál</title>
   <link rel="stylesheet" href="css/style.css"/>
-  <link rel="stylesheet" href="css/design.css?v=1"/>
+  <link rel="stylesheet" href="css/design.css?v=3"/>
   <link rel="manifest" href="manifest.json"/>
   <meta name="theme-color" content="#2b7a9e"/>
   <link rel="icon" href="icons/icon-192.png" type="image/png"/>
@@ -64,14 +64,14 @@
 
     <div class="card" id="card-vydelek">
       <div class="card-title">💰 Tvůj výdělek</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--text-muted);margin-bottom:6px;">OD POSLEDNÍ VÝPLATY (CELKEM)</div>
       <div id="vydelek-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;"></div>
       <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">Počítá se z reálně odpracovaných hodin (příchod–odchod).</p>
-    </div>
-
-    <div class="card" id="card-mesice">
-      <div class="card-title">📅 Moje měsíce a výplaty</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc vidíš odpracované hodiny, hrubou mzdu a kdy ti byla vyplacená – ať si to můžeš sám ověřit. Klikni na měsíc a uvidíš i jednotlivé dny.</p>
-      <div id="mesice-wrap"></div>
+      <div id="card-mesice" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--sand-dark);">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;">📅 PO MĚSÍCÍCH A VÝPLATY</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc vidíš odpracované hodiny, hrubou mzdu a kdy ti byla vyplacená – ať si to můžeš sám ověřit. Klikni na měsíc a uvidíš i jednotlivé dny.</p>
+        <div id="mesice-wrap"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -224,7 +224,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=19"></script>
-<script src="js/mesice.js?v=2"></script>
+<script src="js/mesice.js?v=4"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
