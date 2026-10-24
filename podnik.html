@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Portál</title>
-  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/style.css?v=2"/>
   <link rel="stylesheet" href="css/design.css?v=3"/>
   <link rel="manifest" href="manifest.json"/>
   <meta name="theme-color" content="#2b7a9e"/>
@@ -69,7 +69,7 @@
       <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">Počítá se z reálně odpracovaných hodin (příchod–odchod).</p>
       <div id="card-mesice" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--sand-dark);">
         <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--text-muted);margin-bottom:4px;">📅 PO MĚSÍCÍCH A VÝPLATY</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc vidíš odpracované hodiny, hrubou mzdu a kdy ti byla vyplacená – ať si to můžeš sám ověřit. Klikni na měsíc a uvidíš i jednotlivé dny.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Klikni na měsíc a uvidíš za něj hodiny, hrubou mzdu, odečty, čistou mzdu a kdy ti byla vyplacená – ať si to můžeš sám ověřit. „Všechny měsíce dohromady“ ukáže součet.</p>
         <div id="mesice-wrap"></div>
       </div>
     </div>
@@ -224,7 +224,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=20"></script>
-<script src="js/mesice.js?v=5"></script>
+<script src="js/mesice.js?v=6"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -454,7 +454,7 @@ function renderVydelek(){
 function renderMesice(){
   var el = document.getElementById('mesice-wrap');
   if (!el || !window.MP) return;
-  el.innerHTML = MP.workerCard(getMesicniPrehled(currentUser.id, currentVenue.id), { otevrit:1 });
+  MP.mountWorker(el, getMesicniPrehled(currentUser.id, currentVenue.id));
 }
 
 // Moje směny: nahoře to, co mě teprve čeká (s odpočtem "dnes/zítra"), minulé směny

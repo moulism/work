@@ -606,3 +606,14 @@ textarea.form-input {
 @media (max-width: 600px) {
   .scroll-top-btn { right: 12px; bottom: 78px; } /* nad případnou spodní mobilní navigaci/tab bar */
 }
+
+/* iOS: datumová/časová pole mají vlastní minimální šířku a přetékají z karty.
+   appearance:none + min-width:0 je drží uvnitř; grid potomci se můžou zmenšit. */
+input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"] {
+  -webkit-appearance: none; appearance: none;
+  display: block; width: 100%; min-width: 0; max-width: 100%;
+  min-height: 44px; text-align: left; line-height: 1.2;
+}
+input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: left; min-width: 0; }
+.form-input, .form-select { min-width: 0; max-width: 100%; }
+.card div[style*="grid-template-columns"] > * { min-width: 0; }

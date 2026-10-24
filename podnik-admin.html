@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Správa provozovny</title>
-  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/style.css?v=2"/>
   <link rel="stylesheet" href="css/design.css?v=3"/>
   <link rel="icon" href="icons/icon-192.png" type="image/png"/>
   <link rel="apple-touch-icon" href="icons/icon-180.png"/>
@@ -191,15 +191,9 @@
   <!-- VÝPLATY -->
   <div class="page" id="tab-vyplaty">
     <div class="card" id="mp-souhrn-card">
-      <div class="card-title">📊 Celkové výplaty po měsících</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Za každý měsíc: kolik se odpracovalo, kolik je to hrubé mzdy, kolik už je vyplaceno a kolik ještě čeká. Rozpad po brigádnících je v tabulce níž (klikni na jméno).</p>
+      <div class="card-title">📊 Výplaty po měsících</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Vyber měsíc a uvidíš za něj všechno: hodiny, hrubou mzdu, penalizace, zálohy, čistou mzdu, co je vyplaceno a co čeká – celkem i po lidech. „Všechny měsíce dohromady“ ukáže součet a rozpad po měsících.</p>
       <div id="mp-souhrn"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">👥 Výplaty po lidech za vybraný měsíc</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Vyber měsíc a uvidíš každého brigádníka zvlášť – hodiny, hrubou mzdu, penalizace, co mu bylo vyplaceno a co ještě čeká (ne součet za celou dobu).</p>
-      <div id="mp-mesic-btns"></div>
-      <div id="mp-mesic-tbl"></div>
     </div>
     <div class="card">
       <div class="card-title ex-title"><span>Přehled výdělků</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('mzdy', 'all')">⬇ Excel</button></div>
@@ -523,7 +517,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js?v=20"></script>
 <script src="js/export.js?v=1"></script>
-<script src="js/mesice.js?v=5"></script>
+<script src="js/mesice.js?v=6"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1773,8 +1767,7 @@ function renderMesicniSouhrnVenue(){
   PRACOVNI_DNY.forEach(function(p){ if (p.venue_id===venue.id) ids[p.workerId] = true; });
   VYPLATY.forEach(function(v){ if (v.venue_id===venue.id) ids[v.workerId] = true; });
   var idList = Object.keys(ids).map(Number);
-  el.innerHTML = MP.souhrnTable(getMesicniSouhrn(idList, venue.id));
-  MP.poLidech(document.getElementById('mp-mesic-btns'), document.getElementById('mp-mesic-tbl'), idList, venue.id);
+  MP.mountVenue(el, idList, venue.id);
 }
 
 // ── VYPLATIT (modál - jde v něm upravit částku před uložením + vidět/upravit/smazat historii) ──
