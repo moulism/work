@@ -81,6 +81,12 @@
       <div id="mp-souhrn"></div>
     </div>
     <div class="card">
+      <div class="card-title">👥 Výplaty po lidech za vybraný měsíc</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Vyber měsíc a uvidíš každého brigádníka zvlášť – hodiny, hrubou mzdu, penalizace, co mu bylo vyplaceno a co ještě čeká (ne součet za celou dobu).</p>
+      <div id="mp-mesic-btns"></div>
+      <div id="mp-mesic-tbl"></div>
+    </div>
+    <div class="card">
       <div class="card-title ex-title"><span>Přehled výdělků (reálné hodiny z příchodu/odchodu)</span><button type="button" class="btn btn-sm btn-secondary ex-btn" title="Stáhnout tuhle sekci jako Excel (.xlsx)" onclick="exportReport('mzdy', 'all')">⬇ Excel</button></div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Restaurace = 200 Kč/h · ostatní 180 Kč/h · minus penalizace. Po kliknutí na "Vyplatit" se hodiny i penalizace od té chvíle počítají znovu od nuly - "Účty" je jen informativní dluh, výplata ho sama nemění (brigádník si účet platí zvlášť v hotovosti), ale při výplatě můžeš zaškrtnout "Odečíst účty z výplaty" - odečtené položky se pak označí jako zaplacené.</p>
       <div class="schedule-wrap">
@@ -568,7 +574,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="js/data.js?v=19"></script>
 <script src="js/export.js?v=1"></script>
-<script src="js/mesice.js?v=1"></script>
+<script src="js/mesice.js?v=2"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/ui.js?v=2"></script>
 <script>
@@ -1043,6 +1049,7 @@ function renderMesicniSouhrnKosatka(){
   if(!el||!window.MP) return;
   var ids=WORKERS.filter(function(w){return w.role!=='admin' && isKosatkaWorker(w);}).map(function(w){return w.id;});
   el.innerHTML=MP.souhrnTable(getMesicniSouhrn(ids, null));
+  MP.poLidech(document.getElementById('mp-mesic-btns'), document.getElementById('mp-mesic-tbl'), ids, null);
 }
 
 function buildVyplatyDetailWorker(){

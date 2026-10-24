@@ -131,6 +131,46 @@
     return html + '</tbody></table></div><div class="mp-note">Hrubá mzda = odpracované hodiny × sazba. Vyplaceno = skutečně zapsané výplaty (po odečtení penalizací, záloh a účtů), proto se může od hrubé mzdy lišit.</div>';
   }
 
+  // Výplaty po lidech za JEDEN vybraný měsíc: nahoře tlačítka měsíců, pod nimi
+  // tabulka brigádník po brigádníkovi (hodiny, hrubá mzda, penalizace, vyplaceno,
+  // co čeká). Stav (vybraný měsíc) si drží modul, stránka jen zavolá render().
+  var po = { btns: null, tbl: null, ids: [], venueId: null, key: null };
+  function poLidech(btnsEl, tblEl, workerIds, venueId) {
+    injectCss();
+    po.btns = btnsEl; po.tbl = tblEl; po.ids = workerIds; po.venueId = venueId;
+    var prehledy = workerIds.map(function (id) { return { id: id, mp: getMesicniPrehled(id, venueId) }; });
+    var klice = {};
+    prehledy.forEach(function (p) { p.mp.mesice.forEach(function (m) { if (m.dny.length || m.vyplaceno) klice[m.key] = m.label; }); });
+    var seznam = Object.keys(klice).sort().reverse();
+    if (!seznam.length) { btnsEl.innerHTML = ''; tblEl.innerHTML = '<div style="font-size:13px;color:var(--text-muted,#6b7280);">Zatím žádné hodiny ani výplaty.</div>'; return; }
+    if (!po.key || seznam.indexOf(po.key) === -1) po.key = seznam[0];
+    btnsEl.innerHTML = seznam.map(function (k) {
+      return '<button type="button" class="btn btn-sm ' + (k === po.key ? 'btn-primary' : 'btn-secondary') + '" style="margin:0 6px 6px 0;" onclick="MP.vyberMesic(\'' + k + '\')">' + esc(klice[k]) + '</button>';
+    }).join('');
+    var radky = prehledy.map(function (p) {
+      var w = getWorkerById(p.id);
+      var m = p.mp.mesice.filter(function (x) { return x.key === po.key; })[0];
+      return { id: p.id, jmeno: w ? w.jmeno : '?', m: m };
+    }).filter(function (r) { return r.m && (r.m.dny.length || r.m.vyplaceno); })
+      .sort(function (a, b) { return a.jmeno.localeCompare(b.jmeno, 'cs'); });
+    var t = { h: 0, hr: 0, pen: 0, vyp: 0, cek: 0 };
+    var html = '<div class="schedule-wrap"><table class="mp-tbl"><thead><tr><th>Brigádník</th><th class="r">Hodin</th><th class="r">Hrubá mzda</th><th class="r">Penalizace</th><th class="r">Vyplaceno</th><th class="r">Čeká</th><th>Stav</th></tr></thead><tbody>';
+    radky.forEach(function (r) {
+      var m = r.m;
+      t.h += m.hodiny; t.hr += m.hruby; t.pen += m.penalizace; t.vyp += m.vyplaceno; t.cek += m.nevyplacenoHruby;
+      var kdy = m.vyplaty.map(function (v) { return dat(v.datum); }).filter(function (x, i, a) { return a.indexOf(x) === i; }).join(', ');
+      html += '<tr><td><a href="#" style="font-weight:600;color:inherit;text-decoration:underline dotted;" onclick="mpOpenWorker(' + r.id + ',' + (venueId == null ? 'null' : venueId) + ');return false;">' + esc(r.jmeno) + '</a></td>' +
+        '<td class="r">' + esc(hh(m.hodiny)) + '</td><td class="r">' + kc(m.hruby) + '</td>' +
+        '<td class="r" style="color:' + (m.penalizace ? '#a12b2b' : 'inherit') + ';">' + (m.penalizace ? '−' + kc(m.penalizace) : '–') + '</td>' +
+        '<td class="r" style="color:#14652b;font-weight:600;">' + kc(m.vyplaceno) + (kdy ? '<div style="font-size:10.5px;font-weight:400;color:var(--text-muted,#6b7280);">' + esc(kdy) + '</div>' : '') + '</td>' +
+        '<td class="r" style="color:' + (m.nevyplacenoHruby ? '#8a3a10' : 'inherit') + ';font-weight:600;">' + (m.nevyplacenoHruby ? kc(m.nevyplacenoHruby) : '✓ nic') + '</td>' +
+        '<td>' + stavBadge(m) + '</td></tr>';
+    });
+    html += '<tr class="tot"><td>Celkem za ' + esc(klice[po.key]) + '</td><td class="r">' + esc(hh(t.h)) + '</td><td class="r">' + kc(t.hr) + '</td><td class="r">' + (t.pen ? '−' + kc(t.pen) : '–') + '</td><td class="r">' + kc(t.vyp) + '</td><td class="r">' + kc(t.cek) + '</td><td></td></tr>';
+    tblEl.innerHTML = html + '</tbody></table></div><div class="mp-note">Klikni na jméno a uvidíš všechny měsíce a jednotlivé dny toho brigádníka. Vyplaceno může být nižší než hrubá mzda o penalizace, zálohy nebo účty odečtené při výplatě.</div>';
+  }
+  function vyberMesic(k) { po.key = k; if (po.btns) poLidech(po.btns, po.tbl, po.ids, po.venueId); }
+
   // Vlastní modál (nezávislý na stránce, aby fungoval stejně v admin.html i podnik-admin.html).
   function openModal(title, bodyHtml) {
     injectCss();
@@ -157,5 +197,5 @@
     openModal('📅 Měsíce a výplaty – ' + (w ? w.jmeno : ''), workerCard(mp, { otevrit: 2 }));
   };
 
-  window.MP = { workerCard: workerCard, monthChips: monthChips, souhrnTable: souhrnTable, openModal: openModal, esc: esc, kc: kc };
+  window.MP = { poLidech: poLidech, vyberMesic: vyberMesic, workerCard: workerCard, monthChips: monthChips, souhrnTable: souhrnTable, openModal: openModal, esc: esc, kc: kc };
 })();
